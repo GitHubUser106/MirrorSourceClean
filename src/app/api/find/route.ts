@@ -16,18 +16,13 @@ const PAYWALLED_DOMAINS: string[] = [
   "venturebeat.com", "washingtonpost.com", "wired.com", "wsj.com",
 ];
 
-// read the key once when the module loads
 const apiKey = process.env.GOOGLE_API_KEY;
 
 if (!apiKey) {
-  console.error(
-    "GOOGLE_API_KEY is not set. Add it to .env.local and restart `npm run dev`."
-  );
+  console.error("GOOGLE_API_KEY is not set. Add it to .env.local and restart `npm run dev`.");
 }
 
-const genAI = new GoogleGenAI({
-  apiKey: apiKey || "",
-});
+const genAI = new GoogleGenAI({ apiKey: apiKey || "" });
 
 function extractDomain(urlString: string): string {
   try {
@@ -37,16 +32,50 @@ function extractDomain(urlString: string): string {
   }
 }
 
-// Small helper to strip ``` fences when the model wraps JSON in markdown
+// Strip ```json fenced code blocks
 function stripMarkdownFences(text: string): string {
   let trimmed = text.trim();
   if (trimmed.startsWith("```")) {
-    // remove initial ``` or ```json
     trimmed = trimmed.replace(/^```[a-zA-Z0-9]*\s*/, "");
-    // remove trailing ```
     trimmed = trimmed.replace(/```$/, "").trim();
   }
   return trimmed;
+}
+
+// 🔥 BEST-PRACTICE SUMMARY EXTRACTOR
+function extractSummaryFromText(raw: string): string {
+  const stripped = stripMarkdownFences(raw).trim();
+
+  // 1. If entire content is JSON
+  try {
+    const parsed = JSON.parse(stripped);
+    if (parsed && typeof parsed.summary === "string") {
+      return parsed.summary.trim();
+    }
+  } catch {}
+
+  // 2. Try to locate a JSON object inside text
+  const firstBrace = stripped.indexOf("{");
+  const lastBrace = stripped.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    const maybeJson = stripped.slice(firstBrace, lastBrace + 1);
+    try {
+      const parsed = JSON.parse(maybeJson);
+      if (parsed && typeof parsed.summary === "string") {
+        return parsed.summary.trim();
+      }
+    } catch {}
+  }
+
+  // 3. Regex for `"summary": " ... "`
+  const match = stripped.match(/"summary"\s*:\s*"([\s\S]*?)"\s*}/);
+  if (match) {
+    return match[1].trim().replace(/\\"/g, '"');
+  }
+
+  // 4. Remove a leading "Summary" heading if present
+  const withoutHeading = stripped.replace(/^Summary\s*/i, "").trim();
+  return withoutHeading;
 }
 
 export async function POST(req: NextRequest) {
@@ -54,10 +83,7 @@ export async function POST(req: NextRequest) {
     const { url } = await req.json();
 
     if (!url || typeof url !== "string") {
-      return NextResponse.json(
-        { error: "Missing or invalid 'url'" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing or invalid 'url'" }, { status: 400 });
     }
 
     const originalUrlDomain = extractDomain(url);
@@ -66,12 +92,12 @@ export async function POST(req: NextRequest) {
 You are MirrorSource, an expert news analyst.
 Use the googleSearch tool to read the article at this URL and find other
 articles covering the same story. Then write a concise, neutral, one paragraph
-summary of the event as a whole.
+summary of the event.
 
 You must:
 1. Call googleSearch to fetch at least three alternative URLs.
 2. Base your answer on those search results.
-3. Return your answer as JSON in this exact shape:
+3. Return ONLY the following JSON and nothing else:
 
 {
   "summary": "A concise, neutral, one-paragraph summary of the news event."
@@ -80,10 +106,7 @@ You must:
 Article URL: ${url}
     `.trim();
 
-    // Follow the official JS pattern: tools go inside config
-    const config: any = {
-      tools: [{ googleSearch: {} }],
-    };
+    const config: any = { tools: [{ googleSearch: {} }] };
 
     const geminiResponse: any = await genAI.models.generateContent({
       model: "gemini-2.5-pro",
@@ -96,7 +119,7 @@ Article URL: ${url}
       config,
     });
 
-    // Robustly extract text
+    // ---- Extract model text ----
     let text: string | undefined;
 
     if (geminiResponse?.response && typeof geminiResponse.response.text === "function") {
@@ -108,44 +131,22 @@ Article URL: ${url}
     }
 
     if (!text) {
-      console.error("Gemini raw response with no text:", geminiResponse);
+      console.error("Gemini raw response WITHOUT TEXT:", geminiResponse);
       throw new Error("Model response did not contain any text content.");
     }
 
-    // Extract and clean summary text so only the paragraph remains
-    let summary: string;
-    let cleaned = stripMarkdownFences(String(text)).trim();
+    // ---- 🔥 NEW ROBUST SUMMARY PARSING ----
+    const summary = extractSummaryFromText(String(text));
 
-    // Try to parse JSON and pull out summary only
-    try {
-      const parsed = JSON.parse(cleaned);
-      if (parsed && typeof parsed.summary === "string") {
-        cleaned = parsed.summary;
-      }
-    } catch {
-      // not JSON, just keep cleaned as is
-      console.warn("Model output was not valid JSON. Using raw text as summary.");
-    }
-
-    // Remove any enclosing quotes and extra spacing
-    cleaned = cleaned.replace(/^"+|"+$/g, "").trim();
-
-    summary = cleaned;
-
-    // Work out candidates in either shape
+    // ---- Grounding sources ----
     const candidates =
       geminiResponse?.response?.candidates ??
       geminiResponse?.candidates ??
       [];
 
     const groundingMetadata = candidates[0]?.groundingMetadata;
-    console.log(
-      "Grounding metadata:",
-      JSON.stringify(groundingMetadata ?? {}, null, 2)
-    );
 
-    const groundingChunks =
-      groundingMetadata?.groundingChunks ?? [];
+    const groundingChunks = groundingMetadata?.groundingChunks ?? [];
 
     const groundingSources: GroundingSource[] = groundingChunks
       .map((chunk: any) => chunk.web)
@@ -156,7 +157,6 @@ Article URL: ${url}
       }));
 
     const filteredSources = groundingSources.filter((source) => {
-      if (!source?.uri || !source.title) return false;
       try {
         const sourceDomain = extractDomain(source.uri);
         if (sourceDomain === originalUrlDomain) return false;
@@ -171,25 +171,22 @@ Article URL: ${url}
       new Map(filteredSources.map((item) => [item.uri, item])).values()
     );
 
-    if (!summary && uniqueSources.length === 0) {
-      throw new Error(
-        "The AI could not generate a summary or find alternative sources."
-      );
-    }
-
     return NextResponse.json({
-      summary:
-        summary ||
-        "A summary could not be generated, but here are some alternative articles on the topic.",
+      summary: summary || "A summary could not be generated.",
       alternatives: uniqueSources,
     });
   } catch (error) {
     console.error("Error in /api/find route:", error);
+
     const message =
-      error instanceof Error ? error.message : "An unknown error occurred";
+      error instanceof Error
+        ? error.message
+        : "An unknown error occurred";
+
     return NextResponse.json(
       { error: `AI analysis failed: ${message}` },
       { status: 500 }
     );
   }
 }
+
