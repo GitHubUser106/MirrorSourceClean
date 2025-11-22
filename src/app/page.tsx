@@ -188,7 +188,8 @@ export default function HomePage() {
 
             {/* RIGHT COLUMN: Alternative Sources */}
             <div className="flex flex-col h-full">
-              <div className="bg-slate-100/50 rounded-2xl border border-slate-200/60 p-6 md:p-8 h-full flex flex-col">
+              {/* FIXED: Background changed to bg-white for uniformity */}
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 h-full flex flex-col">
                 <h2 className="text-xl font-bold text-slate-900 mb-4">
                   Alternative Sources
                 </h2>
@@ -196,14 +197,13 @@ export default function HomePage() {
                 {loading ? (
                   <div className="flex flex-col items-center justify-center h-64 text-slate-400 animate-pulse gap-3">
                     <LoadingSpinner size={32} />
-                    {/* 👇 CHANGED: "Searching for" instead of "Finding" */}
                     <p>Searching for sources...</p>
                   </div>
                 ) : (
                   <>
                     <ResultsDisplay results={results} />
 
-                    {/* 👇 UPDATED: Footer Tip */}
+                    {/* Footer Tip */}
                     {results.length > 0 ? (
                       <div className="mt-8 pt-6 border-t border-slate-200 text-center">
                         <p className="text-sm text-slate-500 flex items-center justify-center gap-2">
