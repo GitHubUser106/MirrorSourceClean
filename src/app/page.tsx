@@ -7,6 +7,7 @@ import UrlInputForm from "@/components/UrlInputForm";
 import ResultsDisplay from "@/components/ResultsDisplay";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import type { GroundingSource } from "@/types";
+import { RotateCw } from "lucide-react";
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
 
@@ -17,7 +18,6 @@ export default function HomePage() {
   const [results, setResults] = useState<GroundingSource[]>([]);
   const [usage, setUsage] = useState<Usage | null>(null);
 
-  // 👇 NEW: State for the input box
   const [currentUrl, setCurrentUrl] = useState("");
   const [lastSubmittedUrl, setLastSubmittedUrl] = useState("");
 
@@ -38,11 +38,10 @@ export default function HomePage() {
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault(); // Prevent refresh
+    e.preventDefault();
     if (!currentUrl.trim()) return;
 
-    // Reset UI for new search
-    setLastSubmittedUrl(currentUrl); // Mark this URL as the "current" search
+    setLastSubmittedUrl(currentUrl); 
     
     try {
       setIsLoading(true);
@@ -64,15 +63,15 @@ export default function HomePage() {
           await refreshUsage(); 
           return;
         }
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error || "Request failed");
+        // Generic error message
+        throw new Error("Unable to process search. Please check the URL and try again.");
       }
 
       const data = await res.json();
       setSummary(data.summary ?? null);
       setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
     } catch (e: any) {
-      setError(e?.message || "Something went wrong.");
+      setError(e?.message || "Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
       refreshUsage();
@@ -81,19 +80,16 @@ export default function HomePage() {
 
   const hasContent = summary || results.length > 0;
   const isActive = loading || hasContent;
-
-  // 👇 SMART BUTTON LOGIC
-  // If the text in the box DOES NOT match what we last searched -> It's a new search ("Find sources")
-  // If it DOES match, and we have results -> It's a re-roll ("Regenerate")
   const isNewInput = currentUrl !== lastSubmittedUrl;
 
+  // 👇 REFINED BUTTON LABELS
   let buttonLabel = "Find sources";
   if (loading) {
     buttonLabel = "Searching...";
   } else if (error && !isNewInput) {
     buttonLabel = "Try again";
   } else if (hasContent && !isNewInput) {
-    buttonLabel = "Regenerate";
+    buttonLabel = "Look for other sources"; // "Look for" implies effort, not guarantee
   }
 
   return (
@@ -192,7 +188,7 @@ export default function HomePage() {
 
             {/* RIGHT COLUMN: Alternative Sources */}
             <div className="flex flex-col h-full">
-              <div className="bg-slate-100/50 rounded-2xl border border-slate-200/60 p-6 md:p-8 h-full">
+              <div className="bg-slate-100/50 rounded-2xl border border-slate-200/60 p-6 md:p-8 h-full flex flex-col">
                 <h2 className="text-xl font-bold text-slate-900 mb-4">
                   Alternative Sources
                 </h2>
@@ -200,10 +196,28 @@ export default function HomePage() {
                 {loading ? (
                   <div className="flex flex-col items-center justify-center h-64 text-slate-400 animate-pulse gap-3">
                     <LoadingSpinner size={32} />
-                    <p>Finding sources...</p>
+                    {/* 👇 CHANGED: "Searching for" instead of "Finding" */}
+                    <p>Searching for sources...</p>
                   </div>
                 ) : (
-                  <ResultsDisplay results={results} />
+                  <>
+                    <ResultsDisplay results={results} />
+
+                    {/* 👇 UPDATED: Footer Tip */}
+                    {results.length > 0 ? (
+                      <div className="mt-8 pt-6 border-t border-slate-200 text-center">
+                        <p className="text-sm text-slate-500 flex items-center justify-center gap-2">
+                          <RotateCw size={14} />
+                          <span>Results may vary. Click <strong>Look for other sources</strong> above to try again.</span>
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="mt-8 text-center text-slate-500">
+                         <p>No sources found.</p>
+                         <p className="text-sm mt-1">Click <strong>Look for other sources</strong> to search again.</p>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
