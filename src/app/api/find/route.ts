@@ -1,4 +1,6 @@
+// Force rebuild for API key
 import { NextRequest, NextResponse } from "next/server";
+...import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import type { GroundingSource } from "../../../types";
 import { checkRateLimit, incrementUsage } from "../../../lib/rate-limiter"; // <--- IMPORTED
