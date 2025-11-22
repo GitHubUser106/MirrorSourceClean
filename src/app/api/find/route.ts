@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import type { GroundingSource } from "../../../types";
+import { checkRateLimit, incrementUsage } from "../../../lib/rate-limiter"; // <--- IMPORTED
 
 export const dynamic = "force-dynamic";
 
@@ -17,10 +18,6 @@ const PAYWALLED_DOMAINS: string[] = [
 ];
 
 const apiKey = process.env.GOOGLE_API_KEY;
-
-if (!apiKey) {
-  console.error("GOOGLE_API_KEY is not set. Add it to .env.local and restart `npm run dev`.");
-}
 
 const genAI = new GoogleGenAI({ apiKey: apiKey || "" });
 
@@ -80,11 +77,25 @@ function extractSummaryFromText(raw: string): string {
 
 export async function POST(req: NextRequest) {
   try {
+    // --- 1. CHECK RATE LIMIT ---
+    const limitCheck = await checkRateLimit(req);
+    if (!limitCheck.success) {
+      return NextResponse.json(
+        { error: `Daily limit reached. You have 0/${limitCheck.info.limit} remaining.` },
+        { status: 429 } // Too Many Requests
+      );
+    }
+    // ---------------------------
+
     const { url } = await req.json();
 
     if (!url || typeof url !== "string") {
       return NextResponse.json({ error: "Missing or invalid 'url'" }, { status: 400 });
     }
+
+    // --- 2. INCREMENT USAGE (Only if URL is valid) ---
+    await incrementUsage(req);
+    // -------------------------------------------------
 
     const originalUrlDomain = extractDomain(url);
 
@@ -131,11 +142,10 @@ Article URL: ${url}
     }
 
     if (!text) {
-      console.error("Gemini raw response WITHOUT TEXT:", geminiResponse);
       throw new Error("Model response did not contain any text content.");
     }
 
-    // ---- 🔥 NEW ROBUST SUMMARY PARSING ----
+    // ---- 🔥 ROBUST SUMMARY PARSING ----
     const summary = extractSummaryFromText(String(text));
 
     // ---- Grounding sources ----
@@ -189,4 +199,3 @@ Article URL: ${url}
     );
   }
 }
-
