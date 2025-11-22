@@ -17,6 +17,10 @@ export default function HomePage() {
   const [results, setResults] = useState<GroundingSource[]>([]);
   const [usage, setUsage] = useState<Usage | null>(null);
 
+  // 👇 NEW: State for the input box
+  const [currentUrl, setCurrentUrl] = useState("");
+  const [lastSubmittedUrl, setLastSubmittedUrl] = useState("");
+
   async function refreshUsage() {
     try {
       const r = await fetch("/api/usage", { cache: "no-store" });
@@ -33,7 +37,13 @@ export default function HomePage() {
     refreshUsage();
   }, []);
 
-  async function handleSubmit(url: string) {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault(); // Prevent refresh
+    if (!currentUrl.trim()) return;
+
+    // Reset UI for new search
+    setLastSubmittedUrl(currentUrl); // Mark this URL as the "current" search
+    
     try {
       setIsLoading(true);
       setError(null);
@@ -43,7 +53,7 @@ export default function HomePage() {
       const res = await fetch("/api/find", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url: currentUrl }),
       });
 
       if (!res.ok) {
@@ -70,8 +80,21 @@ export default function HomePage() {
   }
 
   const hasContent = summary || results.length > 0;
-  // This triggers the layout slide-up
   const isActive = loading || hasContent;
+
+  // 👇 SMART BUTTON LOGIC
+  // If the text in the box DOES NOT match what we last searched -> It's a new search ("Find sources")
+  // If it DOES match, and we have results -> It's a re-roll ("Regenerate")
+  const isNewInput = currentUrl !== lastSubmittedUrl;
+
+  let buttonLabel = "Find sources";
+  if (loading) {
+    buttonLabel = "Searching...";
+  } else if (error && !isNewInput) {
+    buttonLabel = "Try again";
+  } else if (hasContent && !isNewInput) {
+    buttonLabel = "Regenerate";
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 flex flex-col relative">
@@ -113,7 +136,13 @@ export default function HomePage() {
 
         {/* Search Bar */}
         <div className="w-full max-w-2xl relative z-20">
-          <UrlInputForm onSubmit={handleSubmit} isLoading={loading} />
+          <UrlInputForm 
+            onSubmit={handleSubmit} 
+            isLoading={loading}
+            value={currentUrl}
+            onChange={setCurrentUrl}
+            buttonLabel={buttonLabel}
+          />
         </div>
 
         {/* --- USAGE COUNTER (MOBILE) --- */}
