@@ -70,7 +70,7 @@ export default function HomePage() {
   }
 
   const hasContent = summary || results.length > 0;
-  // 👇 NEW: We group 'loading' and 'content' together to trigger the layout change
+  // This triggers the layout slide-up
   const isActive = loading || hasContent;
 
   return (
@@ -87,7 +87,6 @@ export default function HomePage() {
       )}
 
       {/* --- HERO SECTION --- */}
-      {/* Updated condition: 'isActive' triggers the slide-up immediately */}
       <div className={`transition-all duration-500 ease-in-out flex flex-col items-center px-4 ${isActive ? 'pt-8 pb-8' : 'justify-center min-h-[80vh]'}`}>
         
         {/* Logo */}
@@ -134,7 +133,6 @@ export default function HomePage() {
       </div>
 
       {/* --- SPLIT CONTENT SECTION --- */}
-      {/* Only render if active */}
       {isActive && (
         <div className="flex-1 bg-slate-50 px-4 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -163,7 +161,7 @@ export default function HomePage() {
               </div>
             </div>
 
-        {/* RIGHT COLUMN: Alternative Sources */}
+            {/* RIGHT COLUMN: Alternative Sources */}
             <div className="flex flex-col h-full">
               <div className="bg-slate-100/50 rounded-2xl border border-slate-200/60 p-6 md:p-8 h-full">
                 <h2 className="text-xl font-bold text-slate-900 mb-4">
@@ -171,18 +169,4 @@ export default function HomePage() {
                 </h2>
 
                 {loading ? (
-                  /* 👇 UPDATED: Switched from Skeleton boxes to Spinner + Text */
-                  <div className="flex flex-col items-center justify-center h-64 text-slate-400 animate-pulse gap-3">
-                    <LoadingSpinner size={32} />
-                    <p>Finding sources...</p>
-                  </div>
-                ) : (
-                  <ResultsDisplay results={results} />
-                )}
-              </div>
-            </div>
-      )}
-
-    </main>
-  );
-}
+                  <div className="flex flex-col items-center
