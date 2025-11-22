@@ -169,4 +169,20 @@ export default function HomePage() {
                 </h2>
 
                 {loading ? (
-                  <div className="flex flex-col items-center
+                  <div className="flex flex-col items-center justify-center h-64 text-slate-400 animate-pulse gap-3">
+                    <LoadingSpinner size={32} />
+                    <p>Finding sources...</p>
+                  </div>
+                ) : (
+                  <ResultsDisplay results={results} />
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+    </main>
+  );
+}
