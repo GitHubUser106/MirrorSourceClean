@@ -1,22 +1,25 @@
-export default function LoadingSpinner() {
+// src/components/LoadingSpinner.tsx
+
+// We add a type definition so TypeScript knows 'size' is a valid number
+interface SpinnerProps {
+  size?: number;
+}
+
+export default function LoadingSpinner({ size = 24 }: SpinnerProps) {
   return (
     <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
       xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className="animate-spin"
-      fill="currentColor"
-      color="#64748b" // This is a nice slate color
     >
-      <path
-        d="M12,1A11,11,0,1,0,23,12,11,11,0,0,0,12,1Zm0,19a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z"
-        opacity=".25"
-      />
-      <path
-        d="M10.72,19.9a8,8,0,0,1-6.5-9.79A7.77,7.77,0,0,1,10.4,4.16a8,8,0,0,1,9.49,6.52A1.54,1.54,0,0,0,21.38,12h.13a1.37,1.37,0,0,0,1.38-1.54,11,11,0,1,0-12.7,12.39A1.54,1.54,0,0,0,12,21.34h0A1.47,1.47,0,0,0,10.72,19.9Z"
-      />
-      {/* We add the 'animate-spin' class above and Tailwind handles the rest */}
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>
   );
 }
