@@ -70,6 +70,8 @@ export default function HomePage() {
   }
 
   const hasContent = summary || results.length > 0;
+  // 👇 NEW: We group 'loading' and 'content' together to trigger the layout change
+  const isActive = loading || hasContent;
 
   return (
     <main className="min-h-screen bg-slate-50 flex flex-col relative">
@@ -85,7 +87,8 @@ export default function HomePage() {
       )}
 
       {/* --- HERO SECTION --- */}
-      <div className={`transition-all duration-500 ease-in-out flex flex-col items-center px-4 ${hasContent ? 'pt-8 pb-8' : 'justify-center min-h-[80vh]'}`}>
+      {/* Updated condition: 'isActive' triggers the slide-up immediately */}
+      <div className={`transition-all duration-500 ease-in-out flex flex-col items-center px-4 ${isActive ? 'pt-8 pb-8' : 'justify-center min-h-[80vh]'}`}>
         
         {/* Logo */}
         <Link href="/" className="mb-6 hover:opacity-90 transition-opacity">
@@ -131,8 +134,9 @@ export default function HomePage() {
       </div>
 
       {/* --- SPLIT CONTENT SECTION --- */}
-      {(loading || hasContent) && (
-        <div className="flex-1 bg-slate-50 px-4 pb-12">
+      {/* Only render if active */}
+      {isActive && (
+        <div className="flex-1 bg-slate-50 px-4 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* LEFT COLUMN: Summary */}
@@ -182,7 +186,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* FOOTER REMOVED - Relies on src/app/layout.tsx footer */}
     </main>
   );
 }
