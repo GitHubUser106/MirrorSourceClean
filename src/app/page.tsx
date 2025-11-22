@@ -125,8 +125,8 @@ export default function HomePage() {
           <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight">
             See the whole story.
           </h1>
-          <p className="text-lg text-slate-600 leading-relaxed">
-            Paste a news link to find free, public alternatives and avoid <span className="font-medium text-slate-800">most</span> paywalls.
+         <p className="text-lg text-slate-600 leading-relaxed">
+            Paste <span className="font-medium text-slate-800">any</span> news link to get a clear summary and find free, public coverage, even when the original is <span className="font-medium text-slate-800">paywalled</span>.
           </p>
         </div>
 
