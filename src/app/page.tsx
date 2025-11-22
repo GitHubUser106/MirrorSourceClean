@@ -1,231 +1,230 @@
-import type { Metadata } from "next";
+"use client";
+
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import UrlInputForm from "@/components/UrlInputForm";
+import ResultsDisplay from "@/components/ResultsDisplay";
+import LoadingSpinner from "@/components/LoadingSpinner";
+import type { GroundingSource } from "@/types";
+import { RotateCw } from "lucide-react";
 
-export const metadata: Metadata = {
-  title: "Legal Information | MirrorSource",
-};
+type Usage = { used: number; remaining: number; limit: number; resetAt: string };
 
-export default function LegalPage() {
+export default function HomePage() {
+  const [loading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [results, setResults] = useState<GroundingSource[]>([]);
+  const [usage, setUsage] = useState<Usage | null>(null);
+
+  const [currentUrl, setCurrentUrl] = useState("");
+  const [lastSubmittedUrl, setLastSubmittedUrl] = useState("");
+
+  async function refreshUsage() {
+    try {
+      const r = await fetch("/api/usage", { cache: "no-store" });
+      if (r.ok) {
+        const data = (await r.json()) as Usage;
+        setUsage(data);
+      }
+    } catch {
+      // silent
+    }
+  }
+
+  useEffect(() => {
+    refreshUsage();
+  }, []);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!currentUrl.trim()) return;
+
+    setLastSubmittedUrl(currentUrl); 
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      setSummary(null);
+      setResults([]);
+
+      const res = await fetch("/api/find", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: currentUrl }),
+      });
+
+      if (!res.ok) {
+        if (res.status === 429) {
+          const data = await res.json().catch(() => ({}));
+          const msg = data?.error || "You’ve reached today’s limit.";
+          setError(msg);
+          await refreshUsage(); 
+          return;
+        }
+        // Generic error message
+        throw new Error("Unable to process search. Please check the URL and try again.");
+      }
+
+      const data = await res.json();
+      setSummary(data.summary ?? null);
+      setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
+    } catch (e: any) {
+      setError(e?.message || "Something went wrong. Please try again.");
+    } finally {
+      setIsLoading(false);
+      refreshUsage();
+    }
+  }
+
+  const hasContent = summary || results.length > 0;
+  const isActive = loading || hasContent;
+  const isNewInput = currentUrl !== lastSubmittedUrl;
+
+  // FINAL BUTTON LABEL LOGIC
+  let buttonLabel = "Find sources";
+  if (loading) {
+    buttonLabel = "Searching...";
+  } else if (error && !isNewInput) {
+    buttonLabel = "Try again";
+  } else if (hasContent && !isNewInput) {
+    buttonLabel = "Look for other sources";
+  }
+
   return (
-    <main className="min-h-screen bg-slate-50 py-16 px-4">
-      <div className="mx-auto max-w-3xl rounded-xl bg-white p-8 shadow-sm border border-slate-200 space-y-8">
+    <main className="min-h-screen bg-slate-50 flex flex-col relative">
+      
+      {/* --- USAGE COUNTER (DESKTOP) --- */}
+      {usage && (
+        <div className="hidden md:flex absolute top-4 right-4 z-10 items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm text-sm">
+          <span className={`w-2 h-2 rounded-full ${usage.remaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></span>
+          <span className="font-medium text-slate-600">
+            {usage.remaining}/{usage.limit} <span className="hidden lg:inline">searches left</span>
+          </span>
+        </div>
+      )}
+
+      {/* --- HERO SECTION --- */}
+      <div className={`transition-all duration-500 ease-in-out flex flex-col items-center px-4 ${isActive ? 'pt-8 pb-8' : 'justify-center min-h-[80vh]'}`}>
         
-        {/* CLICKABLE LOGO HEADER */}
-        <div className="flex justify-center pb-4 border-b border-slate-100">
-          <Link href="/" className="hover:opacity-80 transition-opacity">
-            <Image 
-              src="/logo.png" 
-              alt="MirrorSource" 
-              width={200} 
-              height={50} 
-              className="h-auto w-auto"
-            />
-          </Link>
+        {/* Logo */}
+        <Link href="/" className="mb-6 hover:opacity-90 transition-opacity">
+          <Image
+            src="/logo.png"
+            alt="MirrorSource Logo"
+            width={300} 
+            height={80}
+            priority
+            className="h-auto w-auto"
+          />
+        </Link>
+
+        {/* Headline */}
+        <div className="text-center max-w-2xl space-y-4 mb-8">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight">
+            See the whole story.
+          </h1>
+         <p className="text-lg text-slate-600 leading-relaxed">
+            Paste <span className="font-medium text-slate-800">any</span> news link to get a clear summary and find free, public coverage, even when the original is <span className="font-medium text-slate-800">paywalled</span>.
+          </p>
         </div>
 
-        <header className="space-y-2 text-center sm:text-left">
-          <h1 className="text-3xl font-bold text-slate-900">Legal Information</h1>
-          <p className="text-sm text-slate-500">Effective Date: 2025-11-20</p>
-          <p className="text-slate-700">
-            This page contains all legal notices, policies, and terms that govern the use of the MirrorSource website and services.
-          </p>
-        </header>
-
-        {/* 1. Terms of Use */}
-        <section className="space-y-3">
-          <h2 className="text-2xl font-semibold text-slate-900">1. Terms of Use</h2>
-
-          <h3 className="text-lg font-semibold text-slate-900">About MirrorSource</h3>
-          <p className="text-slate-700">
-            MirrorSource provides computer-generated summaries and alternative source suggestions based on publicly available information. MirrorSource does not reproduce full articles or paywalled content. MirrorSource does not store or distribute copyrighted materials.
-          </p>
-
-          <h3 className="text-lg font-semibold text-slate-900">Your Responsibilities</h3>
-          <p className="text-slate-700">
-            You agree to use MirrorSource only for lawful purposes, and you will not attempt to bypass paywalls or technical protections, access restricted content, scrape websites, or use the service in ways that infringe the rights of others.
-          </p>
-
-          <h3 className="text-lg font-semibold text-slate-900">No Professional Advice</h3>
-          <p className="text-slate-700">
-            Content generated by MirrorSource is informational only. It is not legal, financial, or medical advice.
-          </p>
-
-          <h3 className="text-lg font-semibold text-slate-900">Intellectual Property</h3>
-          <p className="text-slate-700">
-            All original content on MirrorSource is owned by MirrorSource or its licensors. You may not copy, republish, or commercially exploit MirrorSource content without permission.
-          </p>
-
-          <h3 className="text-lg font-semibold text-slate-900">Third-Party Websites</h3>
-          <p className="text-slate-700">
-            MirrorSource may display links to external websites. MirrorSource does not control those sites, and is not responsible for their content, policies, or practices.
-          </p>
-
-          <h3 className="text-lg font-semibold text-slate-900">Service Availability</h3>
-          <p className="text-slate-700">
-            The service is provided on an ‘as is’ and ‘as available’ basis.
-          </p>
-
-          <h3 className="text-lg font-semibold text-slate-900">Limitation of Liability</h3>
-          <p className="text-slate-700">
-            To the maximum extent permitted by law, MirrorSource is not liable for any indirect, incidental, consequential, or special damages that arise from the use of or inability to use the service.
-          </p>
-
-          <h3 className="text-lg font-semibold text-slate-900">Changes to These Terms</h3>
-          <p className="text-slate-700">
-            MirrorSource may update these Terms. Continued use means you accept the changes. If you do not agree, stop using the service.
-          </p>
-        </section>
-
-        {/* 2. Privacy Policy */}
-        <section className="space-y-3">
-          <h2 className="text-2xl font-semibold text-slate-900">2. Privacy Policy</h2>
-
-          <h3 className="text-lg font-semibold text-slate-900">Information We Collect</h3>
-          <p className="text-slate-700">
-            MirrorSource collects minimal data. This includes technical information such as IP address, browser type, device information, and usage data such as pages visited or queries submitted. Personal information is collected only if you provide it by contacting us directly.
-          </p>
-
-          <h3 className="text-lg font-semibold text-slate-900">How We Use Information</h3>
-          <p className="text-slate-700">
-            We use information to operate and improve the service, diagnose issues, prevent misuse, and monitor performance. MirrorSource does not sell or rent your information.
-          </p>
-
-          <h3 className="text-lg font-semibold text-slate-900">Cookies</h3>
-          <p className="text-slate-700">
-            MirrorSource uses cookies only as described in the Cookie Notice. You can control cookies in your browser settings.
-          </p>
-
-          <h3 className="text-lg font-semibold text-slate-900">Third-Party Providers</h3>
-          <p className="text-slate-700">
-            We may use hosting or analytics providers. They process technical data on our behalf.
-          </p>
-
-          <h3 className="text-lg font-semibold text-slate-900">Data Security</h3>
-          <p className="text-slate-700">
-            We take reasonable steps to protect data. No system is perfectly secure.
-          </p>
-
-          <h3 className="text-lg font-semibold text-slate-900">Changes to This Policy</h3>
-          <p className="text-slate-700">
-            We may update this Privacy Policy. The latest version is always on this page.
-          </p> 
-        </section>
-
-        {/* 3. Cookie Notice */}
-        <section className="space-y-3">
-          <h2 className="text-2xl font-semibold text-slate-900">3. Cookie Notice</h2>
-          <p className="text-slate-700">
-            MirrorSource uses essential cookies to operate the website and improve user experience. Continuing to use the site means you consent to these cookies.
-          </p>
-        </section>
-
-        {/* 4. DMCA Policy */}
-        <section className="space-y-3">
-          <h2 className="text-2xl font-semibold text-slate-900">4. DMCA Policy</h2>
-          <p className="text-slate-700">
-            MirrorSource respects the intellectual property rights of authors and publishers.
-          </p>
-
-          <h3 className="text-lg font-semibold text-slate-900">Reporting Copyright Infringement</h3>
-          <p className="text-slate-700">
-            To report alleged infringement, submit a DMCA notice via the contact email listed at the end of this document. Include:
-          </p>
-          <ul className="list-disc pl-6 text-slate-700 space-y-1">
-            <li>Your name and contact information.</li>
-            <li>Identification of the copyrighted work.</li>
-            <li>Identification of the material you believe is infringing and where it appears.</li>
-            <li>A good faith statement that the use is not authorized.</li>
-            <li>An accuracy statement and your signature or typed name.</li>
-          </ul>
-
-          <h3 className="text-lg font-semibold text-slate-900">Counter Notification</h3>
-          <p className="text-slate-700">
-            If you believe material was removed by mistake, submit a counter notice via the contact email listed at the end of this document. Include your contact details, a statement under penalty of perjury that the removal was a mistake or misidentification, consent to court jurisdiction, and your signature.
-          </p>
-        </section>
-
-        {/* 5. GDPR Addendum */}
-        <section className="space-y-3">
-          <h2 className="text-2xl font-semibold text-slate-900">5. GDPR Addendum (EU and UK Users)</h2>
-
-          <h3 className="text-lg font-semibold text-slate-900">Your Rights</h3>
-          <p className="text-slate-700">
-            Subject to law, you may request access, correction, deletion, restriction, or a portable copy of your data via the contact email provided at the end of this document.
-          </p>
-
-          <h3 className="text-lg font-semibold text-slate-900">Legal Basis</h3>
-          <p className="text-slate-700">
-            Processing of limited technical data is based on legitimate interests in operating and securing the service.
-          </p>
-
-          <h3 className="text-lg font-semibold text-slate-900">Data Transfers</h3>
-          <p className="text-slate-700">
-            Your data may be processed outside the EU or UK. Use of the service implies consent to such transfers where lawful.
-          </p>
-        </section>
-
-        {/* 6. Accessibility */}
-        <section className="space-y-3">
-          <h2 className="text-2xl font-semibold text-slate-900">6. Accessibility Statement</h2>
-          <p className="text-slate-700">
-            If you encounter difficulty using any part of the site or require an accommodation, please contact us using the email provided below.
-          </p>
-        </section>
-
-        {/* 7. Do Not Sell or Share My Data */}
-        <section className="space-y-3">
-          <h2 className="text-2xl font-semibold text-slate-900">7. Do Not Sell or Share My Data</h2>
-          <p className="text-slate-700">
-            MirrorSource does not sell or share personal information. California residents may request confirmation via the contact email provided below.
-          </p>
-        </section>
-
-        {/* 8. Contact and Legal Requests */}
-        <section className="space-y-3">
-          <h2 className="text-2xl font-semibold text-slate-900">8. Contact and Legal Requests</h2>
-          <p className="text-slate-700">
-            For privacy questions, DMCA notices, security concerns, or other legal matters, please refer to the official contact email below.
-          </p>
-        </section>
-
-        {/* 9. Security Disclosure */}
-        <section className="space-y-3">
-          <h2 className="text-2xl font-semibold text-slate-900">9. Security Disclosure</h2>
-          <p className="text-slate-700">
-            Report vulnerabilities via the contact email. Include a description and steps to reproduce. Please avoid public disclosure before we respond.
-          </p>
-        </section>
-
-        {/* 10. Anti-Scraping and Abuse */}
-        <section className="space-y-3">
-          <h2 className="text-2xl font-semibold text-slate-900">10. Anti-Scraping and Abuse</h2>
-          <p className="text-slate-700">
-            Personal use only. No bots, scripts, automated tools, or bulk requests. No reverse engineering or harvesting of data. We may block or suspend access for abusive behavior.
-          </p>
-        </section>
-
-        {/* 11. Legal Disclaimer (Renumbered) */}
-        <section className="space-y-3">
-          <h2 className="text-2xl font-semibold text-slate-900">11. Legal Disclaimer</h2>
-          <p className="text-slate-700">
-            {/* AI Clarity Note Added */}
-            MirrorSource summaries are generated by automated systems and may contain errors. MirrorSource provides AI-generated summaries for information only. MirrorSource does not provide legal, financial, or professional advice. All trademarks and copyrights belong to their respective owners.
-          </p>
-        </section>
-
-        {/* OFFICIAL CONTACT FOOTER */}
-        <div className="mt-12 pt-8 border-t border-slate-200 text-center">
-          <p className="text-slate-900 font-medium">For all legal, privacy, and support inquiries:</p>
-          <a 
-            href="mailto:contact@mirrorsource.app" 
-            className="text-blue-700 font-semibold text-lg hover:underline mt-2 block"
-          >
-            contact@mirrorsource.app
-          </a>
+        {/* Search Bar */}
+        <div className="w-full max-w-2xl relative z-20">
+          <UrlInputForm 
+            onSubmit={handleSubmit} 
+            isLoading={loading}
+            value={currentUrl}
+            onChange={setCurrentUrl}
+            buttonLabel={buttonLabel}
+          />
         </div>
 
+        {/* --- USAGE COUNTER (MOBILE) --- */}
+        {usage && !hasContent && (
+          <div className="md:hidden mt-6 flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-slate-200 text-xs text-slate-500">
+             <span className={`w-1.5 h-1.5 rounded-full ${usage.remaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></span>
+             {usage.remaining}/{usage.limit} searches left
+          </div>
+        )}
+
+        {/* Error Message */}
+        {error && (
+          <div className="mt-6 w-full max-w-2xl bg-red-50 border border-red-200 rounded-lg p-4 text-red-600 text-center text-sm">
+            {error}
+          </div>
+        )}
       </div>
+
+      {/* --- SPLIT CONTENT SECTION --- */}
+      {isActive && (
+        <div className="flex-1 bg-slate-50 px-4 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* LEFT COLUMN: Summary */}
+            <div className="flex flex-col h-full">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 h-full">
+                <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                  Summary
+                </h2>
+                
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center h-64 text-slate-400 animate-pulse gap-3">
+                    <LoadingSpinner size={32} />
+                    <p>Reading article...</p>
+                  </div>
+                ) : (
+                  <div className="prose prose-slate leading-relaxed text-slate-700">
+                    {summary ? (
+                      <p style={{ whiteSpace: "pre-wrap" }}>{summary}</p>
+                    ) : (
+                      <p className="text-slate-400 italic">No summary available.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN: Alternative Sources */}
+            <div className="flex flex-col h-full">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 h-full flex flex-col">
+                <h2 className="text-xl font-bold text-slate-900 mb-4">
+                  Alternative Sources
+                </h2>
+
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center h-64 text-slate-400 animate-pulse gap-3">
+                    <LoadingSpinner size={32} />
+                    <p>Searching for sources...</p>
+                  </div>
+                ) : (
+                  <>
+                    <ResultsDisplay results={results} />
+
+                    {/* Footer Tip */}
+                    {results.length > 0 ? (
+                      <div className="mt-8 pt-6 border-t border-slate-200 text-center">
+                        <p className="text-sm text-slate-500 flex items-center justify-center gap-2">
+                          <RotateCw size={14} />
+                          <span>Results may vary. Click <strong>Look for other sources</strong> above to try again.</span>
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="mt-8 text-center text-slate-500">
+                         <p>No sources found.</p>
+                         <p className="text-sm mt-1">Click <strong>Look for other sources</strong> to search again.</p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </main>
   );
 }
