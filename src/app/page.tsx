@@ -163,7 +163,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* RIGHT COLUMN: Alternative Sources */}
+        {/* RIGHT COLUMN: Alternative Sources */}
             <div className="flex flex-col h-full">
               <div className="bg-slate-100/50 rounded-2xl border border-slate-200/60 p-6 md:p-8 h-full">
                 <h2 className="text-xl font-bold text-slate-900 mb-4">
@@ -171,19 +171,16 @@ export default function HomePage() {
                 </h2>
 
                 {loading ? (
-                  <div className="space-y-4 opacity-50">
-                    <div className="h-24 bg-white rounded-lg w-full animate-pulse"></div>
-                    <div className="h-24 bg-white rounded-lg w-full animate-pulse delay-75"></div>
-                    <div className="h-24 bg-white rounded-lg w-full animate-pulse delay-150"></div>
+                  /* 👇 UPDATED: Switched from Skeleton boxes to Spinner + Text */
+                  <div className="flex flex-col items-center justify-center h-64 text-slate-400 animate-pulse gap-3">
+                    <LoadingSpinner size={32} />
+                    <p>Finding sources...</p>
                   </div>
                 ) : (
                   <ResultsDisplay results={results} />
                 )}
               </div>
             </div>
-
-          </div>
-        </div>
       )}
 
     </main>
