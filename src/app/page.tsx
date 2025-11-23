@@ -83,7 +83,7 @@ export default function HomePage() {
   const isNewInput = currentUrl !== lastSubmittedUrl;
 
   // FINAL BUTTON LABEL LOGIC
-  let buttonLabel = "Find sources";
+  let buttonLabel = "Find Alternatives";
   if (loading) {
     buttonLabel = "Searching...";
   } else if (error && !isNewInput) {
@@ -190,7 +190,7 @@ export default function HomePage() {
             <div className="flex flex-col h-full">
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 h-full flex flex-col">
                 <h2 className="text-xl font-bold text-slate-900 mb-4">
-                  Alternative Sources
+                  Free Alternatives
                 </h2>
 
                 {loading ? (

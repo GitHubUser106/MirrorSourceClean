@@ -13,7 +13,7 @@ interface UrlInputFormProps {
 export default function UrlInputForm({ 
   onSubmit, 
   isLoading, 
-  buttonLabel = "Find sources",
+  buttonLabel = "Find Alternatives",
   value,
   onChange
 }: UrlInputFormProps) {
@@ -28,7 +28,7 @@ export default function UrlInputForm({
         
         <input
           type="url"
-          placeholder="Paste a news article URL..."
+          placeholder="Paste the article URL here..."
           className="w-full pl-12 pr-4 py-4 rounded-2xl border border-slate-200 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none text-slate-700 placeholder:text-slate-400 text-base md:text-lg"
           value={value}
           onChange={(e) => onChange(e.target.value)}
