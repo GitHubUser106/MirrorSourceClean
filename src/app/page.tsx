@@ -83,7 +83,7 @@ export default function HomePage() {
   const isNewInput = currentUrl !== lastSubmittedUrl;
 
   // FINAL BUTTON LABEL LOGIC
-  let buttonLabel = "Find sources";
+  let buttonLabel = "Find Alternatives";
   if (loading) {
     buttonLabel = "Searching...";
   } else if (error && !isNewInput) {
@@ -128,7 +128,7 @@ export default function HomePage() {
           </h1>
           {/* 👇 NEW SUBHEAD */}
          <p className="text-lg text-slate-600 leading-relaxed">
-            Paste <span className="font-medium text-slate-800">any locked news link</span>. We’ll scout the web to generate a neutral summary and find you free, public coverage of the same story.
+            Paste <span className="font-medium text-slate-800">news link</span>. We’ll scout the web to generate a neutral summary and find you free, public coverage of the same story.
           </p>
         </div>
 
