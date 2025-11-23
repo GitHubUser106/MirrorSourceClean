@@ -83,13 +83,13 @@ export default function HomePage() {
   const isNewInput = currentUrl !== lastSubmittedUrl;
 
   // FINAL BUTTON LABEL LOGIC
-  let buttonLabel = "Find Alternatives";
+  let buttonLabel = "Find sources";
   if (loading) {
     buttonLabel = "Searching...";
   } else if (error && !isNewInput) {
     buttonLabel = "Try again";
   } else if (hasContent && !isNewInput) {
-    buttonLabel = "Look for other sources";
+    buttonLabel = "Look for other sources"; // "Look for" implies effort, not guarantee
   }
 
   return (
@@ -122,11 +122,13 @@ export default function HomePage() {
 
         {/* Headline */}
         <div className="text-center max-w-2xl space-y-4 mb-8">
+          {/* 👇 NEW HEADLINE */}
           <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight">
-            See the whole story.
+            Don’t let a paywall hide the facts.
           </h1>
+          {/* 👇 NEW SUBHEAD */}
          <p className="text-lg text-slate-600 leading-relaxed">
-            Paste <span className="font-medium text-slate-800">any</span> news link to get a clear summary and find free, public coverage, even when the original is <span className="font-medium text-slate-800">paywalled</span>.
+            Paste <span className="font-medium text-slate-800">any locked news link</span>. We’ll scout the web to generate a neutral summary and find you free, public coverage of the same story.
           </p>
         </div>
 
@@ -190,7 +192,7 @@ export default function HomePage() {
             <div className="flex flex-col h-full">
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 h-full flex flex-col">
                 <h2 className="text-xl font-bold text-slate-900 mb-4">
-                  Free Alternatives
+                  Alternative Sources
                 </h2>
 
                 {loading ? (
