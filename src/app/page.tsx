@@ -83,7 +83,7 @@ export default function HomePage() {
   const isNewInput = currentUrl !== lastSubmittedUrl;
 
   // FINAL BUTTON LABEL LOGIC
-  let buttonLabel = "Find Alternatives";
+  let buttonLabel = "Find Alternatives"; // Default state
   if (loading) {
     buttonLabel = "Searching...";
   } else if (error && !isNewInput) {
@@ -122,13 +122,13 @@ export default function HomePage() {
 
         {/* Headline */}
         <div className="text-center max-w-2xl space-y-4 mb-8">
-          {/* 👇 NEW HEADLINE */}
-          <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight">
+          {/* FINAL HEADLINE: Don’t let a paywall hide the facts. (Responsive fix added) */}
+          <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight md:whitespace-nowrap">
             Don’t let a paywall hide the facts.
           </h1>
-          {/* 👇 NEW SUBHEAD */}
+          {/* FINAL SUBHEAD/TAGLINE */}
          <p className="text-lg text-slate-600 leading-relaxed">
-            Paste <span className="font-medium text-slate-800">any news link</span>. We’ll scout the web to generate a neutral summary and find you free, public coverage of the same story.
+            Paste <span className="font-medium text-slate-800">any locked news link</span>. We’ll scout the web to generate a neutral summary and find you free, public coverage of the same story.
           </p>
         </div>
 
