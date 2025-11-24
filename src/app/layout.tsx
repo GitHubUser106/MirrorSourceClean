@@ -6,13 +6,11 @@ import { Inter } from "next/font/google";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  // 1. ESSENTIAL for LinkedIn/Social Images to show up correctly
-  metadataBase: new URL('https://mirrorsource.app'), 
+  // 1. Sets the base URL for all relative links (Best Practice)
+  metadataBase: new URL('https://mirrorsource.app'),
 
-  // 2. SAFE TITLES (No "Paywall" keyword in the title)
+  // 2. Safe Title & Description
   title: "MirrorSource | See the Whole Story",
-  
-  // 3. SAFE DESCRIPTION (>100 chars for LinkedIn, No "Paywall" keyword)
   description: "Paste any news link. We’ll scout the web to generate a neutral summary and find free, public coverage of the same story.",
   
   keywords: [
@@ -24,6 +22,7 @@ export const metadata: Metadata = {
     "research tool"
   ],
 
+  // 3. OpenGraph (Facebook, LinkedIn, Discord)
   openGraph: {
     title: "MirrorSource | See the Whole Story",
     description: "Paste any news link. We’ll scout the web to generate a neutral summary and find free, public coverage of the same story.",
@@ -33,7 +32,8 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/og-image.png", // Resolves via metadataBase
+        // FORCE ABSOLUTE URL: This fixes the "No Image" error on LinkedIn
+        url: "https://www.mirrorsource.app/og-image.png",
         width: 1200,
         height: 630,
         alt: "MirrorSource - See the whole story",
@@ -41,17 +41,19 @@ export const metadata: Metadata = {
     ],
   },
 
+  // 4. Twitter Card
   twitter: {
     card: "summary_large_image",
     title: "MirrorSource | See the Whole Story",
     description: "Paste any news link. We’ll scout the web to generate a neutral summary and find free, public coverage of the same story.",
-    creator: "@UseMirrorSource", // Updated to your new handle
-    images: ["/og-image.png"],
+    creator: "@UseMirrorSource", // Your new handle
+    images: ["https://www.mirrorsource.app/og-image.png"], // Force absolute URL here too
   },
 
+  // 5. Icons
   icons: {
-    icon: "/icon.png", 
-    apple: "/apple-touch-icon.png", 
+    icon: "/icon.png",
+    apple: "/apple-touch-icon.png",
   },
 };
 
