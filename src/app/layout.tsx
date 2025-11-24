@@ -1,52 +1,57 @@
-// src/app/layout.tsx
-
 import Link from "next/link";
 import "./globals.css";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google"; // Assuming you kept the font import
+import { Inter } from "next/font/google";
 
-const inter = Inter({ subsets: ["latin"] }); // Assuming you kept the font initialization
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  // FINALIZED SEO & SOCIAL CONFIGURATION
-  title: "MirrorSource | Free News Summaries & Public Alternatives",
-  description: "Don't let a paywall hide the facts. Paste any locked news link to get a neutral AI summary and find free, public coverage of the same story.",
+  // 1. ESSENTIAL for LinkedIn/Social Images to show up correctly
+  metadataBase: new URL('https://mirrorsource.app'), 
+
+  // 2. SAFE TITLES (No "Paywall" keyword in the title)
+  title: "MirrorSource | See the Whole Story",
+  
+  // 3. SAFE DESCRIPTION (>100 chars for LinkedIn, No "Paywall" keyword)
+  description: "Paste any news link. We’ll scout the web to generate a neutral summary and find free, public coverage of the same story.",
+  
   keywords: [
     "news summary",
-    "paywall alternative",
-    "free news reader",
-    "media bias",
-    "article summarizer",
     "public sources",
-    "news aggregator"
+    "media coverage",
+    "article search",
+    "neutral news",
+    "research tool"
   ],
+
   openGraph: {
     title: "MirrorSource | See the Whole Story",
-    description: "Hit a paywall? Get a neutral summary and find free alternative sources instantly.",
+    description: "Paste any news link. We’ll scout the web to generate a neutral summary and find free, public coverage of the same story.",
     url: "https://mirrorsource.app",
     siteName: "MirrorSource",
     locale: "en_US",
     type: "website",
     images: [
       {
-        url: "https://mirrorsource.app/og-image.png", // Make sure you have an image at public/og-image.png
+        url: "/og-image.png", // Resolves via metadataBase
         width: 1200,
         height: 630,
-        alt: "MirrorSource - Don't let a paywall hide the facts.",
+        alt: "MirrorSource - See the whole story",
       },
     ],
   },
+
   twitter: {
     card: "summary_large_image",
-    title: "MirrorSource | Don't let a paywall hide the facts",
-    description: "Paste any locked news link. We'll scout the web for a neutral summary and public coverage.",
-    creator: "@MirrorSourceApp", // Update this if you create a handle later
-    images: ["https://mirrorsource.app/og-image.png"], // Same image as above
+    title: "MirrorSource | See the Whole Story",
+    description: "Paste any news link. We’ll scout the web to generate a neutral summary and find free, public coverage of the same story.",
+    creator: "@UseMirrorSource", // Updated to your new handle
+    images: ["/og-image.png"],
   },
-  // 👇 REFINED ICONS FOR MOBILE HOMESCREENS
+
   icons: {
-    icon: "/icon.png", // The primary browser tab icon (modern)
-    apple: "/apple-touch-icon.png", // Required for iOS 'Add to Home Screen'
+    icon: "/icon.png", 
+    apple: "/apple-touch-icon.png", 
   },
 };
 
