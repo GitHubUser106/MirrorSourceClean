@@ -43,9 +43,10 @@ export const metadata: Metadata = {
     creator: "@MirrorSourceApp", // Update this if you create a handle later
     images: ["https://mirrorsource.app/og-image.png"], // Same image as above
   },
-  // Ensure the icon setting is correct for your PNG file:
+  // 👇 REFINED ICONS FOR MOBILE HOMESCREENS
   icons: {
-    icon: "/icon.png", // Using the correct file name we previously fixed
+    icon: "/icon.png", // The primary browser tab icon (modern)
+    apple: "/apple-touch-icon.png", // Required for iOS 'Add to Home Screen'
   },
 };
 
