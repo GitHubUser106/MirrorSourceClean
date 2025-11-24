@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 // CHANGE THIS TO 5 AS REQUESTED
-const DAILY_LIMIT = 5;
+const DAILY_LIMIT = 10;
 
 interface UsageInfo {
   used: number;
