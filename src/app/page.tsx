@@ -171,10 +171,12 @@ export default function HomePage() {
                   Summary
                 </h2>
                 
+ // Find this block:
                 {loading ? (
                   <div className="flex flex-col items-center justify-center h-64 text-slate-400 animate-pulse gap-3">
                     <LoadingSpinner size={32} />
-                    <p>Reading article...</p>
+                    {/* CHANGE THIS LINE: */}
+                    <p>Generating summary...</p>
                   </div>
                 ) : (
                   <div className="prose prose-slate leading-relaxed text-slate-700">
