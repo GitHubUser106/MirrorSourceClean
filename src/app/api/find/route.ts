@@ -71,11 +71,11 @@ function extractSearchKeywords(url: string): string {
     
     // Clean up the path to extract keywords
     const cleanPath = path
-      .replace(/^\/+(news|article|story|us-news|world|politics|business|tech|science|health|entertainment|sports)\/?/gi, ' ')
+      .replace(/^\/+(news|article|story|us-news|world|politics|business|tech|science|health|entertainment|sports|live)\/?/gi, ' ')
       .replace(/\.(html|htm|php|asp|aspx)$/i, '')
       .replace(/[-_\/]+/g, ' ')
       .replace(/\d{4}[-\/]\d{2}[-\/]\d{2}/g, '') // Remove dates
-      .replace(/\d+/g, ' ') // Remove numbers
+      .replace(/\b\d+\b/g, ' ') // Remove standalone numbers
       .trim();
     
     // Get meaningful words (length > 2)
@@ -95,64 +95,68 @@ function buildGoogleSiteSearch(domain: string, keywords: string): string {
   return `https://www.google.com/search?q=${query}`;
 }
 
-// --- Check if a domain looks valid ---
-function isValidDomain(title: string): boolean {
+// --- Check if title looks like a domain we should keep ---
+function shouldKeepSource(title: string): boolean {
   if (!title) return false;
   const clean = title.toLowerCase().trim();
   
-  // Must contain a dot and look like a domain
-  if (!clean.includes('.')) return false;
-  
-  // Filter out Google internal domains
-  if (clean.includes('google.com')) return false;
+  // Filter out Google/Vertex internal stuff
   if (clean.includes('vertexai')) return false;
   if (clean.includes('googleapis')) return false;
+  if (clean === 'google.com') return false;
   
-  // Basic domain pattern check
-  return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z]{2,})+$/i.test(clean);
+  // Keep anything that has a dot (likely a domain)
+  return clean.includes('.');
 }
 
-// --- Process grounding metadata to get reliable sources ---
+// --- Format domain as a nice display title ---
+function formatDisplayTitle(domain: string): string {
+  const clean = domain.toLowerCase().replace(/^www\./, '');
+  // Capitalize first letter of each part before the TLD
+  const parts = clean.split('.');
+  if (parts.length >= 2) {
+    // Get the site name (before TLD)
+    const siteName = parts.slice(0, -1).join('.');
+    return siteName.toUpperCase();
+  }
+  return clean.toUpperCase();
+}
+
+// --- Process grounding metadata to get sources ---
 function processGroundingMetadata(
   groundingChunks: any[],
   searchKeywords: string
-): Array<{ uri: string; title: string; domain: string }> {
+): Array<{ uri: string; title: string; displayName: string; sourceDomain: string }> {
   const seen = new Set<string>();
-  const sources: Array<{ uri: string; title: string; domain: string }> = [];
+  const sources: Array<{ uri: string; title: string; displayName: string; sourceDomain: string }> = [];
 
   for (const chunk of groundingChunks) {
     const web = chunk?.web;
     if (!web?.title) continue;
     
-    const title = web.title;
-    const domain = title.toLowerCase().replace(/^www\./, '');
+    const rawTitle = web.title;
     
-    // Skip if we've seen this domain
+    // Skip if not a valid source
+    if (!shouldKeepSource(rawTitle)) continue;
+    
+    const domain = rawTitle.toLowerCase().replace(/^www\./, '');
+    
+    // Skip duplicates
     if (seen.has(domain)) continue;
-    
-    // Skip if it doesn't look like a valid news domain
-    if (!isValidDomain(title)) continue;
-    
     seen.add(domain);
     
-    // ALWAYS use Google site search - never trust the URI from grounding
+    // Build Google site search URL
     const uri = buildGoogleSiteSearch(domain, searchKeywords);
     
     sources.push({
       uri,
-      title: formatDomainAsTitle(domain),
-      domain,
+      title: rawTitle, // Keep original for reference
+      displayName: formatDisplayTitle(domain),
+      sourceDomain: domain, // Pass the actual source domain for favicon
     });
   }
 
   return sources;
-}
-
-// --- Format domain as a nice title ---
-function formatDomainAsTitle(domain: string): string {
-  // Remove TLD and capitalize
-  const name = domain.replace(/\.(com|org|net|co\.uk|ca|gov|edu|io)$/i, '');
-  return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
 export async function POST(req: NextRequest) {
@@ -177,7 +181,7 @@ export async function POST(req: NextRequest) {
     // 3. Extract search keywords from original URL
     const searchKeywords = extractSearchKeywords(url);
 
-    // 4. SYSTEM PROMPT - simplified, just ask for summary
+    // 4. SYSTEM PROMPT - just ask for summary
     const prompt = `
 **ROLE:** You are MirrorSource, a helpful news assistant.
 
@@ -217,12 +221,12 @@ Do not include alternatives or sources - just the summary.
     const parsedData = extractJson(text);
     const summary = parsedData?.summary || "No summary available.";
 
-    // 8. Get sources ONLY from grounding metadata (not from Gemini's JSON)
+    // 8. Get sources from grounding metadata
     const candidates = geminiResponse?.response?.candidates ?? geminiResponse?.candidates ?? [];
     const groundingMetadata = candidates[0]?.groundingMetadata;
     const groundingChunks = groundingMetadata?.groundingChunks ?? [];
     
-    // 9. Process grounding chunks into reliable Google site-search links
+    // 9. Process grounding chunks into Google site-search links
     const alternatives = processGroundingMetadata(groundingChunks, searchKeywords);
 
     return NextResponse.json({

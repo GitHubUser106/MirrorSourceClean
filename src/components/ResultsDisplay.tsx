@@ -1,77 +1,42 @@
-import { GroundingSource } from '../types';
 import { ExternalLink } from 'lucide-react';
 
+// Extended type to include sourceDomain from our API
+interface SourceResult {
+  uri: string;
+  title: string;
+  displayName?: string;
+  sourceDomain?: string;
+}
+
 interface ResultsDisplayProps {
-  results: GroundingSource[] | null;
+  results: SourceResult[] | null;
 }
 
-// --- Domains to filter out (internal Google infrastructure) ---
-const BLOCKED_DOMAINS = [
-  'vertexaisearch.cloud.google.com',
-  'googleusercontent.com',
-];
+// --- Get Favicon URL using the source domain (not the Google search URL) ---
+function getFaviconUrl(sourceDomain: string): string {
+  if (!sourceDomain) return '/favicon.ico';
+  const cleanDomain = sourceDomain.replace(/^www\./, '');
+  return `https://icons.duckduckgo.com/ip3/${cleanDomain}.ico`;
+}
 
-// --- Helper: Check if URI is internal/blocked ---
-function isBlockedUri(uri: string): boolean {
-  try {
-    const hostname = new URL(uri).hostname.toLowerCase();
-    return BLOCKED_DOMAINS.some(blocked => hostname.includes(blocked));
-  } catch {
-    return true; // If we can't parse it, block it
+// --- Get display name (prefer displayName, fall back to parsing domain) ---
+function getDisplayName(result: SourceResult): string {
+  if (result.displayName) return result.displayName;
+  if (result.sourceDomain) {
+    const parts = result.sourceDomain.split('.');
+    return parts[0].toUpperCase();
   }
+  return 'SOURCE';
 }
 
-// --- Helper: Clean Hostname for Display ---
-function getDisplayDomain(uri: string): string {
-  try {
-    const url = new URL(uri);
-    // Remove www.
-    return url.hostname.replace(/^www\./, '');
-  } catch {
-    return 'source.com';
+// --- Get the source domain for favicon ---
+function getSourceDomain(result: SourceResult): string {
+  if (result.sourceDomain) return result.sourceDomain;
+  // Fallback: try to extract from title if it looks like a domain
+  if (result.title && result.title.includes('.')) {
+    return result.title.toLowerCase().replace(/^www\./, '');
   }
-}
-
-// --- Helper: Get Favicon URL (DuckDuckGo service) ---
-function getFaviconUrl(uri: string): string {
-  try {
-    const hostname = new URL(uri).hostname;
-    return `https://icons.duckduckgo.com/ip3/${hostname}.ico`;
-  } catch {
-    return '/favicon.ico';
-  }
-}
-
-// --- Helper: Quality Filtering & Deduplication ---
-function processResults(items: GroundingSource[]): GroundingSource[] {
-  const uniqueMap = new Map<string, GroundingSource>();
-
-  items.forEach(item => {
-    // 1. Skip if no title or title matches URI (garbage)
-    if (!item.title || item.title === item.uri) return;
-    
-    // 2. Skip blocked/internal URIs
-    if (isBlockedUri(item.uri)) return;
-
-    // 3. Get hostname as the dedup key
-    let hostname = 'unknown';
-    try {
-      hostname = new URL(item.uri).hostname.replace(/^www\./, '').toLowerCase();
-    } catch { 
-      return; 
-    }
-
-    // 4. Skip if title is just the domain name
-    if (item.title.toLowerCase() === hostname) return;
-
-    // 5. Deduplication: Keep the one with the longest title (more descriptive)
-    const existing = uniqueMap.get(hostname);
-    if (!existing || (item.title.length > existing.title.length)) {
-      uniqueMap.set(hostname, item);
-    }
-  });
-
-  return Array.from(uniqueMap.values());
+  return '';
 }
 
 export default function ResultsDisplay({ results }: ResultsDisplayProps) {
@@ -79,16 +44,12 @@ export default function ResultsDisplay({ results }: ResultsDisplayProps) {
     return null;
   }
 
-  // Apply Quality Filters
-  const cleanResults = processResults(results);
-
-  if (cleanResults.length === 0) return null;
-
   return (
     <div className="mt-6 space-y-3">
-      {cleanResults.map((item, index) => {
-        const domain = getDisplayDomain(item.uri);
-        const favicon = getFaviconUrl(item.uri);
+      {results.map((item, index) => {
+        const sourceDomain = getSourceDomain(item);
+        const displayName = getDisplayName(item);
+        const favicon = getFaviconUrl(sourceDomain);
 
         return (
           <article
@@ -112,14 +73,14 @@ export default function ResultsDisplay({ results }: ResultsDisplayProps) {
                   }} 
                 />
                 <span className="text-xs font-bold uppercase tracking-wide text-blue-600">
-                  {domain}
+                  {displayName}
                 </span>
               </div>
 
-              {/* HEADLINE */}
-              <h3 className="text-base font-medium text-slate-800 leading-snug group-hover:text-blue-700 transition-colors line-clamp-2">
-                {item.title}
-              </h3>
+              {/* Source domain as subtitle */}
+              <p className="text-sm text-slate-600">
+                View coverage on {sourceDomain}
+              </p>
               
               {/* External Link Icon (appears on hover) */}
               <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400">
