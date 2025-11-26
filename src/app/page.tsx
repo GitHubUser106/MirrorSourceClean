@@ -122,7 +122,6 @@ export default function HomePage() {
 
         {/* Headline */}
         <div className="text-center max-w-2xl space-y-4 mb-8">
-          {/* FINAL HEADLINE: See the whole story. (Responsive fix added) */}
           <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight md:whitespace-nowrap">
             See the whole story.
           </h1>
@@ -171,11 +170,9 @@ export default function HomePage() {
                   Summary
                 </h2>
                 
- // Find this block:
                 {loading ? (
                   <div className="flex flex-col items-center justify-center h-64 text-slate-400 animate-pulse gap-3">
                     <LoadingSpinner size={32} />
-                    {/* CHANGE THIS LINE: */}
                     <p>Generating summary...</p>
                   </div>
                 ) : (
