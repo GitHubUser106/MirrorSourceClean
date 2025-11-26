@@ -52,11 +52,11 @@ function extractJson(text: string): any {
     } catch {}
   }
 
+  // Try to extract summary with regex as last resort
   const summaryMatch = cleaned.match(/"summary"\s*:\s*"((?:[^"\\]|\\.)*)"/);
   if (summaryMatch) {
     return {
       summary: summaryMatch[1].replace(/\\"/g, '"').replace(/\\n/g, "\n"),
-      alternatives: []
     };
   }
 
@@ -69,22 +69,18 @@ function extractSearchKeywords(url: string): string {
     const urlObj = new URL(url);
     const path = urlObj.pathname;
     
-    // Clean up the path to extract keywords
     const cleanPath = path
       .replace(/^\/+(news|article|story|us-news|world|politics|business|tech|science|health|entertainment|sports|live)\/?/gi, ' ')
       .replace(/\.(html|htm|php|asp|aspx)$/i, '')
       .replace(/[-_\/]+/g, ' ')
-      .replace(/\d{4}[-\/]\d{2}[-\/]\d{2}/g, '') // Remove dates
-      .replace(/\b\d+\b/g, ' ') // Remove standalone numbers
+      .replace(/\d{4}[-\/]\d{2}[-\/]\d{2}/g, '')
+      .replace(/\b\d+\b/g, ' ')
       .trim();
     
-    // Get meaningful words (length > 2)
     const words = cleanPath.split(/\s+/).filter(w => w.length > 2);
-    
-    // Return first 4-5 words as search terms
-    return words.slice(0, 5).join(' ') || 'latest news';
+    return words.slice(0, 5).join(' ') || 'news';
   } catch {
-    return 'latest news';
+    return 'news';
   }
 }
 
@@ -95,7 +91,7 @@ function buildGoogleSiteSearch(domain: string, keywords: string): string {
   return `https://www.google.com/search?q=${query}`;
 }
 
-// --- Check if title looks like a domain we should keep ---
+// --- Check if a source should be kept ---
 function shouldKeepSource(title: string): boolean {
   if (!title) return false;
   const clean = title.toLowerCase().trim();
@@ -104,56 +100,87 @@ function shouldKeepSource(title: string): boolean {
   if (clean.includes('vertexai')) return false;
   if (clean.includes('googleapis')) return false;
   if (clean === 'google.com') return false;
+  if (clean === 'google') return false;
   
-  // Keep anything that has a dot (likely a domain)
-  return clean.includes('.');
+  return true;
 }
 
-// --- Format domain as a nice display title ---
-function formatDisplayTitle(domain: string): string {
-  const clean = domain.toLowerCase().replace(/^www\./, '');
-  // Capitalize first letter of each part before the TLD
-  const parts = clean.split('.');
-  if (parts.length >= 2) {
-    // Get the site name (before TLD)
-    const siteName = parts.slice(0, -1).join('.');
-    return siteName.toUpperCase();
+// --- Extract domain from title or URI ---
+function extractDomain(title: string, uri?: string): string | null {
+  // First try: if title looks like a domain (has a dot, no spaces)
+  const cleanTitle = title.toLowerCase().trim();
+  if (cleanTitle.includes('.') && !cleanTitle.includes(' ')) {
+    return cleanTitle.replace(/^www\./, '');
   }
-  return clean.toUpperCase();
+  
+  // Second try: extract from URI if provided
+  if (uri) {
+    try {
+      const urlObj = new URL(uri);
+      const hostname = urlObj.hostname.replace(/^www\./, '');
+      // Skip vertex/google URLs
+      if (!hostname.includes('vertexai') && !hostname.includes('googleapis')) {
+        return hostname;
+      }
+    } catch {}
+  }
+  
+  // Third try: treat the title as a site name and make it a domain
+  if (cleanTitle && !cleanTitle.includes(' ')) {
+    return `${cleanTitle}.com`;
+  }
+  
+  return null;
 }
 
-// --- Process grounding metadata to get sources ---
-function processGroundingMetadata(
+// --- Process sources from either grounding metadata or JSON alternatives ---
+function processSources(
   groundingChunks: any[],
+  jsonAlternatives: any[],
   searchKeywords: string
 ): Array<{ uri: string; title: string; displayName: string; sourceDomain: string }> {
   const seen = new Set<string>();
   const sources: Array<{ uri: string; title: string; displayName: string; sourceDomain: string }> = [];
 
+  // First, process grounding chunks (more reliable for domains)
   for (const chunk of groundingChunks) {
     const web = chunk?.web;
     if (!web?.title) continue;
+    if (!shouldKeepSource(web.title)) continue;
     
-    const rawTitle = web.title;
-    
-    // Skip if not a valid source
-    if (!shouldKeepSource(rawTitle)) continue;
-    
-    const domain = rawTitle.toLowerCase().replace(/^www\./, '');
-    
-    // Skip duplicates
+    const domain = extractDomain(web.title, web.uri);
+    if (!domain) continue;
     if (seen.has(domain)) continue;
     seen.add(domain);
     
-    // Build Google site search URL
-    const uri = buildGoogleSiteSearch(domain, searchKeywords);
-    
     sources.push({
-      uri,
-      title: rawTitle, // Keep original for reference
-      displayName: formatDisplayTitle(domain),
-      sourceDomain: domain, // Pass the actual source domain for favicon
+      uri: buildGoogleSiteSearch(domain, searchKeywords),
+      title: web.title,
+      displayName: domain.split('.')[0].toUpperCase(),
+      sourceDomain: domain,
     });
+  }
+
+  // If no grounding chunks, try JSON alternatives
+  if (sources.length === 0 && jsonAlternatives.length > 0) {
+    for (const alt of jsonAlternatives) {
+      const title = alt.title || alt.source || '';
+      const uri = alt.uri || alt.url || '';
+      
+      if (!shouldKeepSource(title)) continue;
+      
+      const domain = extractDomain(title, uri);
+      if (!domain) continue;
+      if (seen.has(domain)) continue;
+      seen.add(domain);
+      
+      sources.push({
+        uri: buildGoogleSiteSearch(domain, searchKeywords),
+        title: title,
+        displayName: domain.split('.')[0].toUpperCase(),
+        sourceDomain: domain,
+      });
+    }
   }
 
   return sources;
@@ -178,24 +205,26 @@ export async function POST(req: NextRequest) {
     // 2. Increment Usage
     await incrementUsage(req);
 
-    // 3. Extract search keywords from original URL
+    // 3. Extract search keywords
     const searchKeywords = extractSearchKeywords(url);
 
-    // 4. SYSTEM PROMPT - just ask for summary
+    // 4. SYSTEM PROMPT - ask for both summary and source names
     const prompt = `
-**ROLE:** You are MirrorSource, a helpful news assistant.
+**ROLE:** You are MirrorSource, a news research assistant.
 
 **TASK:**
-A user wants to read a story from this URL: "${url}"
-Search for this news story and write a concise, neutral, 2-3 sentence summary of the event.
+1. Search for news coverage of the story at this URL: "${url}"
+2. Write a neutral, 2-3 sentence summary of the news event.
+3. List the news sources that are covering this story.
 
-**OUTPUT:**
-Return ONLY a JSON object with a summary field:
+**OUTPUT FORMAT (JSON only, no markdown):**
 {
-  "summary": "Your neutral summary here."
+  "summary": "Your neutral summary of the news event.",
+  "sources": ["cnn.com", "bbc.com", "reuters.com", "apnews.com"]
 }
 
-Do not include alternatives or sources - just the summary.
+List source domains only (e.g., "cnn.com" not full article URLs).
+If you cannot find the story, still provide any relevant sources covering similar news.
     `.trim();
 
     const config: any = { tools: [{ googleSearch: {} }] };
@@ -217,17 +246,30 @@ Do not include alternatives or sources - just the summary.
 
     if (!text) throw new Error("Model response did not contain text.");
 
-    // 7. Parse JSON for summary
-    const parsedData = extractJson(text);
-    const summary = parsedData?.summary || "No summary available.";
+    // 7. Parse JSON
+    const parsedData = extractJson(text) || {};
+    const summary = parsedData.summary || "Summary not available.";
+    
+    // Get sources from JSON (as domain strings or objects)
+    let jsonSources: any[] = [];
+    if (Array.isArray(parsedData.sources)) {
+      jsonSources = parsedData.sources.map((s: any) => {
+        if (typeof s === 'string') {
+          return { title: s };
+        }
+        return s;
+      });
+    } else if (Array.isArray(parsedData.alternatives)) {
+      jsonSources = parsedData.alternatives;
+    }
 
-    // 8. Get sources from grounding metadata
+    // 8. Get grounding chunks
     const candidates = geminiResponse?.response?.candidates ?? geminiResponse?.candidates ?? [];
     const groundingMetadata = candidates[0]?.groundingMetadata;
     const groundingChunks = groundingMetadata?.groundingChunks ?? [];
-    
-    // 9. Process grounding chunks into Google site-search links
-    const alternatives = processGroundingMetadata(groundingChunks, searchKeywords);
+
+    // 9. Process all sources
+    const alternatives = processSources(groundingChunks, jsonSources, searchKeywords);
 
     return NextResponse.json({
       summary,
