@@ -29,20 +29,16 @@ function sanitizeJsonString(text: string): string {
 
 // --- Robust JSON extraction ---
 function extractJson(text: string): any {
-  // First, clean markdown fences
   let cleaned = cleanJsonText(text);
   
-  // Try direct parse
   try {
     return JSON.parse(cleaned);
   } catch {}
 
-  // Sanitize and retry
   try {
     return JSON.parse(sanitizeJsonString(cleaned));
   } catch {}
 
-  // Find JSON object boundaries and extract
   const firstBrace = cleaned.indexOf("{");
   const lastBrace = cleaned.lastIndexOf("}");
   
@@ -58,7 +54,6 @@ function extractJson(text: string): any {
     } catch {}
   }
 
-  // Last resort: try to extract summary with regex
   const summaryMatch = cleaned.match(/"summary"\s*:\s*"((?:[^"\\]|\\.)*)"/);
   if (summaryMatch) {
     return {
@@ -68,6 +63,67 @@ function extractJson(text: string): any {
   }
 
   return null;
+}
+
+// --- Resolve Vertex AI redirect URLs to get actual destination ---
+async function resolveRedirectUrl(redirectUrl: string): Promise<string | null> {
+  // Only process vertexaisearch redirect URLs
+  if (!redirectUrl.includes('vertexaisearch.cloud.google.com')) {
+    return redirectUrl;
+  }
+
+  try {
+    // Make a HEAD request to follow redirects and get the final URL
+    const response = await fetch(redirectUrl, {
+      method: 'HEAD',
+      redirect: 'follow',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; MirrorSource/1.0)',
+      },
+    });
+
+    // The final URL after redirects
+    if (response.url && response.url !== redirectUrl) {
+      return response.url;
+    }
+
+    // If HEAD doesn't give us the redirect, try GET with manual redirect handling
+    const getResponse = await fetch(redirectUrl, {
+      method: 'GET',
+      redirect: 'manual',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; MirrorSource/1.0)',
+      },
+    });
+
+    // Check for Location header in 3xx responses
+    const locationHeader = getResponse.headers.get('location');
+    if (locationHeader) {
+      return locationHeader;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Failed to resolve redirect URL:', redirectUrl, error);
+    return null;
+  }
+}
+
+// --- Resolve all redirect URLs in parallel ---
+async function resolveAllRedirects(
+  sources: Array<{ uri: string; title: string }>
+): Promise<Array<{ uri: string; title: string }>> {
+  const resolvedSources = await Promise.all(
+    sources.map(async (source) => {
+      const resolvedUri = await resolveRedirectUrl(source.uri);
+      if (resolvedUri) {
+        return { ...source, uri: resolvedUri };
+      }
+      return null; // Filter out failed resolutions
+    })
+  );
+
+  return resolvedSources.filter((s): s is { uri: string; title: string } => s !== null);
 }
 
 export async function POST(req: NextRequest) {
@@ -89,7 +145,7 @@ export async function POST(req: NextRequest) {
     // 2. Increment Usage
     await incrementUsage(req);
 
-    // 3. SYSTEM PROMPT (Corrected - uses proper JSON with escaped quotes)
+    // 3. SYSTEM PROMPT
     const prompt = `
 **ROLE:** You are MirrorSource, a helpful news assistant.
 
@@ -118,9 +174,9 @@ Article URL: ${url}
 
     const config: any = { tools: [{ googleSearch: {} }] };
 
-    // 4. Call Gemini (Use whichever model works for you - 2.5-pro or 1.5-flash)
+    // 4. Call Gemini
     const geminiResponse: any = await genAI.models.generateContent({
-      model: "gemini-2.5-pro",  // Change to "gemini-1.5-flash" if that works better
+      model: "gemini-2.5-pro",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       config,
     });
@@ -135,7 +191,7 @@ Article URL: ${url}
 
     if (!text) throw new Error("Model response did not contain text.");
 
-    // 6. Parse JSON with robust extraction
+    // 6. Parse JSON
     const parsedData = extractJson(text);
     
     if (!parsedData) {
@@ -143,7 +199,7 @@ Article URL: ${url}
       throw new Error("Could not parse model response as JSON.");
     }
 
-    // 7. Extract alternatives from JSON or fall back to grounding metadata
+    // 7. Get alternatives from JSON or grounding metadata
     let alternatives = parsedData.alternatives || parsedData.sources || [];
     const summary = parsedData.summary || "No summary available.";
 
@@ -159,9 +215,12 @@ Article URL: ${url}
         .map((web: any) => ({ uri: web.uri, title: web.title }));
     }
 
+    // 8. RESOLVE REDIRECT URLs - This is the key fix!
+    const resolvedAlternatives = await resolveAllRedirects(alternatives);
+
     return NextResponse.json({
       summary,
-      alternatives,
+      alternatives: resolvedAlternatives,
     });
 
   } catch (error) {
