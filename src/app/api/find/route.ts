@@ -108,7 +108,7 @@ Article URL: ${url}
     const config: any = { tools: [{ googleSearch: {} }] };
 
     const geminiResponse: any = await genAI.models.generateContent({
-      model: "gemini-2.5-pro",
+      model: "gemini-2.5-pro", // This works for your key, keep it.
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       config,
     });
@@ -128,17 +128,6 @@ Article URL: ${url}
     const groundingMetadata = candidates[0]?.groundingMetadata;
     const groundingChunks = groundingMetadata?.groundingChunks ?? [];
 
-    // --- 🔍 DEBUG LOGGING STARTS HERE ---
-    console.log("=== GROUNDING DEBUG ===");
-    console.log("groundingMetadata keys:", Object.keys(groundingMetadata || {}));
-    if (groundingChunks.length > 0) {
-      console.log("groundingChunks sample:", JSON.stringify(groundingChunks[0], null, 2));
-    } else {
-      console.log("groundingChunks is empty");
-    }
-    console.log("Full groundingMetadata:", JSON.stringify(groundingMetadata, null, 2));
-    // --- 🔍 DEBUG LOGGING ENDS HERE ---
-
     const groundingSources: GroundingSource[] = groundingChunks
       .map((chunk: any) => chunk.web)
       .filter((web: any) => web?.uri && web?.title)
@@ -152,6 +141,11 @@ Article URL: ${url}
         const sourceDomain = extractDomain(source.uri);
         if (sourceDomain === originalUrlDomain) return false;
         if (PAYWALLED_DOMAINS.some((pd) => sourceDomain.includes(pd))) return false;
+        
+        // --- CRITICAL FIX: ALLOW VERTEX URLs ---
+        // We removed the filter that was blocking "vertex" or "google".
+        // This ensures the data actually passes to the frontend.
+        
         return true;
       } catch {
         return false;
