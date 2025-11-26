@@ -63,98 +63,73 @@ function extractJson(text: string): any {
   return null;
 }
 
-// --- Resolve Vertex AI redirect URL to get actual destination ---
-async function resolveRedirectUrl(redirectUrl: string): Promise<string> {
-  // If it's not a vertex redirect, return as-is
-  if (!redirectUrl.includes('vertexaisearch.cloud.google.com')) {
-    return redirectUrl;
-  }
+// --- Build a search URL from the title (domain name) ---
+// Since Vertex AI redirect URLs don't work, we link to a Google search for that source
+function buildSearchUrl(title: string, searchQuery: string): string {
+  // The title is typically the domain (e.g., "cbsnews.com", "theguardian.com")
+  const cleanDomain = title.toLowerCase().replace(/^www\./, '');
+  // Create a Google search that targets that specific site
+  const query = encodeURIComponent(`site:${cleanDomain} ${searchQuery}`);
+  return `https://www.google.com/search?q=${query}`;
+}
 
+// --- Extract the main topic from the original URL for search ---
+function extractSearchTopic(url: string): string {
   try {
-    // Use GET with redirect: 'follow' - this should give us the final URL
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const urlObj = new URL(url);
+    // Get the path and extract keywords
+    const path = urlObj.pathname;
+    // Remove common prefixes and file extensions
+    const cleanPath = path
+      .replace(/^\/+(news|article|story|us-news|world|politics|business)\/?/i, '')
+      .replace(/\.(html|htm|php|asp)$/i, '')
+      .replace(/[-_]/g, ' ')
+      .replace(/\/+/g, ' ')
+      .trim();
+    
+    // Take first few meaningful words
+    const words = cleanPath.split(/\s+/).filter(w => w.length > 2).slice(0, 5);
+    return words.join(' ') || 'news';
+  } catch {
+    return 'news';
+  }
+}
 
-    const response = await fetch(redirectUrl, {
-      method: 'GET',
-      redirect: 'follow',
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
+// --- Process grounding sources: convert to usable URLs ---
+function processGroundingSources(
+  sources: Array<{ uri: string; title: string }>,
+  originalUrl: string
+): Array<{ uri: string; title: string; domain: string }> {
+  const searchTopic = extractSearchTopic(originalUrl);
+  const seen = new Set<string>();
+  const processed: Array<{ uri: string; title: string; domain: string }> = [];
+
+  for (const source of sources) {
+    if (!source.title) continue;
+    
+    const domain = source.title.toLowerCase().replace(/^www\./, '');
+    
+    // Skip duplicates
+    if (seen.has(domain)) continue;
+    seen.add(domain);
+    
+    // Skip internal Google URLs in titles
+    if (domain.includes('google.com') || domain.includes('vertexai')) continue;
+    
+    // If the URI is a vertex redirect, replace with a Google site search
+    let finalUri = source.uri;
+    if (source.uri.includes('vertexaisearch.cloud.google.com')) {
+      finalUri = buildSearchUrl(source.title, searchTopic);
+    }
+    
+    processed.push({
+      uri: finalUri,
+      title: source.title,
+      domain: domain,
     });
-
-    clearTimeout(timeoutId);
-
-    // response.url should be the final URL after redirects
-    if (response.url && !response.url.includes('vertexaisearch.cloud.google.com')) {
-      console.log(`Resolved: ${redirectUrl.substring(0, 50)}... -> ${response.url}`);
-      return response.url;
-    }
-
-    // If we still have a vertex URL, try to extract from response
-    // Sometimes the redirect is in the HTML
-    const html = await response.text();
-    const metaRefresh = html.match(/url=([^"'\s>]+)/i);
-    if (metaRefresh && metaRefresh[1]) {
-      return metaRefresh[1];
-    }
-
-    console.warn(`Could not resolve redirect for: ${redirectUrl.substring(0, 80)}...`);
-    return redirectUrl;
-  } catch (error) {
-    console.error(`Error resolving redirect: ${error}`);
-    return redirectUrl;
   }
-}
 
-// --- Build URL from title (fallback method) ---
-function buildUrlFromTitle(title: string): string | null {
-  // The title is often the domain name like "cbsnews.com" or "theguardian.com"
-  // We can try to construct a basic URL from it
-  if (!title) return null;
-  
-  // Clean up the title
-  const cleanTitle = title.toLowerCase().trim();
-  
-  // If it looks like a domain, construct a URL
-  if (cleanTitle.includes('.') && !cleanTitle.includes(' ')) {
-    return `https://www.${cleanTitle.replace(/^www\./, '')}`;
-  }
-  
-  return null;
-}
-
-// --- Process all sources: resolve redirects or use title fallback ---
-async function processAllSources(
-  sources: Array<{ uri: string; title: string }>
-): Promise<Array<{ uri: string; title: string }>> {
-  
-  const processedSources = await Promise.all(
-    sources.map(async (source) => {
-      // Try to resolve the redirect
-      const resolvedUri = await resolveRedirectUrl(source.uri);
-      
-      // If resolution worked (not a vertex URL anymore)
-      if (!resolvedUri.includes('vertexaisearch.cloud.google.com')) {
-        return { ...source, uri: resolvedUri };
-      }
-      
-      // Fallback: Try to build URL from title
-      const fallbackUrl = buildUrlFromTitle(source.title);
-      if (fallbackUrl) {
-        console.log(`Using fallback URL from title: ${source.title} -> ${fallbackUrl}`);
-        return { ...source, uri: fallbackUrl };
-      }
-      
-      // Last resort: return original (will still 404, but at least shows something)
-      return source;
-    })
-  );
-
-  // Filter out any sources that still have vertex URLs
-  return processedSources.filter(s => !s.uri.includes('vertexaisearch.cloud.google.com'));
+  return processed;
 }
 
 export async function POST(req: NextRequest) {
@@ -240,20 +215,14 @@ Article URL: ${url}
       const groundingMetadata = candidates[0]?.groundingMetadata;
       const groundingChunks = groundingMetadata?.groundingChunks ?? [];
       
-      console.log("Using grounding metadata, found chunks:", groundingChunks.length);
-      
       alternatives = groundingChunks
         .map((chunk: any) => chunk.web)
         .filter((web: any) => web?.uri && web?.title)
         .map((web: any) => ({ uri: web.uri, title: web.title }));
     }
 
-    console.log("Raw alternatives count:", alternatives.length);
-
-    // 8. Process sources: resolve redirects or use fallbacks
-    const processedAlternatives = await processAllSources(alternatives);
-    
-    console.log("Processed alternatives count:", processedAlternatives.length);
+    // 8. Process sources to fix vertex redirect URLs
+    const processedAlternatives = processGroundingSources(alternatives, url);
 
     return NextResponse.json({
       summary,
