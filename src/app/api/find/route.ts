@@ -1,9 +1,7 @@
-// Force rebuild for API key
 import { NextRequest, NextResponse } from "next/server";
-
 import { GoogleGenAI } from "@google/genai";
 import type { GroundingSource } from "../../../types";
-import { checkRateLimit, incrementUsage } from "../../../lib/rate-limiter"; // <--- IMPORTED
+import { checkRateLimit, incrementUsage } from "../../../lib/rate-limiter";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +18,6 @@ const PAYWALLED_DOMAINS: string[] = [
 ];
 
 const apiKey = process.env.GEMINI_API_KEY;
-
 const genAI = new GoogleGenAI({ apiKey: apiKey || "" });
 
 function extractDomain(urlString: string): string {
@@ -31,7 +28,6 @@ function extractDomain(urlString: string): string {
   }
 }
 
-// Strip ```json fenced code blocks
 function stripMarkdownFences(text: string): string {
   let trimmed = text.trim();
   if (trimmed.startsWith("```")) {
@@ -41,11 +37,8 @@ function stripMarkdownFences(text: string): string {
   return trimmed;
 }
 
-// 🔥 BEST-PRACTICE SUMMARY EXTRACTOR
 function extractSummaryFromText(raw: string): string {
   const stripped = stripMarkdownFences(raw).trim();
-
-  // 1. If entire content is JSON
   try {
     const parsed = JSON.parse(stripped);
     if (parsed && typeof parsed.summary === "string") {
@@ -53,7 +46,6 @@ function extractSummaryFromText(raw: string): string {
     }
   } catch {}
 
-  // 2. Try to locate a JSON object inside text
   const firstBrace = stripped.indexOf("{");
   const lastBrace = stripped.lastIndexOf("}");
   if (firstBrace !== -1 && lastBrace > firstBrace) {
@@ -66,28 +58,24 @@ function extractSummaryFromText(raw: string): string {
     } catch {}
   }
 
-  // 3. Regex for `"summary": " ... "`
   const match = stripped.match(/"summary"\s*:\s*"([\s\S]*?)"\s*}/);
   if (match) {
     return match[1].trim().replace(/\\"/g, '"');
   }
 
-  // 4. Remove a leading "Summary" heading if present
   const withoutHeading = stripped.replace(/^Summary\s*/i, "").trim();
   return withoutHeading;
 }
 
 export async function POST(req: NextRequest) {
   try {
-    // --- 1. CHECK RATE LIMIT ---
     const limitCheck = await checkRateLimit(req);
     if (!limitCheck.success) {
       return NextResponse.json(
         { error: `Daily limit reached. You have 0/${limitCheck.info.limit} remaining.` },
-        { status: 429 } // Too Many Requests
+        { status: 429 }
       );
     }
-    // ---------------------------
 
     const { url } = await req.json();
 
@@ -95,9 +83,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing or invalid 'url'" }, { status: 400 });
     }
 
-    // --- 2. INCREMENT USAGE (Only if URL is valid) ---
     await incrementUsage(req);
-    // -------------------------------------------------
 
     const originalUrlDomain = extractDomain(url);
 
@@ -123,42 +109,35 @@ Article URL: ${url}
 
     const geminiResponse: any = await genAI.models.generateContent({
       model: "gemini-2.5-pro",
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }],
-        },
-      ],
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
       config,
     });
 
-    // ---- Extract model text ----
     let text: string | undefined;
-
     if (geminiResponse?.response && typeof geminiResponse.response.text === "function") {
       text = geminiResponse.response.text();
     } else if (Array.isArray(geminiResponse?.candidates)) {
-      text =
-        geminiResponse.candidates[0]?.content?.parts?.[0]?.text ??
-        geminiResponse.candidates[0]?.content?.parts?.[0]?.inlineData?.data;
+      text = geminiResponse.candidates[0]?.content?.parts?.[0]?.text;
     }
 
-    if (!text) {
-      throw new Error("Model response did not contain any text content.");
-    }
+    if (!text) throw new Error("Model response did not contain text.");
 
-    // ---- 🔥 ROBUST SUMMARY PARSING ----
     const summary = extractSummaryFromText(String(text));
 
-    // ---- Grounding sources ----
-    const candidates =
-      geminiResponse?.response?.candidates ??
-      geminiResponse?.candidates ??
-      [];
-
+    const candidates = geminiResponse?.response?.candidates ?? geminiResponse?.candidates ?? [];
     const groundingMetadata = candidates[0]?.groundingMetadata;
-
     const groundingChunks = groundingMetadata?.groundingChunks ?? [];
+
+    // --- 🔍 DEBUG LOGGING STARTS HERE ---
+    console.log("=== GROUNDING DEBUG ===");
+    console.log("groundingMetadata keys:", Object.keys(groundingMetadata || {}));
+    if (groundingChunks.length > 0) {
+      console.log("groundingChunks sample:", JSON.stringify(groundingChunks[0], null, 2));
+    } else {
+      console.log("groundingChunks is empty");
+    }
+    console.log("Full groundingMetadata:", JSON.stringify(groundingMetadata, null, 2));
+    // --- 🔍 DEBUG LOGGING ENDS HERE ---
 
     const groundingSources: GroundingSource[] = groundingChunks
       .map((chunk: any) => chunk.web)
@@ -189,15 +168,7 @@ Article URL: ${url}
     });
   } catch (error) {
     console.error("Error in /api/find route:", error);
-
-    const message =
-      error instanceof Error
-        ? error.message
-        : "An unknown error occurred";
-
-    return NextResponse.json(
-      { error: `AI analysis failed: ${message}` },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : "An unknown error occurred";
+    return NextResponse.json({ error: `AI analysis failed: ${message}` }, { status: 500 });
   }
 }
