@@ -1,86 +1,68 @@
-import Link from "next/link";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  // 1. Sets the base URL for all relative links (Best Practice)
-  metadataBase: new URL('https://mirrorsource.app'),
-
-  // 2. Safe Title & Description
   title: "MirrorSource | See the Whole Story",
-  description: "Paste any news link. We’ll scout the web to generate a neutral summary and find free, public coverage of the same story.",
-  
-  keywords: [
-    "news summary",
-    "public sources",
-    "media coverage",
-    "article search",
-    "neutral news",
-    "research tool"
-  ],
-
-  // 3. OpenGraph (Facebook, LinkedIn, Discord)
+  description: "Paste any news link to get a neutral AI summary and find free, public coverage of the same story from multiple sources.",
+  keywords: ["news", "summary", "alternative sources", "media bias", "free news", "paywall"],
+  authors: [{ name: "MirrorSource" }],
+  creator: "MirrorSource",
+  publisher: "MirrorSource",
+  metadataBase: new URL("https://mirrorsource.app"),
   openGraph: {
-    title: "MirrorSource | See the Whole Story",
-    description: "Paste any news link. We’ll scout the web to generate a neutral summary and find free, public coverage of the same story.",
+    type: "website",
+    locale: "en_US",
     url: "https://mirrorsource.app",
     siteName: "MirrorSource",
-    locale: "en_US",
-    type: "website",
+    title: "MirrorSource | See the Whole Story",
+    description: "Paste any news link to get a neutral AI summary and find free, public coverage of the same story.",
     images: [
       {
-        // FORCE ABSOLUTE URL: This fixes the "No Image" error on LinkedIn
-        url: "https://www.mirrorsource.app/og-image.png",
+        url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "MirrorSource - See the whole story",
+        alt: "MirrorSource - See the Whole Story",
       },
     ],
   },
-
-  // 4. Twitter Card
   twitter: {
     card: "summary_large_image",
     title: "MirrorSource | See the Whole Story",
-    description: "Paste any news link. We’ll scout the web to generate a neutral summary and find free, public coverage of the same story.",
-    creator: "@UseMirrorSource", // Your new handle
-    images: ["https://www.mirrorsource.app/og-image.png"], // Force absolute URL here too
+    description: "Paste any news link to get a neutral AI summary and find free, public coverage of the same story.",
+    images: ["/og-image.png"],
   },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "MirrorSource",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
 
-  // 5. Icons
-  icons: {
-    icon: "/icon.png",
-    apple: "/apple-touch-icon.png",
-  },
+export const viewport: Viewport = {
+  themeColor: "#2563eb",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <html lang="en">
-      <body className={`min-h-screen flex flex-col bg-slate-50 text-slate-900 ${inter.className}`}>
-        
-        {/* Main Content Area - grows to fill space */}
-        <div className="flex-grow">
-            {children}
-        </div>
-
-        {/* Footer Section */}
-        <footer className="w-full py-6 text-center text-xs border-t border-slate-200">
-          <p className="text-slate-500">
-            &copy; {new Date().getFullYear()} MirrorSource.{" "}
-            <Link href="/legal" className="text-slate-600 underline hover:text-slate-800">
-              Legal Information
-            </Link>
-          </p>
-        </footer>
-
+      <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+      </head>
+      <body className="antialiased">
+        {children}
       </body>
     </html>
   );

@@ -5,10 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 import UrlInputForm from "@/components/UrlInputForm";
 import ResultsDisplay from "@/components/ResultsDisplay";
-import AffiliateAd from "@/components/AffiliateAd";
+import HowItWorks from "@/components/HowItWorks";
 import { SummarySkeleton, SourcesSkeleton } from "@/components/LoadingSkeletons";
 import type { GroundingSource } from "@/types";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, RefreshCw } from "lucide-react";
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
 
@@ -83,10 +83,6 @@ export default function HomePage() {
     handleSearch();
   }
 
-  async function handleRetry() {
-    handleSearch();
-  }
-
   async function handleCopySummary() {
     if (!summary) return;
     try {
@@ -102,20 +98,16 @@ export default function HomePage() {
   const isActive = loading || hasContent;
   const isNewInput = currentUrl !== lastSubmittedUrl;
 
-  // Button label logic
-  let buttonLabel = "Find Alternatives";
+  // Single button label - cleaner UX
+  let buttonLabel = "Look for other sources";
   if (loading) {
     buttonLabel = "Searching...";
-  } else if (error && !isNewInput) {
-    buttonLabel = "Try again";
-  } else if (hasContent && !isNewInput) {
-    buttonLabel = "Look for other sources";
   }
 
   return (
     <main className="min-h-screen bg-slate-50 flex flex-col relative">
       
-      {/* --- USAGE COUNTER (DESKTOP) --- */}
+      {/* Usage counter (desktop) */}
       {usage && (
         <div className="hidden md:flex absolute top-4 right-4 z-10 items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm text-sm">
           <span className={`w-2 h-2 rounded-full ${usage.remaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></span>
@@ -125,8 +117,8 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* --- HERO SECTION --- */}
-      <div className={`transition-all duration-500 ease-in-out flex flex-col items-center px-4 ${isActive ? 'pt-8 pb-8' : 'justify-center min-h-[80vh]'}`}>
+      {/* Hero section */}
+      <div className={`transition-all duration-500 ease-in-out flex flex-col items-center px-4 ${isActive ? 'pt-8 pb-6' : 'justify-center min-h-[80vh]'}`}>
         
         {/* Logo */}
         <Link href="/" className="mb-6 hover:opacity-90 transition-opacity">
@@ -150,7 +142,7 @@ export default function HomePage() {
           </p>
         </div>
 
-        {/* Search Bar */}
+        {/* Search bar */}
         <div className="w-full max-w-2xl relative z-20">
           <UrlInputForm 
             onSubmit={handleSubmit} 
@@ -161,7 +153,7 @@ export default function HomePage() {
           />
         </div>
 
-        {/* --- USAGE COUNTER (MOBILE) --- */}
+        {/* Usage counter (mobile) */}
         {usage && !hasContent && (
           <div className="md:hidden mt-6 flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-slate-200 text-xs text-slate-500">
              <span className={`w-1.5 h-1.5 rounded-full ${usage.remaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></span>
@@ -169,7 +161,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Error Message */}
+        {/* Error message */}
         {error && (
           <div className="mt-6 w-full max-w-2xl bg-red-50 border border-red-200 rounded-lg p-4 text-red-600 text-center text-sm">
             {error}
@@ -177,90 +169,113 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* --- SPLIT CONTENT SECTION --- */}
+      {/* Results section - STACKED LAYOUT */}
       {isActive && (
         <div className="flex-1 bg-slate-50 px-4 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="max-w-3xl mx-auto space-y-6">
             
-            {/* LEFT COLUMN: Summary */}
-            <div className="flex flex-col">
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
-                {/* Header with Copy Button */}
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold text-slate-900">
-                    Summary
-                  </h2>
-                  {summary && !loading && (
-                    <button
-                      onClick={handleCopySummary}
-                      className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 transition-colors px-2 py-1 rounded hover:bg-slate-100"
-                      title="Copy summary"
-                    >
-                      {copied ? (
-                        <>
-                          <Check size={16} className="text-green-600" />
-                          <span className="text-green-600">Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy size={16} />
-                          <span className="hidden sm:inline">Copy</span>
-                        </>
-                      )}
-                    </button>
+            {/* Summary card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-slate-900">Summary</h2>
+                {summary && !loading && (
+                  <button
+                    onClick={handleCopySummary}
+                    className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 transition-colors px-2 py-1 rounded hover:bg-slate-100"
+                    title="Copy summary"
+                  >
+                    {copied ? (
+                      <>
+                        <Check size={16} className="text-green-600" />
+                        <span className="text-green-600">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={16} />
+                        <span className="hidden sm:inline">Copy</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+              
+              {loading ? (
+                <SummarySkeleton />
+              ) : (
+                <div className="prose prose-slate leading-relaxed text-slate-700">
+                  {summary ? (
+                    <p style={{ whiteSpace: "pre-wrap" }}>{summary}</p>
+                  ) : (
+                    <p className="text-slate-400 italic">No summary available.</p>
                   )}
                 </div>
-                
-                {loading ? (
-                  <SummarySkeleton />
-                ) : (
-                  <div className="prose prose-slate leading-relaxed text-slate-700">
-                    {summary ? (
-                      <p style={{ whiteSpace: "pre-wrap" }}>{summary}</p>
-                    ) : (
-                      <p className="text-slate-400 italic">No summary available.</p>
-                    )}
-                  </div>
-                )}
+              )}
 
-                {/* Affiliate Ad - Below Summary */}
-                {!loading && summary && (
-                  <AffiliateAd className="mt-6" />
-                )}
-              </div>
+              {/* How it works - shown after summary loads */}
+              {!loading && summary && (
+                <div className="mt-6">
+                  <HowItWorks />
+                </div>
+              )}
             </div>
 
-            {/* RIGHT COLUMN: Alternative Sources */}
-            <div className="flex flex-col">
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 flex flex-col">
-                <h2 className="text-xl font-bold text-slate-900 mb-2">
-                  Alternative Sources
-                </h2>
+            {/* Alternative Sources card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+              <h2 className="text-xl font-bold text-slate-900 mb-4">
+                Alternative Sources
+              </h2>
 
-                {loading ? (
-                  <SourcesSkeleton />
-                ) : (
-                  <>
-                    {results.length > 0 ? (
-                      <ResultsDisplay 
-                        results={results} 
-                        onRetry={handleRetry}
-                        isLoading={loading}
-                      />
-                    ) : (
-                      <div className="mt-8 text-center text-slate-500">
-                        <p>No sources found.</p>
-                        <p className="text-sm mt-1">Click <strong>Look for other sources</strong> above to search again.</p>
+              {loading ? (
+                <SourcesSkeleton />
+              ) : (
+                <>
+                  {results.length > 0 ? (
+                    <>
+                      <ResultsDisplay results={results} />
+                      
+                      {/* Retry section */}
+                      <div className="mt-6 pt-6 border-t border-slate-100">
+                        <p className="text-sm text-slate-500 text-center mb-3">
+                          Results may vary. Try again for different sources.
+                        </p>
+                        <button
+                          onClick={handleSearch}
+                          disabled={loading}
+                          className="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 disabled:bg-slate-50 text-slate-700 font-medium py-3 px-6 rounded-full transition-colors border border-slate-200"
+                        >
+                          <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                          Find different sources
+                        </button>
                       </div>
-                    )}
-                  </>
-                )}
-              </div>
+                    </>
+                  ) : (
+                    <div className="text-center text-slate-500 py-8">
+                      <p>No sources found for this article.</p>
+                      <p className="text-sm mt-2">Try searching again or check if the URL is correct.</p>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
           </div>
         </div>
       )}
+
+      {/* Footer */}
+      <footer className="py-6 px-4 border-t border-slate-200 bg-white mt-auto">
+        <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
+          <p>© {new Date().getFullYear()} MirrorSource</p>
+          <div className="flex items-center gap-6">
+            <Link href="/legal" className="hover:text-blue-600 transition-colors">
+              Legal
+            </Link>
+            <a href="mailto:contact@mirrorsource.app" className="hover:text-blue-600 transition-colors">
+              Contact
+            </a>
+          </div>
+        </div>
+      </footer>
 
     </main>
   );
