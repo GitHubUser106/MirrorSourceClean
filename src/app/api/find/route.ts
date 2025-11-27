@@ -19,12 +19,12 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&gt;/g, '>')
     .replace(/&apos;/g, "'")
     .replace(/&nbsp;/g, ' ')
-    .replace(/&ndash;/g, '–')
-    .replace(/&mdash;/g, '—')
-    .replace(/&lsquo;/g, ''')
-    .replace(/&rsquo;/g, ''')
-    .replace(/&ldquo;/g, '"')
-    .replace(/&rdquo;/g, '"');
+    .replace(/&ndash;/g, '\u2013')
+    .replace(/&mdash;/g, '\u2014')
+    .replace(/&lsquo;/g, '\u2018')
+    .replace(/&rsquo;/g, '\u2019')
+    .replace(/&ldquo;/g, '\u201C')
+    .replace(/&rdquo;/g, '\u201D');
 }
 
 // --- Check if title indicates an error page ---
