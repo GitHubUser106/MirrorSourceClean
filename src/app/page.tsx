@@ -7,7 +7,6 @@ import UrlInputForm from "@/components/UrlInputForm";
 import ResultsDisplay from "@/components/ResultsDisplay";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import type { GroundingSource } from "@/types";
-import { RotateCw } from "lucide-react";
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
 
@@ -37,8 +36,7 @@ export default function HomePage() {
     refreshUsage();
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSearch() {
     if (!currentUrl.trim()) return;
 
     setLastSubmittedUrl(currentUrl); 
@@ -58,12 +56,11 @@ export default function HomePage() {
       if (!res.ok) {
         if (res.status === 429) {
           const data = await res.json().catch(() => ({}));
-          const msg = data?.error || "You’ve reached today’s limit.";
+          const msg = data?.error || "You've reached today's limit.";
           setError(msg);
           await refreshUsage(); 
           return;
         }
-        // Generic error message
         throw new Error("Unable to process search. Please check the URL and try again.");
       }
 
@@ -78,6 +75,15 @@ export default function HomePage() {
     }
   }
 
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    handleSearch();
+  }
+
+  async function handleRetry() {
+    handleSearch();
+  }
+
   const hasContent = summary || results.length > 0;
   const isActive = loading || hasContent;
   const isNewInput = currentUrl !== lastSubmittedUrl;
@@ -89,7 +95,7 @@ export default function HomePage() {
   } else if (error && !isNewInput) {
     buttonLabel = "Try again";
   } else if (hasContent && !isNewInput) {
-    buttonLabel = "Look for other sources"; // "Look for" implies effort, not guarantee
+    buttonLabel = "Look for other sources";
   }
 
   return (
@@ -125,9 +131,8 @@ export default function HomePage() {
           <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight md:whitespace-nowrap">
             See the whole story.
           </h1>
-          {/* FINAL SUBHEAD/TAGLINE */}
-         <p className="text-lg text-slate-600 leading-relaxed">
-            Paste <span className="font-medium text-slate-800">any news link</span>. We’ll scout the web to generate a neutral summary and find you free, public coverage of the same story.
+          <p className="text-lg text-slate-600 leading-relaxed">
+            Paste <span className="font-medium text-slate-800">any news link</span>. We'll scout the web to generate a neutral summary and find you free, public coverage of the same story.
           </p>
         </div>
 
@@ -201,20 +206,12 @@ export default function HomePage() {
                   </div>
                 ) : (
                   <>
-                    <ResultsDisplay results={results} />
-
-                    {/* Footer Tip */}
                     {results.length > 0 ? (
-                      <div className="mt-8 pt-6 border-t border-slate-200 text-center">
-                        <p className="text-sm text-slate-500 flex items-center justify-center gap-2">
-                          <RotateCw size={14} />
-                          <span>Results may vary. Click <strong>Look for other sources</strong> above to try again.</span>
-                        </p>
-                      </div>
+                      <ResultsDisplay results={results} onRetry={handleRetry} />
                     ) : (
                       <div className="mt-8 text-center text-slate-500">
-                         <p>No sources found.</p>
-                         <p className="text-sm mt-1">Click <strong>Look for other sources</strong> to search again.</p>
+                        <p>No sources found.</p>
+                        <p className="text-sm mt-1">Click <strong>Look for other sources</strong> above to search again.</p>
                       </div>
                     )}
                   </>

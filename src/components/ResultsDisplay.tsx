@@ -1,4 +1,4 @@
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, RefreshCw } from 'lucide-react';
 
 interface SourceResult {
   uri: string;
@@ -9,6 +9,7 @@ interface SourceResult {
 
 interface ResultsDisplayProps {
   results: SourceResult[] | null;
+  onRetry?: () => void;
 }
 
 // --- Get Favicon URL using the source domain ---
@@ -46,7 +47,7 @@ function getHeadline(result: SourceResult): string {
   return `Read article on ${result.sourceDomain || 'source'}`;
 }
 
-export default function ResultsDisplay({ results }: ResultsDisplayProps) {
+export default function ResultsDisplay({ results, onRetry }: ResultsDisplayProps) {
   if (!results || results.length === 0) {
     return null;
   }
@@ -98,6 +99,22 @@ export default function ResultsDisplay({ results }: ResultsDisplayProps) {
           </article>
         );
       })}
+
+      {/* Retry Section */}
+      <div className="pt-4 border-t border-slate-200 mt-4">
+        <p className="text-sm text-slate-500 text-center mb-3">
+          Results may vary. Look for others to try again.
+        </p>
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-full transition-colors"
+          >
+            <RefreshCw size={18} />
+            Look for other sources
+          </button>
+        )}
+      </div>
     </div>
   );
 }
