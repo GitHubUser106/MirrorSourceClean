@@ -1,14 +1,9 @@
-// This is the structure for the Grounding Sources
+export type SourceType = 'wire' | 'national' | 'international' | 'local' | 'public' | 'magazine' | 'reference';
+
 export interface GroundingSource {
   uri: string;
   title: string;
-}
-
-// This is the old structure. We'll keep it for reference
-// but GroundingSource is what we use now.
-export interface AiResult {
-  url: string;
-  title: string;
-  source: string;
-  summary: string;
+  displayName?: string;
+  sourceDomain?: string;
+  sourceType?: SourceType;
 }

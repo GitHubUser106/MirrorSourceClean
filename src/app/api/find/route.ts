@@ -7,6 +7,89 @@ export const dynamic = "force-dynamic";
 const apiKey = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenAI({ apiKey: apiKey || "" });
 
+// --- Source type classification ---
+type SourceType = 'wire' | 'national' | 'international' | 'local' | 'public' | 'magazine' | 'reference';
+
+interface SourceInfo {
+  displayName: string;
+  type: SourceType;
+}
+
+function getSourceInfo(domain: string): SourceInfo {
+  if (!domain) return { displayName: 'SOURCE', type: 'local' };
+  
+  const lower = domain.toLowerCase();
+  
+  // Wire Services
+  if (lower.includes('apnews.com')) return { displayName: 'AP NEWS', type: 'wire' };
+  if (lower.includes('reuters.com')) return { displayName: 'REUTERS', type: 'wire' };
+  if (lower.includes('afp.com')) return { displayName: 'AFP', type: 'wire' };
+  if (lower.includes('upi.com')) return { displayName: 'UPI', type: 'wire' };
+  
+  // Public Broadcasting
+  if (lower.includes('npr.org')) return { displayName: 'NPR', type: 'public' };
+  if (lower.includes('pbs.org')) return { displayName: 'PBS', type: 'public' };
+  if (lower.includes('bbc.com') || lower.includes('bbc.co.uk')) return { displayName: 'BBC', type: 'public' };
+  if (lower.includes('cbc.ca')) return { displayName: 'CBC', type: 'public' };
+  if (lower.includes('abc.net.au')) return { displayName: 'ABC AU', type: 'public' };
+  
+  // Major International
+  if (lower.includes('aljazeera.com')) return { displayName: 'AL JAZEERA', type: 'international' };
+  if (lower.includes('dw.com')) return { displayName: 'DW', type: 'international' };
+  if (lower.includes('france24.com')) return { displayName: 'FRANCE 24', type: 'international' };
+  if (lower.includes('scmp.com')) return { displayName: 'SCMP', type: 'international' };
+  if (lower.includes('theguardian.com')) return { displayName: 'THE GUARDIAN', type: 'international' };
+  if (lower.includes('independent.co.uk')) return { displayName: 'THE INDEPENDENT', type: 'international' };
+  if (lower.includes('telegraph.co.uk')) return { displayName: 'THE TELEGRAPH', type: 'international' };
+  if (lower.includes('dailymail.co.uk')) return { displayName: 'DAILY MAIL', type: 'international' };
+  if (lower.includes('sky.com')) return { displayName: 'SKY NEWS', type: 'international' };
+  if (lower.includes('globalnews.ca')) return { displayName: 'GLOBAL NEWS', type: 'international' };
+  if (lower.includes('ctvnews.ca')) return { displayName: 'CTV NEWS', type: 'international' };
+  
+  // Major US National
+  if (lower.includes('nytimes.com')) return { displayName: 'NY TIMES', type: 'national' };
+  if (lower.includes('washingtonpost.com')) return { displayName: 'WASHINGTON POST', type: 'national' };
+  if (lower.includes('wsj.com')) return { displayName: 'WSJ', type: 'national' };
+  if (lower.includes('usatoday.com')) return { displayName: 'USA TODAY', type: 'national' };
+  if (lower.includes('latimes.com')) return { displayName: 'LA TIMES', type: 'national' };
+  if (lower.includes('cnn.com')) return { displayName: 'CNN', type: 'national' };
+  if (lower.includes('foxnews.com')) return { displayName: 'FOX NEWS', type: 'national' };
+  if (lower.includes('nbcnews.com')) return { displayName: 'NBC NEWS', type: 'national' };
+  if (lower.includes('abcnews.go.com')) return { displayName: 'ABC NEWS', type: 'national' };
+  if (lower.includes('cbsnews.com')) return { displayName: 'CBS NEWS', type: 'national' };
+  if (lower.includes('msnbc.com')) return { displayName: 'MSNBC', type: 'national' };
+  if (lower.includes('politico.com')) return { displayName: 'POLITICO', type: 'national' };
+  if (lower.includes('thehill.com')) return { displayName: 'THE HILL', type: 'national' };
+  if (lower.includes('axios.com')) return { displayName: 'AXIOS', type: 'national' };
+  if (lower.includes('cnbc.com')) return { displayName: 'CNBC', type: 'national' };
+  if (lower.includes('bloomberg.com')) return { displayName: 'BLOOMBERG', type: 'national' };
+  
+  // Magazines / Long-form
+  if (lower.includes('time.com')) return { displayName: 'TIME', type: 'magazine' };
+  if (lower.includes('newsweek.com')) return { displayName: 'NEWSWEEK', type: 'magazine' };
+  if (lower.includes('theatlantic.com')) return { displayName: 'THE ATLANTIC', type: 'magazine' };
+  if (lower.includes('newyorker.com')) return { displayName: 'NEW YORKER', type: 'magazine' };
+  if (lower.includes('forbes.com')) return { displayName: 'FORBES', type: 'magazine' };
+  if (lower.includes('businessinsider.com')) return { displayName: 'BUSINESS INSIDER', type: 'magazine' };
+  if (lower.includes('wired.com')) return { displayName: 'WIRED', type: 'magazine' };
+  if (lower.includes('economist.com')) return { displayName: 'THE ECONOMIST', type: 'magazine' };
+  
+  // Reference
+  if (lower.includes('wikipedia.org')) return { displayName: 'WIKIPEDIA', type: 'reference' };
+  
+  // Aggregators (treat as national for credibility)
+  if (lower.includes('yahoo.com')) return { displayName: 'YAHOO NEWS', type: 'national' };
+  if (lower.includes('msn.com')) return { displayName: 'MSN', type: 'national' };
+  if (lower.includes('news.google.com')) return { displayName: 'GOOGLE NEWS', type: 'national' };
+  
+  // Default: assume local news
+  const parts = domain.split('.');
+  if (parts.length > 2 && parts[0].length <= 3) {
+    return { displayName: parts[1].toUpperCase(), type: 'local' };
+  }
+  return { displayName: parts[0].toUpperCase(), type: 'local' };
+}
+
 // --- Decode HTML entities ---
 function decodeHtmlEntities(text: string): string {
   if (!text) return text;
@@ -30,12 +113,9 @@ function decodeHtmlEntities(text: string): string {
 // --- Check if text is primarily English/Latin ---
 function isEnglishContent(text: string): boolean {
   if (!text) return false;
-  // Count Latin characters vs total letters (including non-Latin scripts)
   const latinChars = (text.match(/[a-zA-Z]/g) || []).length;
-  // Match common non-Latin scripts: Cyrillic, Chinese, Japanese, Korean, Arabic, Hebrew, Thai, etc.
   const nonLatinChars = (text.match(/[\u0400-\u04FF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0600-\u06FF\u0590-\u05FF\u0E00-\u0E7F]/g) || []).length;
   const totalAlpha = latinChars + nonLatinChars;
-  // If less than 70% Latin characters, likely not English
   return totalAlpha === 0 || (latinChars / totalAlpha) > 0.7;
 }
 
@@ -63,58 +143,6 @@ function isErrorTitle(title: string): boolean {
     'cloudflare',
   ];
   return errorPatterns.some(pattern => lower.includes(pattern));
-}
-
-// --- Clean up display name from domain ---
-function getDisplayName(domain: string): string {
-  if (!domain) return 'SOURCE';
-  
-  const lower = domain.toLowerCase();
-  
-  // Special cases for better display names
-  if (lower.includes('wikipedia.org')) return 'WIKIPEDIA';
-  if (lower.includes('theguardian.com')) return 'THE GUARDIAN';
-  if (lower.includes('nytimes.com')) return 'NY TIMES';
-  if (lower.includes('washingtonpost.com')) return 'WASHINGTON POST';
-  if (lower.includes('bbc.com') || lower.includes('bbc.co.uk')) return 'BBC';
-  if (lower.includes('cnn.com')) return 'CNN';
-  if (lower.includes('foxnews.com')) return 'FOX NEWS';
-  if (lower.includes('nbcnews.com')) return 'NBC NEWS';
-  if (lower.includes('abcnews.go.com')) return 'ABC NEWS';
-  if (lower.includes('cbsnews.com')) return 'CBS NEWS';
-  if (lower.includes('apnews.com')) return 'AP NEWS';
-  if (lower.includes('reuters.com')) return 'REUTERS';
-  if (lower.includes('npr.org')) return 'NPR';
-  if (lower.includes('pbs.org')) return 'PBS';
-  if (lower.includes('aljazeera.com')) return 'AL JAZEERA';
-  if (lower.includes('globalnews.ca')) return 'GLOBAL NEWS';
-  if (lower.includes('cbc.ca')) return 'CBC';
-  if (lower.includes('ctvnews.ca')) return 'CTV NEWS';
-  if (lower.includes('scmp.com')) return 'SCMP';
-  if (lower.includes('businessinsider.com')) return 'BUSINESS INSIDER';
-  if (lower.includes('yahoo.com')) return 'YAHOO NEWS';
-  if (lower.includes('msn.com')) return 'MSN';
-  if (lower.includes('usatoday.com')) return 'USA TODAY';
-  if (lower.includes('politico.com')) return 'POLITICO';
-  if (lower.includes('thehill.com')) return 'THE HILL';
-  if (lower.includes('axios.com')) return 'AXIOS';
-  if (lower.includes('newsweek.com')) return 'NEWSWEEK';
-  if (lower.includes('time.com')) return 'TIME';
-  if (lower.includes('forbes.com')) return 'FORBES';
-  if (lower.includes('bloomberg.com')) return 'BLOOMBERG';
-  if (lower.includes('cnbc.com')) return 'CNBC';
-  if (lower.includes('dailymail.co.uk')) return 'DAILY MAIL';
-  if (lower.includes('independent.co.uk')) return 'THE INDEPENDENT';
-  if (lower.includes('telegraph.co.uk')) return 'THE TELEGRAPH';
-  if (lower.includes('sky.com')) return 'SKY NEWS';
-  
-  // Default: use first part of domain, uppercase
-  const parts = domain.split('.');
-  // Handle subdomains like en.wikipedia.org
-  if (parts.length > 2 && parts[0].length <= 3) {
-    return parts[1].toUpperCase();
-  }
-  return parts[0].toUpperCase();
 }
 
 // --- Helper to clean Markdown Code Blocks ---
@@ -163,11 +191,9 @@ function extractJson(text: string): any {
 
 // --- Extract page title from HTML ---
 function extractPageTitle(html: string): string | null {
-  // Try <title> tag
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   if (titleMatch) {
     let title = decodeHtmlEntities(titleMatch[1].trim());
-    // Clean up common suffixes
     title = title
       .replace(/\s*[-|–—]\s*(BBC|CNN|CBS|NBC|ABC|Fox|Guardian|Reuters|AP|NPR|PBS).*$/i, '')
       .replace(/\s*[-|–—]\s*News.*$/i, '')
@@ -175,7 +201,6 @@ function extractPageTitle(html: string): string | null {
     if (title.length > 10 && !isErrorTitle(title) && isEnglishContent(title)) return title;
   }
 
-  // Try og:title meta tag
   const ogMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) ||
                   html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
   if (ogMatch) {
@@ -183,7 +208,6 @@ function extractPageTitle(html: string): string | null {
     if (!isErrorTitle(title) && isEnglishContent(title)) return title;
   }
 
-  // Try twitter:title
   const twitterMatch = html.match(/<meta[^>]+name=["']twitter:title["'][^>]+content=["']([^"']+)["']/i) ||
                        html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:title["']/i);
   if (twitterMatch) {
@@ -220,7 +244,6 @@ async function resolveVertexRedirect(redirectUrl: string): Promise<{ url: string
     let finalUrl = response.url;
     const html = await response.text();
     
-    // If still on vertex, try to find the real URL
     if (finalUrl.includes('vertexaisearch.cloud.google.com')) {
       const metaMatch = html.match(/content=["'][^"']*url=([^"'\s>]+)/i);
       if (metaMatch) finalUrl = metaMatch[1];
@@ -239,15 +262,12 @@ async function resolveVertexRedirect(redirectUrl: string): Promise<{ url: string
       }
     }
 
-    // Skip if we couldn't resolve
     if (finalUrl.includes('vertexaisearch.cloud.google.com')) {
       return null;
     }
 
-    // Extract the page title
     const pageTitle = extractPageTitle(html);
     
-    // Skip if the page title indicates an error
     if (pageTitle && isErrorTitle(pageTitle)) {
       return null;
     }
@@ -262,8 +282,8 @@ async function resolveVertexRedirect(redirectUrl: string): Promise<{ url: string
 // --- Process grounding chunks and resolve redirects ---
 async function processGroundingChunks(
   chunks: any[]
-): Promise<Array<{ uri: string; title: string; displayName: string; sourceDomain: string }>> {
-  const results: Array<{ uri: string; title: string; displayName: string; sourceDomain: string }> = [];
+): Promise<Array<{ uri: string; title: string; displayName: string; sourceDomain: string; sourceType: SourceType }>> {
+  const results: Array<{ uri: string; title: string; displayName: string; sourceDomain: string; sourceType: SourceType }> = [];
   const seen = new Set<string>();
 
   const resolvePromises = chunks.map(async (chunk) => {
@@ -280,21 +300,20 @@ async function processGroundingChunks(
       const urlObj = new URL(resolved.url);
       const domain = urlObj.hostname.replace(/^www\./, '');
 
-      // Use the page title we extracted, or fall back to the grounding title
       let articleTitle = resolved.title || web.title || domain;
-      
-      // Decode any HTML entities in the title
       articleTitle = decodeHtmlEntities(articleTitle);
       
-      // Skip if title is an error page or not English
       if (isErrorTitle(articleTitle)) return null;
       if (!isEnglishContent(articleTitle)) return null;
+
+      const sourceInfo = getSourceInfo(domain);
 
       return {
         uri: resolved.url,
         title: articleTitle,
-        displayName: getDisplayName(domain),
+        displayName: sourceInfo.displayName,
         sourceDomain: domain,
+        sourceType: sourceInfo.type,
       };
     } catch {
       return null;
@@ -315,7 +334,6 @@ async function processGroundingChunks(
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Rate Limit
     const limitCheck = await checkRateLimit(req);
     if (!limitCheck.success) {
       return NextResponse.json(
@@ -329,10 +347,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing or invalid 'url'" }, { status: 400 });
     }
 
-    // 2. Increment Usage
     await incrementUsage(req);
 
-    // 3. SYSTEM PROMPT
     const prompt = `
 **ROLE:** You are MirrorSource, a news research assistant.
 
@@ -348,14 +364,12 @@ export async function POST(req: NextRequest) {
 
     const config: any = { tools: [{ googleSearch: {} }] };
 
-    // 4. Call Gemini
     const geminiResponse: any = await genAI.models.generateContent({
       model: "gemini-2.5-pro",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       config,
     });
 
-    // 5. Extract Text
     let text: string | undefined;
     if (geminiResponse?.response && typeof geminiResponse.response.text === "function") {
       text = geminiResponse.response.text();
@@ -365,16 +379,13 @@ export async function POST(req: NextRequest) {
 
     if (!text) throw new Error("Model response did not contain text.");
 
-    // 6. Parse JSON for summary
     const parsedData = extractJson(text) || {};
     const summary = parsedData.summary || "Summary not available.";
 
-    // 7. Get grounding chunks
     const candidates = geminiResponse?.response?.candidates ?? geminiResponse?.candidates ?? [];
     const groundingMetadata = candidates[0]?.groundingMetadata;
     const groundingChunks = groundingMetadata?.groundingChunks ?? [];
 
-    // 8. Resolve redirects and get article titles
     const alternatives = await processGroundingChunks(groundingChunks);
 
     return NextResponse.json({

@@ -1,36 +1,56 @@
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Link2, Check } from 'lucide-react';
+import { useState } from 'react';
+
+type SourceType = 'wire' | 'national' | 'international' | 'local' | 'public' | 'magazine' | 'reference';
 
 interface SourceResult {
   uri: string;
   title: string;
   displayName?: string;
   sourceDomain?: string;
+  sourceType?: SourceType;
 }
 
 interface ResultsDisplayProps {
   results: SourceResult[] | null;
 }
 
+// Source type badge styling and labels
+const sourceTypeBadge: Record<SourceType, { label: string; className: string }> = {
+  wire: { 
+    label: 'Wire Service', 
+    className: 'bg-amber-100 text-amber-700 border-amber-200' 
+  },
+  public: { 
+    label: 'Public Media', 
+    className: 'bg-green-100 text-green-700 border-green-200' 
+  },
+  national: { 
+    label: 'National', 
+    className: 'bg-blue-100 text-blue-700 border-blue-200' 
+  },
+  international: { 
+    label: 'International', 
+    className: 'bg-purple-100 text-purple-700 border-purple-200' 
+  },
+  magazine: { 
+    label: 'Magazine', 
+    className: 'bg-pink-100 text-pink-700 border-pink-200' 
+  },
+  reference: { 
+    label: 'Reference', 
+    className: 'bg-slate-100 text-slate-700 border-slate-200' 
+  },
+  local: { 
+    label: 'Local News', 
+    className: 'bg-cyan-100 text-cyan-700 border-cyan-200' 
+  },
+};
+
 function getFaviconUrl(sourceDomain: string): string {
   if (!sourceDomain) return '/favicon.ico';
   const cleanDomain = sourceDomain.replace(/^www\./, '');
   return `https://icons.duckduckgo.com/ip3/${cleanDomain}.ico`;
-}
-
-function getDisplayName(result: SourceResult): string {
-  if (result.displayName) return result.displayName;
-  if (result.sourceDomain) {
-    return result.sourceDomain.split('.')[0].toUpperCase();
-  }
-  return 'SOURCE';
-}
-
-function getSourceDomain(result: SourceResult): string {
-  if (result.sourceDomain) return result.sourceDomain;
-  if (result.title && result.title.includes('.')) {
-    return result.title.toLowerCase().replace(/^www\./, '');
-  }
-  return '';
 }
 
 function getHeadline(result: SourceResult): string {
@@ -41,17 +61,33 @@ function getHeadline(result: SourceResult): string {
 }
 
 export default function ResultsDisplay({ results }: ResultsDisplayProps) {
+  const [linksCopied, setLinksCopied] = useState(false);
+
   if (!results || results.length === 0) {
     return null;
+  }
+
+  async function handleCopyAllLinks() {
+    if (!results) return;
+    const links = results.map(r => r.uri).join('\n');
+    try {
+      await navigator.clipboard.writeText(links);
+      setLinksCopied(true);
+      setTimeout(() => setLinksCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy links:', err);
+    }
   }
 
   return (
     <div className="space-y-3">
       {results.map((item, index) => {
-        const sourceDomain = getSourceDomain(item);
-        const displayName = getDisplayName(item);
+        const sourceDomain = item.sourceDomain || '';
+        const displayName = item.displayName || 'SOURCE';
         const favicon = getFaviconUrl(sourceDomain);
         const headline = getHeadline(item);
+        const sourceType = item.sourceType || 'local';
+        const badge = sourceTypeBadge[sourceType];
 
         return (
           <article
@@ -64,8 +100,8 @@ export default function ResultsDisplay({ results }: ResultsDisplayProps) {
               rel="noopener noreferrer"
               className="flex flex-col gap-2"
             >
-              {/* Source badge */}
-              <div className="flex items-center gap-2.5">
+              {/* Source badge row */}
+              <div className="flex items-center gap-2 flex-wrap">
                 <img 
                   src={favicon} 
                   alt="" 
@@ -76,6 +112,9 @@ export default function ResultsDisplay({ results }: ResultsDisplayProps) {
                 />
                 <span className="text-sm font-bold uppercase tracking-wide text-blue-600">
                   {displayName}
+                </span>
+                <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${badge.className}`}>
+                  {badge.label}
                 </span>
               </div>
 
@@ -92,6 +131,26 @@ export default function ResultsDisplay({ results }: ResultsDisplayProps) {
           </article>
         );
       })}
+
+      {/* Copy all links button */}
+      {results.length > 1 && (
+        <button
+          onClick={handleCopyAllLinks}
+          className="w-full flex items-center justify-center gap-2 text-sm text-slate-500 hover:text-blue-600 py-2 mt-2 rounded-lg hover:bg-slate-100 transition-colors"
+        >
+          {linksCopied ? (
+            <>
+              <Check size={16} className="text-green-600" />
+              <span className="text-green-600">All links copied!</span>
+            </>
+          ) : (
+            <>
+              <Link2 size={16} />
+              <span>Copy all links</span>
+            </>
+          )}
+        </button>
+      )}
     </div>
   );
 }
