@@ -1,6 +1,5 @@
 import { ExternalLink } from 'lucide-react';
 
-// Extended type to include sourceDomain from our API
 interface SourceResult {
   uri: string;
   title: string;
@@ -12,19 +11,18 @@ interface ResultsDisplayProps {
   results: SourceResult[] | null;
 }
 
-// --- Get Favicon URL using the source domain (not the Google search URL) ---
+// --- Get Favicon URL using the source domain ---
 function getFaviconUrl(sourceDomain: string): string {
   if (!sourceDomain) return '/favicon.ico';
   const cleanDomain = sourceDomain.replace(/^www\./, '');
   return `https://icons.duckduckgo.com/ip3/${cleanDomain}.ico`;
 }
 
-// --- Get display name (prefer displayName, fall back to parsing domain) ---
+// --- Get display name for the source ---
 function getDisplayName(result: SourceResult): string {
   if (result.displayName) return result.displayName;
   if (result.sourceDomain) {
-    const parts = result.sourceDomain.split('.');
-    return parts[0].toUpperCase();
+    return result.sourceDomain.split('.')[0].toUpperCase();
   }
   return 'SOURCE';
 }
@@ -32,11 +30,20 @@ function getDisplayName(result: SourceResult): string {
 // --- Get the source domain for favicon ---
 function getSourceDomain(result: SourceResult): string {
   if (result.sourceDomain) return result.sourceDomain;
-  // Fallback: try to extract from title if it looks like a domain
   if (result.title && result.title.includes('.')) {
     return result.title.toLowerCase().replace(/^www\./, '');
   }
   return '';
+}
+
+// --- Format the headline/title for display ---
+function getHeadline(result: SourceResult): string {
+  // If title looks like a domain (e.g., "theguardian.com"), don't use it as headline
+  if (result.title && !result.title.match(/^[a-z0-9.-]+\.[a-z]{2,}$/i)) {
+    return result.title;
+  }
+  // Fallback to domain-based text
+  return `Read article on ${result.sourceDomain || 'source'}`;
 }
 
 export default function ResultsDisplay({ results }: ResultsDisplayProps) {
@@ -50,6 +57,7 @@ export default function ResultsDisplay({ results }: ResultsDisplayProps) {
         const sourceDomain = getSourceDomain(item);
         const displayName = getDisplayName(item);
         const favicon = getFaviconUrl(sourceDomain);
+        const headline = getHeadline(item);
 
         return (
           <article
@@ -77,10 +85,10 @@ export default function ResultsDisplay({ results }: ResultsDisplayProps) {
                 </span>
               </div>
 
-              {/* Source domain as subtitle */}
-              <p className="text-sm text-slate-600">
-                View coverage on {sourceDomain}
-              </p>
+              {/* Headline */}
+              <h3 className="text-base font-medium text-slate-800 leading-snug group-hover:text-blue-700 transition-colors line-clamp-2">
+                {headline}
+              </h3>
               
               {/* External Link Icon (appears on hover) */}
               <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400">

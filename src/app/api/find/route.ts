@@ -51,14 +51,38 @@ function extractJson(text: string): any {
   return null;
 }
 
-// --- Resolve a Vertex AI redirect URL to get the actual destination ---
-async function resolveVertexRedirect(redirectUrl: string): Promise<string | null> {
+// --- Extract page title from HTML ---
+function extractPageTitle(html: string): string | null {
+  // Try <title> tag
+  const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  if (titleMatch) {
+    let title = titleMatch[1].trim();
+    // Clean up common suffixes
+    title = title
+      .replace(/\s*[-|–—]\s*(BBC|CNN|CBS|NBC|ABC|Fox|Guardian|Reuters|AP|NPR|PBS).*$/i, '')
+      .replace(/\s*[-|–—]\s*News.*$/i, '')
+      .trim();
+    if (title.length > 10) return title;
+  }
+
+  // Try og:title meta tag
+  const ogMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i);
+  if (ogMatch) return ogMatch[1].trim();
+
+  // Try twitter:title
+  const twitterMatch = html.match(/<meta[^>]+name=["']twitter:title["'][^>]+content=["']([^"']+)["']/i);
+  if (twitterMatch) return twitterMatch[1].trim();
+
+  return null;
+}
+
+// --- Resolve a Vertex AI redirect URL and get article title ---
+async function resolveVertexRedirect(redirectUrl: string): Promise<{ url: string; title: string | null } | null> {
   if (!redirectUrl.includes('vertexaisearch.cloud.google.com')) {
-    return redirectUrl; // Already a real URL
+    return { url: redirectUrl, title: null };
   }
 
   try {
-    // Method 1: Follow redirects with fetch
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
@@ -75,39 +99,40 @@ async function resolveVertexRedirect(redirectUrl: string): Promise<string | null
 
     clearTimeout(timeoutId);
 
-    // Check if we got redirected to a real URL
-    if (response.url && !response.url.includes('vertexaisearch.cloud.google.com')) {
-      return response.url;
-    }
-
-    // Method 2: Check for meta refresh or JavaScript redirect in HTML
+    // Get the final URL after redirects
+    let finalUrl = response.url;
+    
+    // Read the HTML to extract the title
     const html = await response.text();
     
-    // Look for meta refresh
-    const metaMatch = html.match(/content=["'][^"']*url=([^"'\s>]+)/i);
-    if (metaMatch) {
-      return metaMatch[1];
+    // If still on vertex, try to find the real URL
+    if (finalUrl.includes('vertexaisearch.cloud.google.com')) {
+      const metaMatch = html.match(/content=["'][^"']*url=([^"'\s>]+)/i);
+      if (metaMatch) finalUrl = metaMatch[1];
+      
+      const jsMatch = html.match(/window\.location\s*=\s*["']([^"']+)["']/i);
+      if (jsMatch) finalUrl = jsMatch[1];
+      
+      const urlMatch = html.match(/https?:\/\/(?:www\.)?[a-z0-9-]+\.[a-z]{2,}\/[^\s"'<>]+/gi);
+      if (urlMatch) {
+        const realUrl = urlMatch.find(u => 
+          !u.includes('google.com') && 
+          !u.includes('vertexai') &&
+          !u.includes('googleapis')
+        );
+        if (realUrl) finalUrl = realUrl;
+      }
     }
 
-    // Look for window.location redirect
-    const jsMatch = html.match(/window\.location\s*=\s*["']([^"']+)["']/i);
-    if (jsMatch) {
-      return jsMatch[1];
+    // Skip if we couldn't resolve
+    if (finalUrl.includes('vertexaisearch.cloud.google.com')) {
+      return null;
     }
 
-    // Look for any URL in the response that looks like a news article
-    const urlMatch = html.match(/https?:\/\/(?:www\.)?[a-z0-9-]+\.[a-z]{2,}\/[^\s"'<>]+/gi);
-    if (urlMatch) {
-      // Find a URL that's not Google
-      const realUrl = urlMatch.find(u => 
-        !u.includes('google.com') && 
-        !u.includes('vertexai') &&
-        !u.includes('googleapis')
-      );
-      if (realUrl) return realUrl;
-    }
+    // Extract the page title
+    const pageTitle = extractPageTitle(html);
 
-    return null;
+    return { url: finalUrl, title: pageTitle };
   } catch (error) {
     console.error('Failed to resolve redirect:', error);
     return null;
@@ -121,26 +146,27 @@ async function processGroundingChunks(
   const results: Array<{ uri: string; title: string; displayName: string; sourceDomain: string }> = [];
   const seen = new Set<string>();
 
-  // Process chunks in parallel for speed
   const resolvePromises = chunks.map(async (chunk) => {
     const web = chunk?.web;
-    if (!web?.uri || !web?.title) return null;
+    if (!web?.uri) return null;
 
-    // Skip Google internal URLs in title
-    const title = web.title.toLowerCase();
-    if (title.includes('google') || title.includes('vertexai')) return null;
+    // Skip Google internal URLs
+    const chunkTitle = (web.title || '').toLowerCase();
+    if (chunkTitle.includes('google') || chunkTitle.includes('vertexai')) return null;
 
     try {
-      const resolvedUrl = await resolveVertexRedirect(web.uri);
-      if (!resolvedUrl) return null;
+      const resolved = await resolveVertexRedirect(web.uri);
+      if (!resolved) return null;
 
-      // Extract domain from resolved URL
-      const urlObj = new URL(resolvedUrl);
+      const urlObj = new URL(resolved.url);
       const domain = urlObj.hostname.replace(/^www\./, '');
 
+      // Use the page title we extracted, or fall back to the grounding title
+      const articleTitle = resolved.title || web.title || domain;
+
       return {
-        uri: resolvedUrl,
-        title: web.title,
+        uri: resolved.url,
+        title: articleTitle,
         displayName: domain.split('.')[0].toUpperCase(),
         sourceDomain: domain,
       };
@@ -222,12 +248,8 @@ export async function POST(req: NextRequest) {
     const groundingMetadata = candidates[0]?.groundingMetadata;
     const groundingChunks = groundingMetadata?.groundingChunks ?? [];
 
-    console.log(`Found ${groundingChunks.length} grounding chunks`);
-
-    // 8. Resolve redirects to get actual article URLs
+    // 8. Resolve redirects and get article titles
     const alternatives = await processGroundingChunks(groundingChunks);
-
-    console.log(`Resolved ${alternatives.length} alternative sources`);
 
     return NextResponse.json({
       summary,
