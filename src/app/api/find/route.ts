@@ -31,159 +31,134 @@ function sanitizeJsonString(text: string): string {
 function extractJson(text: string): any {
   let cleaned = cleanJsonText(text);
   
-  try {
-    return JSON.parse(cleaned);
-  } catch {}
-
-  try {
-    return JSON.parse(sanitizeJsonString(cleaned));
-  } catch {}
+  try { return JSON.parse(cleaned); } catch {}
+  try { return JSON.parse(sanitizeJsonString(cleaned)); } catch {}
 
   const firstBrace = cleaned.indexOf("{");
   const lastBrace = cleaned.lastIndexOf("}");
   
   if (firstBrace !== -1 && lastBrace > firstBrace) {
     const jsonCandidate = cleaned.substring(firstBrace, lastBrace + 1);
-    try {
-      return JSON.parse(jsonCandidate);
-    } catch {}
-    try {
-      return JSON.parse(sanitizeJsonString(jsonCandidate));
-    } catch {}
+    try { return JSON.parse(jsonCandidate); } catch {}
+    try { return JSON.parse(sanitizeJsonString(jsonCandidate)); } catch {}
   }
 
-  // Try to extract summary with regex as last resort
   const summaryMatch = cleaned.match(/"summary"\s*:\s*"((?:[^"\\]|\\.)*)"/);
   if (summaryMatch) {
-    return {
-      summary: summaryMatch[1].replace(/\\"/g, '"').replace(/\\n/g, "\n"),
-    };
+    return { summary: summaryMatch[1].replace(/\\"/g, '"').replace(/\\n/g, "\n") };
   }
 
   return null;
 }
 
-// --- Extract search keywords from original URL ---
-function extractSearchKeywords(url: string): string {
+// --- Resolve a Vertex AI redirect URL to get the actual destination ---
+async function resolveVertexRedirect(redirectUrl: string): Promise<string | null> {
+  if (!redirectUrl.includes('vertexaisearch.cloud.google.com')) {
+    return redirectUrl; // Already a real URL
+  }
+
   try {
-    const urlObj = new URL(url);
-    const path = urlObj.pathname;
-    
-    const cleanPath = path
-      .replace(/^\/+(news|article|story|us-news|world|politics|business|tech|science|health|entertainment|sports|live)\/?/gi, ' ')
-      .replace(/\.(html|htm|php|asp|aspx)$/i, '')
-      .replace(/[-_\/]+/g, ' ')
-      .replace(/\d{4}[-\/]\d{2}[-\/]\d{2}/g, '')
-      .replace(/\b\d+\b/g, ' ')
-      .trim();
-    
-    const words = cleanPath.split(/\s+/).filter(w => w.length > 2);
-    return words.slice(0, 5).join(' ') || 'news';
-  } catch {
-    return 'news';
-  }
-}
+    // Method 1: Follow redirects with fetch
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-// --- Build Google site-search URL ---
-function buildGoogleSiteSearch(domain: string, keywords: string): string {
-  const cleanDomain = domain.toLowerCase().replace(/^www\./, '');
-  const query = encodeURIComponent(`site:${cleanDomain} ${keywords}`);
-  return `https://www.google.com/search?q=${query}`;
-}
-
-// --- Check if a source should be kept ---
-function shouldKeepSource(title: string): boolean {
-  if (!title) return false;
-  const clean = title.toLowerCase().trim();
-  
-  // Filter out Google/Vertex internal stuff
-  if (clean.includes('vertexai')) return false;
-  if (clean.includes('googleapis')) return false;
-  if (clean === 'google.com') return false;
-  if (clean === 'google') return false;
-  
-  return true;
-}
-
-// --- Extract domain from title or URI ---
-function extractDomain(title: string, uri?: string): string | null {
-  // First try: if title looks like a domain (has a dot, no spaces)
-  const cleanTitle = title.toLowerCase().trim();
-  if (cleanTitle.includes('.') && !cleanTitle.includes(' ')) {
-    return cleanTitle.replace(/^www\./, '');
-  }
-  
-  // Second try: extract from URI if provided
-  if (uri) {
-    try {
-      const urlObj = new URL(uri);
-      const hostname = urlObj.hostname.replace(/^www\./, '');
-      // Skip vertex/google URLs
-      if (!hostname.includes('vertexai') && !hostname.includes('googleapis')) {
-        return hostname;
-      }
-    } catch {}
-  }
-  
-  // Third try: treat the title as a site name and make it a domain
-  if (cleanTitle && !cleanTitle.includes(' ')) {
-    return `${cleanTitle}.com`;
-  }
-  
-  return null;
-}
-
-// --- Process sources from either grounding metadata or JSON alternatives ---
-function processSources(
-  groundingChunks: any[],
-  jsonAlternatives: any[],
-  searchKeywords: string
-): Array<{ uri: string; title: string; displayName: string; sourceDomain: string }> {
-  const seen = new Set<string>();
-  const sources: Array<{ uri: string; title: string; displayName: string; sourceDomain: string }> = [];
-
-  // First, process grounding chunks (more reliable for domains)
-  for (const chunk of groundingChunks) {
-    const web = chunk?.web;
-    if (!web?.title) continue;
-    if (!shouldKeepSource(web.title)) continue;
-    
-    const domain = extractDomain(web.title, web.uri);
-    if (!domain) continue;
-    if (seen.has(domain)) continue;
-    seen.add(domain);
-    
-    sources.push({
-      uri: buildGoogleSiteSearch(domain, searchKeywords),
-      title: web.title,
-      displayName: domain.split('.')[0].toUpperCase(),
-      sourceDomain: domain,
+    const response = await fetch(redirectUrl, {
+      method: 'GET',
+      redirect: 'follow',
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      },
     });
-  }
 
-  // If no grounding chunks, try JSON alternatives
-  if (sources.length === 0 && jsonAlternatives.length > 0) {
-    for (const alt of jsonAlternatives) {
-      const title = alt.title || alt.source || '';
-      const uri = alt.uri || alt.url || '';
-      
-      if (!shouldKeepSource(title)) continue;
-      
-      const domain = extractDomain(title, uri);
-      if (!domain) continue;
-      if (seen.has(domain)) continue;
-      seen.add(domain);
-      
-      sources.push({
-        uri: buildGoogleSiteSearch(domain, searchKeywords),
-        title: title,
+    clearTimeout(timeoutId);
+
+    // Check if we got redirected to a real URL
+    if (response.url && !response.url.includes('vertexaisearch.cloud.google.com')) {
+      return response.url;
+    }
+
+    // Method 2: Check for meta refresh or JavaScript redirect in HTML
+    const html = await response.text();
+    
+    // Look for meta refresh
+    const metaMatch = html.match(/content=["'][^"']*url=([^"'\s>]+)/i);
+    if (metaMatch) {
+      return metaMatch[1];
+    }
+
+    // Look for window.location redirect
+    const jsMatch = html.match(/window\.location\s*=\s*["']([^"']+)["']/i);
+    if (jsMatch) {
+      return jsMatch[1];
+    }
+
+    // Look for any URL in the response that looks like a news article
+    const urlMatch = html.match(/https?:\/\/(?:www\.)?[a-z0-9-]+\.[a-z]{2,}\/[^\s"'<>]+/gi);
+    if (urlMatch) {
+      // Find a URL that's not Google
+      const realUrl = urlMatch.find(u => 
+        !u.includes('google.com') && 
+        !u.includes('vertexai') &&
+        !u.includes('googleapis')
+      );
+      if (realUrl) return realUrl;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Failed to resolve redirect:', error);
+    return null;
+  }
+}
+
+// --- Process grounding chunks and resolve redirects ---
+async function processGroundingChunks(
+  chunks: any[]
+): Promise<Array<{ uri: string; title: string; displayName: string; sourceDomain: string }>> {
+  const results: Array<{ uri: string; title: string; displayName: string; sourceDomain: string }> = [];
+  const seen = new Set<string>();
+
+  // Process chunks in parallel for speed
+  const resolvePromises = chunks.map(async (chunk) => {
+    const web = chunk?.web;
+    if (!web?.uri || !web?.title) return null;
+
+    // Skip Google internal URLs in title
+    const title = web.title.toLowerCase();
+    if (title.includes('google') || title.includes('vertexai')) return null;
+
+    try {
+      const resolvedUrl = await resolveVertexRedirect(web.uri);
+      if (!resolvedUrl) return null;
+
+      // Extract domain from resolved URL
+      const urlObj = new URL(resolvedUrl);
+      const domain = urlObj.hostname.replace(/^www\./, '');
+
+      return {
+        uri: resolvedUrl,
+        title: web.title,
         displayName: domain.split('.')[0].toUpperCase(),
         sourceDomain: domain,
-      });
+      };
+    } catch {
+      return null;
     }
+  });
+
+  const resolved = await Promise.all(resolvePromises);
+
+  for (const item of resolved) {
+    if (!item) continue;
+    if (seen.has(item.sourceDomain)) continue;
+    seen.add(item.sourceDomain);
+    results.push(item);
   }
 
-  return sources;
+  return results;
 }
 
 export async function POST(req: NextRequest) {
@@ -205,38 +180,30 @@ export async function POST(req: NextRequest) {
     // 2. Increment Usage
     await incrementUsage(req);
 
-    // 3. Extract search keywords
-    const searchKeywords = extractSearchKeywords(url);
-
-    // 4. SYSTEM PROMPT - ask for both summary and source names
+    // 3. SYSTEM PROMPT
     const prompt = `
 **ROLE:** You are MirrorSource, a news research assistant.
 
 **TASK:**
 1. Search for news coverage of the story at this URL: "${url}"
 2. Write a neutral, 2-3 sentence summary of the news event.
-3. List the news sources that are covering this story.
 
-**OUTPUT FORMAT (JSON only, no markdown):**
+**OUTPUT FORMAT (JSON only):**
 {
-  "summary": "Your neutral summary of the news event.",
-  "sources": ["cnn.com", "bbc.com", "reuters.com", "apnews.com"]
+  "summary": "Your neutral summary of the news event."
 }
-
-List source domains only (e.g., "cnn.com" not full article URLs).
-If you cannot find the story, still provide any relevant sources covering similar news.
     `.trim();
 
     const config: any = { tools: [{ googleSearch: {} }] };
 
-    // 5. Call Gemini
+    // 4. Call Gemini
     const geminiResponse: any = await genAI.models.generateContent({
       model: "gemini-2.5-pro",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       config,
     });
 
-    // 6. Extract Text
+    // 5. Extract Text
     let text: string | undefined;
     if (geminiResponse?.response && typeof geminiResponse.response.text === "function") {
       text = geminiResponse.response.text();
@@ -246,30 +213,21 @@ If you cannot find the story, still provide any relevant sources covering simila
 
     if (!text) throw new Error("Model response did not contain text.");
 
-    // 7. Parse JSON
+    // 6. Parse JSON for summary
     const parsedData = extractJson(text) || {};
     const summary = parsedData.summary || "Summary not available.";
-    
-    // Get sources from JSON (as domain strings or objects)
-    let jsonSources: any[] = [];
-    if (Array.isArray(parsedData.sources)) {
-      jsonSources = parsedData.sources.map((s: any) => {
-        if (typeof s === 'string') {
-          return { title: s };
-        }
-        return s;
-      });
-    } else if (Array.isArray(parsedData.alternatives)) {
-      jsonSources = parsedData.alternatives;
-    }
 
-    // 8. Get grounding chunks
+    // 7. Get grounding chunks
     const candidates = geminiResponse?.response?.candidates ?? geminiResponse?.candidates ?? [];
     const groundingMetadata = candidates[0]?.groundingMetadata;
     const groundingChunks = groundingMetadata?.groundingChunks ?? [];
 
-    // 9. Process all sources
-    const alternatives = processSources(groundingChunks, jsonSources, searchKeywords);
+    console.log(`Found ${groundingChunks.length} grounding chunks`);
+
+    // 8. Resolve redirects to get actual article URLs
+    const alternatives = await processGroundingChunks(groundingChunks);
+
+    console.log(`Resolved ${alternatives.length} alternative sources`);
 
     return NextResponse.json({
       summary,
