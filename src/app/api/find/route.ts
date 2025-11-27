@@ -30,9 +30,11 @@ function decodeHtmlEntities(text: string): string {
 // --- Check if text is primarily English/Latin ---
 function isEnglishContent(text: string): boolean {
   if (!text) return false;
-  // Count Latin characters vs non-Latin
+  // Count Latin characters vs total letters (including non-Latin scripts)
   const latinChars = (text.match(/[a-zA-Z]/g) || []).length;
-  const totalAlpha = (text.match(/\p{L}/gu) || []).length;
+  // Match common non-Latin scripts: Cyrillic, Chinese, Japanese, Korean, Arabic, Hebrew, Thai, etc.
+  const nonLatinChars = (text.match(/[\u0400-\u04FF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0600-\u06FF\u0590-\u05FF\u0E00-\u0E7F]/g) || []).length;
+  const totalAlpha = latinChars + nonLatinChars;
   // If less than 70% Latin characters, likely not English
   return totalAlpha === 0 || (latinChars / totalAlpha) > 0.7;
 }
