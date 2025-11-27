@@ -7,6 +7,87 @@ export const dynamic = "force-dynamic";
 const apiKey = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenAI({ apiKey: apiKey || "" });
 
+// --- Decode HTML entities ---
+function decodeHtmlEntities(text: string): string {
+  if (!text) return text;
+  return text
+    .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&ndash;/g, '–')
+    .replace(/&mdash;/g, '—')
+    .replace(/&lsquo;/g, ''')
+    .replace(/&rsquo;/g, ''')
+    .replace(/&ldquo;/g, '"')
+    .replace(/&rdquo;/g, '"');
+}
+
+// --- Check if title indicates an error page ---
+function isErrorTitle(title: string): boolean {
+  if (!title) return true;
+  const lower = title.toLowerCase().trim();
+  const errorPatterns = [
+    'access denied',
+    'page not found',
+    '404',
+    '403',
+    'forbidden',
+    'error',
+    'blocked',
+    'unavailable',
+    'not available',
+    'sorry',
+    'captcha',
+    'just a moment',
+    'checking your browser',
+    'please wait',
+    'redirecting',
+  ];
+  return errorPatterns.some(pattern => lower.includes(pattern));
+}
+
+// --- Clean up display name from domain ---
+function getDisplayName(domain: string): string {
+  if (!domain) return 'SOURCE';
+  
+  const lower = domain.toLowerCase();
+  
+  // Special cases for better display names
+  if (lower.includes('wikipedia.org')) return 'WIKIPEDIA';
+  if (lower.includes('theguardian.com')) return 'THE GUARDIAN';
+  if (lower.includes('nytimes.com')) return 'NY TIMES';
+  if (lower.includes('washingtonpost.com')) return 'WASHINGTON POST';
+  if (lower.includes('bbc.com') || lower.includes('bbc.co.uk')) return 'BBC';
+  if (lower.includes('cnn.com')) return 'CNN';
+  if (lower.includes('foxnews.com')) return 'FOX NEWS';
+  if (lower.includes('nbcnews.com')) return 'NBC NEWS';
+  if (lower.includes('abcnews.go.com')) return 'ABC NEWS';
+  if (lower.includes('cbsnews.com')) return 'CBS NEWS';
+  if (lower.includes('apnews.com')) return 'AP NEWS';
+  if (lower.includes('reuters.com')) return 'REUTERS';
+  if (lower.includes('npr.org')) return 'NPR';
+  if (lower.includes('pbs.org')) return 'PBS';
+  if (lower.includes('aljazeera.com')) return 'AL JAZEERA';
+  if (lower.includes('globalnews.ca')) return 'GLOBAL NEWS';
+  if (lower.includes('cbc.ca')) return 'CBC';
+  if (lower.includes('ctvnews.ca')) return 'CTV NEWS';
+  if (lower.includes('scmp.com')) return 'SCMP';
+  if (lower.includes('businessinsider.com')) return 'BUSINESS INSIDER';
+  
+  // Default: use first part of domain, uppercase
+  const parts = domain.split('.');
+  // Handle subdomains like en.wikipedia.org
+  if (parts.length > 2 && parts[0].length <= 3) {
+    return parts[1].toUpperCase();
+  }
+  return parts[0].toUpperCase();
+}
+
 // --- Helper to clean Markdown Code Blocks ---
 function cleanJsonText(text: string): string {
   let cleaned = text.trim();
@@ -56,22 +137,30 @@ function extractPageTitle(html: string): string | null {
   // Try <title> tag
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   if (titleMatch) {
-    let title = titleMatch[1].trim();
+    let title = decodeHtmlEntities(titleMatch[1].trim());
     // Clean up common suffixes
     title = title
       .replace(/\s*[-|–—]\s*(BBC|CNN|CBS|NBC|ABC|Fox|Guardian|Reuters|AP|NPR|PBS).*$/i, '')
       .replace(/\s*[-|–—]\s*News.*$/i, '')
       .trim();
-    if (title.length > 10) return title;
+    if (title.length > 10 && !isErrorTitle(title)) return title;
   }
 
   // Try og:title meta tag
-  const ogMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i);
-  if (ogMatch) return ogMatch[1].trim();
+  const ogMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) ||
+                  html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
+  if (ogMatch) {
+    const title = decodeHtmlEntities(ogMatch[1].trim());
+    if (!isErrorTitle(title)) return title;
+  }
 
   // Try twitter:title
-  const twitterMatch = html.match(/<meta[^>]+name=["']twitter:title["'][^>]+content=["']([^"']+)["']/i);
-  if (twitterMatch) return twitterMatch[1].trim();
+  const twitterMatch = html.match(/<meta[^>]+name=["']twitter:title["'][^>]+content=["']([^"']+)["']/i) ||
+                       html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:title["']/i);
+  if (twitterMatch) {
+    const title = decodeHtmlEntities(twitterMatch[1].trim());
+    if (!isErrorTitle(title)) return title;
+  }
 
   return null;
 }
@@ -99,10 +188,7 @@ async function resolveVertexRedirect(redirectUrl: string): Promise<{ url: string
 
     clearTimeout(timeoutId);
 
-    // Get the final URL after redirects
     let finalUrl = response.url;
-    
-    // Read the HTML to extract the title
     const html = await response.text();
     
     // If still on vertex, try to find the real URL
@@ -131,6 +217,11 @@ async function resolveVertexRedirect(redirectUrl: string): Promise<{ url: string
 
     // Extract the page title
     const pageTitle = extractPageTitle(html);
+    
+    // Skip if the page title indicates an error
+    if (pageTitle && isErrorTitle(pageTitle)) {
+      return null;
+    }
 
     return { url: finalUrl, title: pageTitle };
   } catch (error) {
@@ -150,7 +241,6 @@ async function processGroundingChunks(
     const web = chunk?.web;
     if (!web?.uri) return null;
 
-    // Skip Google internal URLs
     const chunkTitle = (web.title || '').toLowerCase();
     if (chunkTitle.includes('google') || chunkTitle.includes('vertexai')) return null;
 
@@ -162,12 +252,18 @@ async function processGroundingChunks(
       const domain = urlObj.hostname.replace(/^www\./, '');
 
       // Use the page title we extracted, or fall back to the grounding title
-      const articleTitle = resolved.title || web.title || domain;
+      let articleTitle = resolved.title || web.title || domain;
+      
+      // Decode any HTML entities in the title
+      articleTitle = decodeHtmlEntities(articleTitle);
+      
+      // Skip if title is an error page
+      if (isErrorTitle(articleTitle)) return null;
 
       return {
         uri: resolved.url,
         title: articleTitle,
-        displayName: domain.split('.')[0].toUpperCase(),
+        displayName: getDisplayName(domain),
         sourceDomain: domain,
       };
     } catch {
