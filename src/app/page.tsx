@@ -8,7 +8,7 @@ import ResultsDisplay from "@/components/ResultsDisplay";
 import HowItWorks from "@/components/HowItWorks";
 import { SummarySkeleton, SourcesSkeleton } from "@/components/LoadingSkeletons";
 import type { GroundingSource } from "@/types";
-import { Copy, Check, RefreshCw } from "lucide-react";
+import { Copy, Check, RefreshCw, Share2 } from "lucide-react";
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
 
@@ -19,6 +19,7 @@ export default function HomePage() {
   const [results, setResults] = useState<GroundingSource[]>([]);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
 
   const [currentUrl, setCurrentUrl] = useState("");
   const [lastSubmittedUrl, setLastSubmittedUrl] = useState("");
@@ -94,9 +95,30 @@ export default function HomePage() {
     }
   }
 
+  async function handleShare() {
+    const shareData = {
+      title: 'MirrorSource - See the Whole Story',
+      text: summary ? `${summary.slice(0, 100)}...` : 'Find free, public coverage of any news story.',
+      url: window.location.origin,
+    };
+
+    try {
+      if (navigator.share && navigator.canShare(shareData)) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback: copy link to clipboard
+        await navigator.clipboard.writeText(window.location.origin);
+        setShared(true);
+        setTimeout(() => setShared(false), 2000);
+      }
+    } catch (err) {
+      // User cancelled or error - silently fail
+      console.error('Share failed:', err);
+    }
+  }
+
   const hasContent = summary || results.length > 0;
   const isActive = loading || hasContent;
-  const isNewInput = currentUrl !== lastSubmittedUrl;
 
   // Single button label - cleaner UX
   let buttonLabel = "Look for other sources";
@@ -179,23 +201,42 @@ export default function HomePage() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-slate-900">Summary</h2>
                 {summary && !loading && (
-                  <button
-                    onClick={handleCopySummary}
-                    className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 transition-colors px-2 py-1 rounded hover:bg-slate-100"
-                    title="Copy summary"
-                  >
-                    {copied ? (
-                      <>
-                        <Check size={16} className="text-green-600" />
-                        <span className="text-green-600">Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={16} />
-                        <span className="hidden sm:inline">Copy</span>
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleCopySummary}
+                      className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 transition-colors px-2 py-1 rounded hover:bg-slate-100"
+                      title="Copy summary"
+                    >
+                      {copied ? (
+                        <>
+                          <Check size={16} className="text-green-600" />
+                          <span className="hidden sm:inline text-green-600">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={16} />
+                          <span className="hidden sm:inline">Copy</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={handleShare}
+                      className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 transition-colors px-2 py-1 rounded hover:bg-slate-100"
+                      title="Share"
+                    >
+                      {shared ? (
+                        <>
+                          <Check size={16} className="text-green-600" />
+                          <span className="hidden sm:inline text-green-600">Link copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Share2 size={16} />
+                          <span className="hidden sm:inline">Share</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 )}
               </div>
               
@@ -265,8 +306,11 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="py-6 px-4 border-t border-slate-200 bg-white mt-auto">
         <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
-          <p>© {new Date().getFullYear()} MirrorSource</p>
+          <p>&copy; {new Date().getFullYear()} MirrorSource</p>
           <div className="flex items-center gap-6">
+            <Link href="/about" className="hover:text-blue-600 transition-colors">
+              About
+            </Link>
             <Link href="/legal" className="hover:text-blue-600 transition-colors">
               Legal
             </Link>

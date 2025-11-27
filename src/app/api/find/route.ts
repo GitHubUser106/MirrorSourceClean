@@ -27,6 +27,16 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&rdquo;/g, '\u201D');
 }
 
+// --- Check if text is primarily English/Latin ---
+function isEnglishContent(text: string): boolean {
+  if (!text) return false;
+  // Count Latin characters vs non-Latin
+  const latinChars = (text.match(/[a-zA-Z]/g) || []).length;
+  const totalAlpha = (text.match(/\p{L}/gu) || []).length;
+  // If less than 70% Latin characters, likely not English
+  return totalAlpha === 0 || (latinChars / totalAlpha) > 0.7;
+}
+
 // --- Check if title indicates an error page ---
 function isErrorTitle(title: string): boolean {
   if (!title) return true;
@@ -47,6 +57,8 @@ function isErrorTitle(title: string): boolean {
     'checking your browser',
     'please wait',
     'redirecting',
+    'antibot',
+    'cloudflare',
   ];
   return errorPatterns.some(pattern => lower.includes(pattern));
 }
@@ -78,6 +90,21 @@ function getDisplayName(domain: string): string {
   if (lower.includes('ctvnews.ca')) return 'CTV NEWS';
   if (lower.includes('scmp.com')) return 'SCMP';
   if (lower.includes('businessinsider.com')) return 'BUSINESS INSIDER';
+  if (lower.includes('yahoo.com')) return 'YAHOO NEWS';
+  if (lower.includes('msn.com')) return 'MSN';
+  if (lower.includes('usatoday.com')) return 'USA TODAY';
+  if (lower.includes('politico.com')) return 'POLITICO';
+  if (lower.includes('thehill.com')) return 'THE HILL';
+  if (lower.includes('axios.com')) return 'AXIOS';
+  if (lower.includes('newsweek.com')) return 'NEWSWEEK';
+  if (lower.includes('time.com')) return 'TIME';
+  if (lower.includes('forbes.com')) return 'FORBES';
+  if (lower.includes('bloomberg.com')) return 'BLOOMBERG';
+  if (lower.includes('cnbc.com')) return 'CNBC';
+  if (lower.includes('dailymail.co.uk')) return 'DAILY MAIL';
+  if (lower.includes('independent.co.uk')) return 'THE INDEPENDENT';
+  if (lower.includes('telegraph.co.uk')) return 'THE TELEGRAPH';
+  if (lower.includes('sky.com')) return 'SKY NEWS';
   
   // Default: use first part of domain, uppercase
   const parts = domain.split('.');
@@ -143,7 +170,7 @@ function extractPageTitle(html: string): string | null {
       .replace(/\s*[-|–—]\s*(BBC|CNN|CBS|NBC|ABC|Fox|Guardian|Reuters|AP|NPR|PBS).*$/i, '')
       .replace(/\s*[-|–—]\s*News.*$/i, '')
       .trim();
-    if (title.length > 10 && !isErrorTitle(title)) return title;
+    if (title.length > 10 && !isErrorTitle(title) && isEnglishContent(title)) return title;
   }
 
   // Try og:title meta tag
@@ -151,7 +178,7 @@ function extractPageTitle(html: string): string | null {
                   html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
   if (ogMatch) {
     const title = decodeHtmlEntities(ogMatch[1].trim());
-    if (!isErrorTitle(title)) return title;
+    if (!isErrorTitle(title) && isEnglishContent(title)) return title;
   }
 
   // Try twitter:title
@@ -159,7 +186,7 @@ function extractPageTitle(html: string): string | null {
                        html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:title["']/i);
   if (twitterMatch) {
     const title = decodeHtmlEntities(twitterMatch[1].trim());
-    if (!isErrorTitle(title)) return title;
+    if (!isErrorTitle(title) && isEnglishContent(title)) return title;
   }
 
   return null;
@@ -257,8 +284,9 @@ async function processGroundingChunks(
       // Decode any HTML entities in the title
       articleTitle = decodeHtmlEntities(articleTitle);
       
-      // Skip if title is an error page
+      // Skip if title is an error page or not English
       if (isErrorTitle(articleTitle)) return null;
+      if (!isEnglishContent(articleTitle)) return null;
 
       return {
         uri: resolved.url,
