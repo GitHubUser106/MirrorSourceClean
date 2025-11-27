@@ -5,8 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 import UrlInputForm from "@/components/UrlInputForm";
 import ResultsDisplay from "@/components/ResultsDisplay";
-import LoadingSpinner from "@/components/LoadingSpinner";
+import AffiliateAd from "@/components/AffiliateAd";
+import { SummarySkeleton, SourcesSkeleton } from "@/components/LoadingSkeletons";
 import type { GroundingSource } from "@/types";
+import { Copy, Check } from "lucide-react";
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
 
@@ -16,6 +18,7 @@ export default function HomePage() {
   const [summary, setSummary] = useState<string | null>(null);
   const [results, setResults] = useState<GroundingSource[]>([]);
   const [usage, setUsage] = useState<Usage | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const [currentUrl, setCurrentUrl] = useState("");
   const [lastSubmittedUrl, setLastSubmittedUrl] = useState("");
@@ -84,12 +87,23 @@ export default function HomePage() {
     handleSearch();
   }
 
+  async function handleCopySummary() {
+    if (!summary) return;
+    try {
+      await navigator.clipboard.writeText(summary);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  }
+
   const hasContent = summary || results.length > 0;
   const isActive = loading || hasContent;
   const isNewInput = currentUrl !== lastSubmittedUrl;
 
-  // FINAL BUTTON LABEL LOGIC
-  let buttonLabel = "Find Alternatives"; // Default state
+  // Button label logic
+  let buttonLabel = "Find Alternatives";
   if (loading) {
     buttonLabel = "Searching...";
   } else if (error && !isNewInput) {
@@ -169,17 +183,36 @@ export default function HomePage() {
           <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* LEFT COLUMN: Summary */}
-            <div className="flex flex-col h-full">
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 h-full">
-                <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-                  Summary
-                </h2>
+            <div className="flex flex-col">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+                {/* Header with Copy Button */}
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-slate-900">
+                    Summary
+                  </h2>
+                  {summary && !loading && (
+                    <button
+                      onClick={handleCopySummary}
+                      className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 transition-colors px-2 py-1 rounded hover:bg-slate-100"
+                      title="Copy summary"
+                    >
+                      {copied ? (
+                        <>
+                          <Check size={16} className="text-green-600" />
+                          <span className="text-green-600">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={16} />
+                          <span className="hidden sm:inline">Copy</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
                 
                 {loading ? (
-                  <div className="flex flex-col items-center justify-center h-64 text-slate-400 animate-pulse gap-3">
-                    <LoadingSpinner size={32} />
-                    <p>Generating summary...</p>
-                  </div>
+                  <SummarySkeleton />
                 ) : (
                   <div className="prose prose-slate leading-relaxed text-slate-700">
                     {summary ? (
@@ -189,25 +222,31 @@ export default function HomePage() {
                     )}
                   </div>
                 )}
+
+                {/* Affiliate Ad - Below Summary */}
+                {!loading && summary && (
+                  <AffiliateAd className="mt-6" />
+                )}
               </div>
             </div>
 
             {/* RIGHT COLUMN: Alternative Sources */}
-            <div className="flex flex-col h-full">
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 h-full flex flex-col">
-                <h2 className="text-xl font-bold text-slate-900 mb-4">
+            <div className="flex flex-col">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 flex flex-col">
+                <h2 className="text-xl font-bold text-slate-900 mb-2">
                   Alternative Sources
                 </h2>
 
                 {loading ? (
-                  <div className="flex flex-col items-center justify-center h-64 text-slate-400 animate-pulse gap-3">
-                    <LoadingSpinner size={32} />
-                    <p>Searching for sources...</p>
-                  </div>
+                  <SourcesSkeleton />
                 ) : (
                   <>
                     {results.length > 0 ? (
-                      <ResultsDisplay results={results} onRetry={handleRetry} />
+                      <ResultsDisplay 
+                        results={results} 
+                        onRetry={handleRetry}
+                        isLoading={loading}
+                      />
                     ) : (
                       <div className="mt-8 text-center text-slate-500">
                         <p>No sources found.</p>

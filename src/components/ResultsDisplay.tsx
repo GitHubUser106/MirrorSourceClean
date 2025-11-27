@@ -10,6 +10,7 @@ interface SourceResult {
 interface ResultsDisplayProps {
   results: SourceResult[] | null;
   onRetry?: () => void;
+  isLoading?: boolean;
 }
 
 // --- Get Favicon URL using the source domain ---
@@ -39,21 +40,19 @@ function getSourceDomain(result: SourceResult): string {
 
 // --- Format the headline/title for display ---
 function getHeadline(result: SourceResult): string {
-  // If title looks like a domain (e.g., "theguardian.com"), don't use it as headline
   if (result.title && !result.title.match(/^[a-z0-9.-]+\.[a-z]{2,}$/i)) {
     return result.title;
   }
-  // Fallback to domain-based text
   return `Read article on ${result.sourceDomain || 'source'}`;
 }
 
-export default function ResultsDisplay({ results, onRetry }: ResultsDisplayProps) {
+export default function ResultsDisplay({ results, onRetry, isLoading }: ResultsDisplayProps) {
   if (!results || results.length === 0) {
     return null;
   }
 
   return (
-    <div className="mt-6 space-y-3">
+    <div className="mt-4 space-y-3">
       {results.map((item, index) => {
         const sourceDomain = getSourceDomain(item);
         const displayName = getDisplayName(item);
@@ -63,37 +62,37 @@ export default function ResultsDisplay({ results, onRetry }: ResultsDisplayProps
         return (
           <article
             key={index}
-            className="group relative bg-white rounded-lg border border-slate-200 p-4 transition-all hover:bg-slate-50 hover:shadow-sm"
+            className="group relative bg-white rounded-lg border border-slate-200 p-4 md:p-5 transition-all hover:bg-slate-50 hover:shadow-sm"
           >
             <a
               href={item.uri}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex flex-col gap-1.5"
+              className="flex flex-col gap-2"
             >
-              {/* TOP ROW: Favicon + Source Name */}
-              <div className="flex items-center gap-2">
+              {/* TOP ROW: Favicon + Source Name - BIGGER for mobile */}
+              <div className="flex items-center gap-2.5">
                 <img 
                   src={favicon} 
                   alt="" 
-                  className="w-4 h-4 object-contain"
+                  className="w-5 h-5 md:w-6 md:h-6 object-contain flex-shrink-0"
                   onError={(e) => { 
                     (e.target as HTMLImageElement).style.display = 'none'; 
                   }} 
                 />
-                <span className="text-xs font-bold uppercase tracking-wide text-blue-600">
+                <span className="text-sm font-bold uppercase tracking-wide text-blue-600">
                   {displayName}
                 </span>
               </div>
 
-              {/* Headline */}
-              <h3 className="text-base font-medium text-slate-800 leading-snug group-hover:text-blue-700 transition-colors line-clamp-2">
+              {/* Headline - larger text for readability */}
+              <h3 className="text-base md:text-lg font-medium text-slate-800 leading-snug group-hover:text-blue-700 transition-colors line-clamp-2">
                 {headline}
               </h3>
               
-              {/* External Link Icon (appears on hover) */}
+              {/* External Link Icon */}
               <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400">
-                <ExternalLink size={16} />
+                <ExternalLink size={18} />
               </div>
             </a>
           </article>
@@ -101,16 +100,17 @@ export default function ResultsDisplay({ results, onRetry }: ResultsDisplayProps
       })}
 
       {/* Retry Section */}
-      <div className="pt-4 border-t border-slate-200 mt-4">
+      <div className="pt-4 border-t border-slate-100 mt-6">
         <p className="text-sm text-slate-500 text-center mb-3">
           Results may vary. Look for others to try again.
         </p>
         {onRetry && (
           <button
             onClick={onRetry}
-            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-full transition-colors"
+            disabled={isLoading}
+            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-3 px-6 rounded-full transition-colors"
           >
-            <RefreshCw size={18} />
+            <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
             Look for other sources
           </button>
         )}
