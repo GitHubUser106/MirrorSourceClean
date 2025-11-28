@@ -1,7 +1,7 @@
 {
   "name": "MirrorSource",
   "short_name": "MirrorSource",
-  "description": "See the whole story. Find free, public coverage of any news article.",
+  "description": "Find free, public coverage of any news article. Get a neutral summary and alternative sources.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",
@@ -20,5 +20,14 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "GET",
+    "params": {
+      "url": "url",
+      "text": "text",
+      "title": "title"
+    }
+  }
 }
