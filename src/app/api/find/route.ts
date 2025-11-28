@@ -8,6 +8,18 @@ export const maxDuration = 30; // Allow up to 30 seconds
 const apiKey = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenAI({ apiKey: apiKey || "" });
 
+// CORS headers for extension support
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+// Handle OPTIONS preflight request
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
 // --- Source type classification ---
 type SourceType = 'wire' | 'national' | 'international' | 'local' | 'public' | 'magazine' | 'reference';
 
@@ -275,13 +287,13 @@ export async function POST(req: NextRequest) {
     if (!limitCheck.success) {
       return NextResponse.json(
         { error: `Daily limit reached. You have 0/${limitCheck.info.limit} remaining.` },
-        { status: 429 }
+        { status: 429, headers: corsHeaders }
       );
     }
 
     const { url } = await req.json();
     if (!url || typeof url !== "string") {
-      return NextResponse.json({ error: "Missing or invalid 'url'" }, { status: 400 });
+      return NextResponse.json({ error: "Missing or invalid 'url'" }, { status: 400, headers: corsHeaders });
     }
 
     // 2. Increment Usage
@@ -341,11 +353,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       summary,
       alternatives,
-    });
+    }, { headers: corsHeaders });
 
   } catch (error) {
     console.error("Error in /api/find route:", error);
     const message = error instanceof Error ? error.message : "An unknown error occurred";
-    return NextResponse.json({ error: `Analysis failed: ${message}` }, { status: 500 });
+    return NextResponse.json({ error: `Analysis failed: ${message}` }, { status: 500, headers: corsHeaders });
   }
 }
