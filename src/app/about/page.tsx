@@ -33,7 +33,7 @@ export default function AboutPage() {
             See the whole story.
           </h1>
           <p className="text-xl text-slate-600 leading-relaxed max-w-2xl mx-auto">
-            MirrorSource is a free tool that helps you find multiple perspectives on any news story. Paste a link, get a neutral summary, and discover free coverage from sources around the world.
+            MirrorSource is a free tool that helps you find multiple perspectives on any news story. Paste a link, get a summary, and discover free coverage from sources around the world.
           </p>
         </div>
       </section>
@@ -52,7 +52,7 @@ export default function AboutPage() {
               </div>
               <h3 className="text-lg font-semibold text-slate-900 mb-2">1. Paste a Link</h3>
               <p className="text-slate-600">
-                Drop in any news article URL—paywalled or not. We don't access the original article.
+                Drop in any news article URL. We search the open web to find related coverage.
               </p>
             </div>
 
@@ -62,7 +62,7 @@ export default function AboutPage() {
               </div>
               <h3 className="text-lg font-semibold text-slate-900 mb-2">2. Get a Summary</h3>
               <p className="text-slate-600">
-                Our AI searches the open web and generates a neutral summary from publicly available sources.
+                We generate a neutral summary of the story based on publicly available sources.
               </p>
             </div>
 
@@ -96,7 +96,7 @@ export default function AboutPage() {
               <div>
                 <h3 className="text-lg font-semibold text-slate-900 mb-2">Respects Copyright</h3>
                 <p className="text-slate-600">
-                  We never scrape, store, or republish copyrighted content. Our summaries are AI-generated from public information, and we link directly to original sources.
+                  We never scrape, store, or republish copyrighted content. Our summaries are generated from public information, and we link directly to original sources.
                 </p>
               </div>
             </div>
@@ -110,7 +110,7 @@ export default function AboutPage() {
               <div>
                 <h3 className="text-lg font-semibold text-slate-900 mb-2">Neutral by Design</h3>
                 <p className="text-slate-600">
-                  Our AI is instructed to provide balanced, factual summaries. We help you understand what happened, not what to think about it.
+                  Our summaries are designed to be balanced and factual. We help you understand what happened, not what to think about it.
                 </p>
               </div>
             </div>
