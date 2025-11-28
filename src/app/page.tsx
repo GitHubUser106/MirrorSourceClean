@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import UrlInputForm from "@/components/UrlInputForm";
@@ -12,7 +13,8 @@ import { Copy, Check, RefreshCw, Share2 } from "lucide-react";
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
 
-export default function HomePage() {
+function HomeContent() {
+  const searchParams = useSearchParams();
   const [loading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
@@ -20,6 +22,7 @@ export default function HomePage() {
   const [usage, setUsage] = useState<Usage | null>(null);
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
+  const [hasAutoSearched, setHasAutoSearched] = useState(false);
 
   const [currentUrl, setCurrentUrl] = useState("");
   const [lastSubmittedUrl, setLastSubmittedUrl] = useState("");
@@ -36,14 +39,10 @@ export default function HomePage() {
     }
   }
 
-  useEffect(() => {
-    refreshUsage();
-  }, []);
+  async function handleSearchWithUrl(url: string) {
+    if (!url.trim()) return;
 
-  async function handleSearch() {
-    if (!currentUrl.trim()) return;
-
-    setLastSubmittedUrl(currentUrl); 
+    setLastSubmittedUrl(url);
     
     try {
       setIsLoading(true);
@@ -54,7 +53,7 @@ export default function HomePage() {
       const res = await fetch("/api/find", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: currentUrl }),
+        body: JSON.stringify({ url }),
       });
 
       if (!res.ok) {
@@ -62,7 +61,7 @@ export default function HomePage() {
           const data = await res.json().catch(() => ({}));
           const msg = data?.error || "You've reached today's limit.";
           setError(msg);
-          await refreshUsage(); 
+          await refreshUsage();
           return;
         }
         throw new Error("Unable to process search. Please check the URL and try again.");
@@ -77,6 +76,25 @@ export default function HomePage() {
       setIsLoading(false);
       refreshUsage();
     }
+  }
+
+  // Check for URL parameter from extension
+  useEffect(() => {
+    refreshUsage();
+    
+    const urlParam = searchParams.get('url');
+    if (urlParam && !hasAutoSearched) {
+      setCurrentUrl(urlParam);
+      setHasAutoSearched(true);
+      // Small delay to ensure state is set
+      setTimeout(() => {
+        handleSearchWithUrl(urlParam);
+      }, 100);
+    }
+  }, [searchParams, hasAutoSearched]);
+
+  async function handleSearch() {
+    handleSearchWithUrl(currentUrl);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -106,13 +124,11 @@ export default function HomePage() {
       if (navigator.share && navigator.canShare(shareData)) {
         await navigator.share(shareData);
       } else {
-        // Fallback: copy link to clipboard
         await navigator.clipboard.writeText(window.location.origin);
         setShared(true);
         setTimeout(() => setShared(false), 2000);
       }
     } catch (err) {
-      // User cancelled or error - silently fail
       console.error('Share failed:', err);
     }
   }
@@ -120,7 +136,6 @@ export default function HomePage() {
   const hasContent = summary || results.length > 0;
   const isActive = loading || hasContent;
 
-  // Single button label - cleaner UX
   let buttonLabel = "Look for other sources";
   if (loading) {
     buttonLabel = "Searching...";
@@ -322,5 +337,17 @@ export default function HomePage() {
       </footer>
 
     </main>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }
