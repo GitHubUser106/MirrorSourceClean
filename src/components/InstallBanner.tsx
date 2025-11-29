@@ -11,8 +11,10 @@ export default function InstallBanner() {
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
 
   useEffect(() => {
+    
     // Check for reset parameter in URL
-    const urlParams = new URLSearchParams(window.location.search);
+   useEffect(() => {
+    console.log('InstallBanner loaded, URL:', window.location.search);
     if (urlParams.get('reset') === 'true') {
       localStorage.removeItem('pwa-tutorial-seen');
       localStorage.removeItem('install-banner-dismissed');
