@@ -11,6 +11,23 @@ export default function InstallBanner() {
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
 
   useEffect(() => {
+    // Check for reset parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('reset') === 'true') {
+      localStorage.removeItem('pwa-tutorial-seen');
+      localStorage.removeItem('install-banner-dismissed');
+      localStorage.removeItem('pwa-installed');
+      window.history.replaceState({}, '', '/');
+    }
+    
+    // Check for tutorial parameter in URL
+    if (urlParams.get('tutorial') === 'true') {
+      localStorage.removeItem('pwa-tutorial-seen');
+      setShowTutorial(true);
+      window.history.replaceState({}, '', '/');
+      return;
+    }
+
     // Check if already installed (standalone mode)
     const standalone = window.matchMedia('(display-mode: standalone)').matches 
       || (window.navigator as any).standalone === true;
