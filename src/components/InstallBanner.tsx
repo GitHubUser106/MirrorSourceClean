@@ -11,10 +11,9 @@ export default function InstallBanner() {
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
 
   useEffect(() => {
-    
     // Check for reset parameter in URL
-   useEffect(() => {
-    console.log('InstallBanner loaded, URL:', window.location.search);
+    const urlParams = new URLSearchParams(window.location.search);
+    
     if (urlParams.get('reset') === 'true') {
       localStorage.removeItem('pwa-tutorial-seen');
       localStorage.removeItem('install-banner-dismissed');
@@ -57,7 +56,7 @@ export default function InstallBanner() {
     const mobile = /android|iphone|ipad|ipod|mobile/.test(userAgent);
     setIsIOS(ios);
 
-    // Only show on mobile
+    // Only show banner on mobile
     if (!mobile) return;
 
     // Listen for beforeinstallprompt (Android/Chrome)
@@ -89,7 +88,6 @@ export default function InstallBanner() {
 
   const handleInstall = async () => {
     if (deferredPrompt) {
-      // Android with prompt available
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       setDeferredPrompt(null);
@@ -97,10 +95,8 @@ export default function InstallBanner() {
         setShowBanner(false);
       }
     } else if (isIOS) {
-      // iOS - show instructions
       setShowIOSInstructions(true);
     } else {
-      // Android without prompt - show instructions
       setShowIOSInstructions(true);
     }
   };
