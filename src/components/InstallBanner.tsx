@@ -5,6 +5,7 @@ import { X, Download } from "lucide-react";
 
 export default function InstallBanner() {
   const [showBanner, setShowBanner] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isIOS, setIsIOS] = useState(false);
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
@@ -14,7 +15,14 @@ export default function InstallBanner() {
     const standalone = window.matchMedia('(display-mode: standalone)').matches 
       || (window.navigator as any).standalone === true;
     
-    if (standalone) return;
+    // If standalone, check if we should show tutorial
+    if (standalone) {
+      const tutorialSeen = localStorage.getItem('pwa-tutorial-seen');
+      if (!tutorialSeen) {
+        setShowTutorial(true);
+      }
+      return;
+    }
 
     // Check if dismissed recently
     const dismissed = localStorage.getItem('install-banner-dismissed');
@@ -47,9 +55,12 @@ export default function InstallBanner() {
       setShowBanner(true);
     }, 2000);
 
-    // Hide on install
+    // Hide on install and show tutorial
     window.addEventListener('appinstalled', () => {
       setShowBanner(false);
+      setShowIOSInstructions(false);
+      localStorage.setItem('pwa-installed', 'true');
+      setTimeout(() => setShowTutorial(true), 500);
     });
 
     return () => {
@@ -81,7 +92,67 @@ export default function InstallBanner() {
     localStorage.setItem('install-banner-dismissed', new Date().toISOString());
   };
 
-  if (!showBanner) return null;
+  const handleTutorialDismiss = () => {
+    setShowTutorial(false);
+    localStorage.setItem('pwa-tutorial-seen', 'true');
+  };
+
+  if (!showBanner && !showTutorial && !showIOSInstructions) return null;
+
+  // Tutorial after install
+  if (showTutorial) {
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl w-full max-w-md p-6 relative">
+          <button 
+            onClick={handleTutorialDismiss}
+            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
+          >
+            <X size={24} />
+          </button>
+          
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">🎉</span>
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">You&apos;re all set!</h3>
+            <p className="text-slate-600 text-sm">Here&apos;s how to analyze any article</p>
+          </div>
+
+          <div className="bg-slate-50 rounded-xl p-4 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">1</div>
+              <div>
+                <p className="text-sm font-medium text-slate-800">Read any news article</p>
+                <p className="text-xs text-slate-500">In Chrome, Safari, or any browser</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">2</div>
+              <div>
+                <p className="text-sm font-medium text-slate-800">Tap Share</p>
+                <p className="text-xs text-slate-500">Look for the share button in your browser</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">3</div>
+              <div>
+                <p className="text-sm font-medium text-slate-800">Select MirrorSource</p>
+                <p className="text-xs text-slate-500">We&apos;ll find alternative sources instantly</p>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleTutorialDismiss}
+            className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-full transition-colors"
+          >
+            Got it!
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // iOS/Android instructions modal
   if (showIOSInstructions) {
