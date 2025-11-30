@@ -173,7 +173,6 @@ function HomeContent() {
 
 
 
-
         {/* Headline */}
         <div className="text-center max-w-2xl space-y-4 mb-8">
           <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight md:whitespace-nowrap">
