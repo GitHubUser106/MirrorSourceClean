@@ -159,16 +159,18 @@ function HomeContent() {
         
         {/* Logo */}
       <Link href="/" className="mb-6 hover:opacity-90 transition-opacity">
-  <Image
+{/* Logo */}
 <Link href="/" className="mb-6 hover:opacity-90 transition-opacity">
   <Image
     src="/logo.png"
     alt="MirrorSource Logo"
-    width={400}
-    height={100}
+    width={300}
+    height={80}
     priority
+    className="h-auto w-auto"
   />
 </Link>
+
 
 
 
