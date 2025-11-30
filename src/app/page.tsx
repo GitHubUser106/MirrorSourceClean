@@ -162,8 +162,8 @@ function HomeContent() {
           <Image
             src="/logo.png"
             alt="MirrorSource Logo"
-            width={300} 
-            height={80}
+            width={360} 
+            height={90}
             priority
             className="h-auto w-auto"
           />
@@ -339,6 +339,7 @@ function HomeContent() {
     </main>
   );
 }
+
 
 export default function HomePage() {
   return (
