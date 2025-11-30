@@ -158,16 +158,16 @@ function HomeContent() {
       <div className={`transition-all duration-500 ease-in-out flex flex-col items-center px-4 ${isActive ? 'pt-8 pb-6' : 'justify-center min-h-[80vh]'}`}>
         
         {/* Logo */}
-        <Link href="/" className="mb-6 hover:opacity-90 transition-opacity">
-          <Image
-            src="/logo.png"
-            alt="MirrorSource Logo"
-            width={360} 
-            height={90}
-            priority
-            className="h-auto w-auto"
-          />
-        </Link>
+      <Link href="/" className="mb-6 hover:opacity-90 transition-opacity">
+  <Image
+    src="/logo.png"
+    alt="MirrorSource Logo"
+    width={400}
+    height={100}
+    priority
+  />
+</Link>
+
 
         {/* Headline */}
         <div className="text-center max-w-2xl space-y-4 mb-8">
