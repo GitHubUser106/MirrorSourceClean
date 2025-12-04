@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
-import { checkRateLimit, incrementUsage } from "../../../lib/rate-limiter";
+import { checkRateLimit, incrementUsage, COOKIE_OPTIONS } from "../../../lib/rate-limiter";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 30; // Allow up to 30 seconds
+export const maxDuration = 30;
 
 const apiKey = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenAI({ apiKey: apiKey || "" });
@@ -168,14 +168,13 @@ function extractPageTitle(html: string): string | null {
 
 // --- Resolve Vertex redirect with SAFE error handling ---
 async function resolveVertexRedirect(redirectUrl: string): Promise<{ url: string; title: string | null } | null> {
-  // Skip non-vertex URLs
   if (!redirectUrl.includes('vertexaisearch.cloud.google.com')) {
     return { url: redirectUrl, title: null };
   }
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // Reduced to 5 seconds
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     const response = await fetch(redirectUrl, {
       method: 'GET',
@@ -191,14 +190,12 @@ async function resolveVertexRedirect(redirectUrl: string): Promise<{ url: string
 
     let finalUrl = response.url;
     
-    // If we got redirected away from vertex, that's our URL
     if (!finalUrl.includes('vertexaisearch.cloud.google.com')) {
       const html = await response.text();
       const pageTitle = extractPageTitle(html);
       return { url: finalUrl, title: pageTitle };
     }
     
-    // Still on vertex - try to extract URL from HTML
     const html = await response.text();
     
     const urlMatch = html.match(/https?:\/\/(?:www\.)?[a-z0-9-]+\.[a-z]{2,}\/[^\s"'<>]+/gi);
@@ -215,7 +212,6 @@ async function resolveVertexRedirect(redirectUrl: string): Promise<{ url: string
     
     return null;
   } catch (error) {
-    // Silently fail - don't crash the whole request
     console.log('Redirect resolution skipped:', redirectUrl.substring(0, 50));
     return null;
   }
@@ -229,7 +225,6 @@ async function processGroundingChunks(
   const results: Array<{ uri: string; title: string; displayName: string; sourceDomain: string; sourceType: SourceType }> = [];
   const seen = new Set<string>(existingDomains);
 
-  // Process chunks with a timeout wrapper for safety
   const processChunk = async (chunk: any) => {
     try {
       const web = chunk?.web;
@@ -264,8 +259,7 @@ async function processGroundingChunks(
     }
   };
 
-  // Process all chunks with Promise.allSettled to prevent any single failure from crashing
-  const resolvePromises = chunks.slice(0, 10).map(processChunk); // Limit to 10 chunks
+  const resolvePromises = chunks.slice(0, 10).map(processChunk);
   const settled = await Promise.allSettled(resolvePromises);
 
   for (const result of settled) {
@@ -282,16 +276,29 @@ async function processGroundingChunks(
 }
 
 // --- Configuration ---
-const MIN_SOURCES_THRESHOLD = 3; // Minimum sources before auto-retry
-const MAX_RETRIES = 1; // Only retry once to stay within time budget
+const MIN_SOURCES_THRESHOLD = 3;
+
+// --- URL Validation ---
+function validateUrl(url: string): { valid: boolean; error?: string } {
+  if (!url || typeof url !== "string" || url.trim().length === 0) {
+    return { valid: false, error: "URL is required" };
+  }
+  try {
+    const parsed = new URL(url.trim());
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return { valid: false, error: "URL must start with http:// or https://" };
+    }
+    return { valid: true };
+  } catch {
+    return { valid: false, error: "Invalid URL format" };
+  }
+}
 
 // --- Core Gemini call function ---
 async function callGemini(url: string, isRetry: boolean = false): Promise<{
   summary: string;
   alternatives: any[];
-  groundingChunks: any[];
 }> {
-  // Vary the prompt slightly on retry to get different search results
   const prompt = isRetry
     ? `
 **ROLE:** You are MirrorSource, a news research assistant.
@@ -321,7 +328,6 @@ async function callGemini(url: string, isRetry: boolean = false): Promise<{
 
   const config: any = { tools: [{ googleSearch: {} }] };
 
-  // Call Gemini with the faster Flash model
   const geminiResponse: any = await genAI.models.generateContent({
     model: "gemini-2.5-flash",
     contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -355,12 +361,12 @@ async function callGemini(url: string, isRetry: boolean = false): Promise<{
     console.error("Error processing grounding chunks:", e);
   }
 
-  return { summary, alternatives, groundingChunks };
+  return { summary, alternatives };
 }
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Rate Limit
+    // 1. Rate Limit Check
     const limitCheck = await checkRateLimit(req);
     if (!limitCheck.success) {
       return NextResponse.json(
@@ -369,53 +375,89 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { url } = await req.json();
-    if (!url || typeof url !== "string") {
-      return NextResponse.json({ error: "Missing or invalid 'url'" }, { status: 400, headers: corsHeaders });
+    // 2. Parse and Validate URL
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid request body" },
+        { status: 400, headers: corsHeaders }
+      );
     }
 
-    // 2. Increment Usage
-    await incrementUsage(req);
+    const validation = validateUrl(body.url);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.error },
+        { status: 400, headers: corsHeaders }
+      );
+    }
 
-    // 3. First Gemini call
+    const url = body.url.trim();
+
+    // 3. Increment Usage
+    const { info: usageInfo, cookieValue } = await incrementUsage(req);
+
+    // 4. First Gemini call
     let result = await callGemini(url, false);
     
-    // 4. Auto-retry if too few sources (and we have time budget)
+    // 5. Auto-retry if too few sources
     if (result.alternatives.length < MIN_SOURCES_THRESHOLD) {
       console.log(`Only ${result.alternatives.length} sources found, retrying...`);
       
       try {
         const retryResult = await callGemini(url, true);
         
-        // Merge results: keep original summary, combine unique sources
         const existingDomains = new Set(result.alternatives.map(a => a.sourceDomain));
         const newAlternatives = retryResult.alternatives.filter(
           a => !existingDomains.has(a.sourceDomain)
         );
         
-        // Combine alternatives from both calls
         result.alternatives = [...result.alternatives, ...newAlternatives];
         
-        // Use retry summary if original was unavailable
         if (result.summary === "Summary not available." && retryResult.summary !== "Summary not available.") {
           result.summary = retryResult.summary;
         }
         
         console.log(`After retry: ${result.alternatives.length} total sources`);
       } catch (retryError) {
-        // If retry fails, just use original results
         console.error("Retry failed, using original results:", retryError);
       }
     }
 
-    return NextResponse.json({
+    // 6. Build response with cookie
+    const response = NextResponse.json({
       summary: result.summary,
       alternatives: result.alternatives,
+      usage: usageInfo,
     }, { headers: corsHeaders });
 
-  } catch (error) {
+    response.cookies.set(COOKIE_OPTIONS.name, cookieValue, COOKIE_OPTIONS);
+
+    return response;
+
+  } catch (error: any) {
     console.error("Error in /api/find route:", error);
-    const message = error instanceof Error ? error.message : "An unknown error occurred";
-    return NextResponse.json({ error: `Analysis failed: ${message}` }, { status: 500, headers: corsHeaders });
+    
+    // User-friendly error messages
+    let userMessage = "Something went wrong. Please try again.";
+    let statusCode = 500;
+    
+    if (error.message?.includes("fetch") || error.message?.includes("ENOTFOUND")) {
+      userMessage = "Unable to connect. Please check your internet connection.";
+      statusCode = 503;
+    } else if (error.message?.includes("timeout") || error.name === "AbortError") {
+      userMessage = "The request took too long. Please try again.";
+      statusCode = 504;
+    } else if (error.message?.includes("quota") || error.status === 429) {
+      userMessage = "Service temporarily unavailable. Please try again later.";
+      statusCode = 503;
+    }
+    
+    return NextResponse.json(
+      { error: userMessage },
+      { status: statusCode, headers: corsHeaders }
+    );
   }
 }
