@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import UrlInputForm from "@/components/UrlInputForm";
-import ResultsDisplay from "@/components/ResultsDisplay"; 
+import ResultsDisplay from "@/components/ResultsDisplay";
 import { SummarySkeleton, SourcesSkeleton } from "@/components/LoadingSkeletons";
 import type { GroundingSource } from "@/types";
 import { Copy, Check, RefreshCw, Share2 } from "lucide-react";
@@ -156,7 +156,7 @@ function HomeContent() {
       {/* Hero section */}
       <div className={`transition-all duration-500 ease-in-out flex flex-col items-center px-4 ${isActive ? 'pt-8 pb-6' : 'justify-center min-h-[80vh]'}`}>
         
-{/* Logo */}
+        {/* Logo */}
         <Link href="/" className="mb-6 hover:opacity-90 transition-opacity">
           <Image
             src="/logo.png"
@@ -167,7 +167,6 @@ function HomeContent() {
             className="w-40 sm:w-56 md:w-72 lg:w-96 h-auto"
           />
         </Link>
-
 
         {/* Headline */}
         <div className="text-center max-w-2xl space-y-4 mb-8">
@@ -264,13 +263,6 @@ function HomeContent() {
                   ) : (
                     <p className="text-slate-400 italic">No summary available.</p>
                   )}
-                </div>
-              )}
-
-              {/* How it works - shown after summary loads */}
-              {!loading && summary && (
-                <div className="mt-6">
-                  <HowItWorks />
                 </div>
               )}
             </div>
