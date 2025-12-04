@@ -223,10 +223,11 @@ async function resolveVertexRedirect(redirectUrl: string): Promise<{ url: string
 
 // --- Process grounding chunks ---
 async function processGroundingChunks(
-  chunks: any[]
+  chunks: any[],
+  existingDomains: Set<string> = new Set()
 ): Promise<Array<{ uri: string; title: string; displayName: string; sourceDomain: string; sourceType: SourceType }>> {
   const results: Array<{ uri: string; title: string; displayName: string; sourceDomain: string; sourceType: SourceType }> = [];
-  const seen = new Set<string>();
+  const seen = new Set<string>(existingDomains);
 
   // Process chunks with a timeout wrapper for safety
   const processChunk = async (chunk: any) => {
@@ -280,6 +281,83 @@ async function processGroundingChunks(
   return results;
 }
 
+// --- Configuration ---
+const MIN_SOURCES_THRESHOLD = 3; // Minimum sources before auto-retry
+const MAX_RETRIES = 1; // Only retry once to stay within time budget
+
+// --- Core Gemini call function ---
+async function callGemini(url: string, isRetry: boolean = false): Promise<{
+  summary: string;
+  alternatives: any[];
+  groundingChunks: any[];
+}> {
+  // Vary the prompt slightly on retry to get different search results
+  const prompt = isRetry
+    ? `
+**ROLE:** You are MirrorSource, a news research assistant.
+
+**TASK:**
+1. Search broadly for different news outlets covering the story at this URL: "${url}"
+2. Find coverage from wire services (AP, Reuters), international outlets (BBC, Guardian, Al Jazeera), and major national sources.
+3. Write a neutral, 2-3 sentence summary of the news event.
+
+**OUTPUT FORMAT (JSON only):**
+{
+  "summary": "Your neutral summary of the news event."
+}
+    `.trim()
+    : `
+**ROLE:** You are MirrorSource, a news research assistant.
+
+**TASK:**
+1. Search for news coverage of the story at this URL: "${url}"
+2. Write a neutral, 2-3 sentence summary of the news event.
+
+**OUTPUT FORMAT (JSON only):**
+{
+  "summary": "Your neutral summary of the news event."
+}
+    `.trim();
+
+  const config: any = { tools: [{ googleSearch: {} }] };
+
+  // Call Gemini with the faster Flash model
+  const geminiResponse: any = await genAI.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    config,
+  });
+
+  // Extract Text
+  let text: string | undefined;
+  if (geminiResponse?.response && typeof geminiResponse.response.text === "function") {
+    text = geminiResponse.response.text();
+  } else if (Array.isArray(geminiResponse?.candidates)) {
+    text = geminiResponse.candidates[0]?.content?.parts?.[0]?.text;
+  }
+
+  if (!text) throw new Error("Model response did not contain text.");
+
+  // Parse JSON
+  const parsedData = extractJson(text) || {};
+  const summary = parsedData.summary || "Summary not available.";
+
+  // Get grounding chunks
+  const candidates = geminiResponse?.response?.candidates ?? geminiResponse?.candidates ?? [];
+  const groundingMetadata = candidates[0]?.groundingMetadata;
+  const groundingChunks = groundingMetadata?.groundingChunks ?? [];
+
+  // Process alternatives
+  let alternatives: any[] = [];
+  try {
+    alternatives = await processGroundingChunks(groundingChunks);
+  } catch (e) {
+    console.error("Error processing grounding chunks:", e);
+  }
+
+  return { summary, alternatives, groundingChunks };
+}
+
 export async function POST(req: NextRequest) {
   try {
     // 1. Rate Limit
@@ -299,60 +377,40 @@ export async function POST(req: NextRequest) {
     // 2. Increment Usage
     await incrementUsage(req);
 
-    // 3. Prompt
-    const prompt = `
-**ROLE:** You are MirrorSource, a news research assistant.
-
-**TASK:**
-1. Search for news coverage of the story at this URL: "${url}"
-2. Write a neutral, 2-3 sentence summary of the news event.
-
-**OUTPUT FORMAT (JSON only):**
-{
-  "summary": "Your neutral summary of the news event."
-}
-    `.trim();
-
-    const config: any = { tools: [{ googleSearch: {} }] };
-
-    // 4. Call Gemini
-    const geminiResponse: any = await genAI.models.generateContent({
-      model: "gemini-2.5-pro",
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config,
-    });
-
-    // 5. Extract Text
-    let text: string | undefined;
-    if (geminiResponse?.response && typeof geminiResponse.response.text === "function") {
-      text = geminiResponse.response.text();
-    } else if (Array.isArray(geminiResponse?.candidates)) {
-      text = geminiResponse.candidates[0]?.content?.parts?.[0]?.text;
-    }
-
-    if (!text) throw new Error("Model response did not contain text.");
-
-    // 6. Parse JSON
-    const parsedData = extractJson(text) || {};
-    const summary = parsedData.summary || "Summary not available.";
-
-    // 7. Get grounding chunks
-    const candidates = geminiResponse?.response?.candidates ?? geminiResponse?.candidates ?? [];
-    const groundingMetadata = candidates[0]?.groundingMetadata;
-    const groundingChunks = groundingMetadata?.groundingChunks ?? [];
-
-    // 8. Process alternatives (with safe error handling)
-    let alternatives: any[] = [];
-    try {
-      alternatives = await processGroundingChunks(groundingChunks);
-    } catch (e) {
-      console.error("Error processing grounding chunks:", e);
-      // Continue without alternatives
+    // 3. First Gemini call
+    let result = await callGemini(url, false);
+    
+    // 4. Auto-retry if too few sources (and we have time budget)
+    if (result.alternatives.length < MIN_SOURCES_THRESHOLD) {
+      console.log(`Only ${result.alternatives.length} sources found, retrying...`);
+      
+      try {
+        const retryResult = await callGemini(url, true);
+        
+        // Merge results: keep original summary, combine unique sources
+        const existingDomains = new Set(result.alternatives.map(a => a.sourceDomain));
+        const newAlternatives = retryResult.alternatives.filter(
+          a => !existingDomains.has(a.sourceDomain)
+        );
+        
+        // Combine alternatives from both calls
+        result.alternatives = [...result.alternatives, ...newAlternatives];
+        
+        // Use retry summary if original was unavailable
+        if (result.summary === "Summary not available." && retryResult.summary !== "Summary not available.") {
+          result.summary = retryResult.summary;
+        }
+        
+        console.log(`After retry: ${result.alternatives.length} total sources`);
+      } catch (retryError) {
+        // If retry fails, just use original results
+        console.error("Retry failed, using original results:", retryError);
+      }
     }
 
     return NextResponse.json({
-      summary,
-      alternatives,
+      summary: result.summary,
+      alternatives: result.alternatives,
     }, { headers: corsHeaders });
 
   } catch (error) {
