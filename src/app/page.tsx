@@ -12,6 +12,18 @@ import { Copy, Check, RefreshCw, Share2 } from "lucide-react";
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
 
+// Fun facts to show while loading
+const loadingFacts = [
+  "Scanning thousands of news sources...",
+  "Finding alternative perspectives...",
+  "Comparing coverage across outlets...",
+  "Analyzing different viewpoints...",
+  "Discovering free sources for you...",
+  "Checking international coverage...",
+  "Looking for diverse perspectives...",
+  "Searching public news archives...",
+];
+
 function HomeContent() {
   const searchParams = useSearchParams();
   const [loading, setIsLoading] = useState(false);
@@ -22,9 +34,20 @@ function HomeContent() {
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
   const [hasAutoSearched, setHasAutoSearched] = useState(false);
+  const [loadingFactIndex, setLoadingFactIndex] = useState(0);
 
   const [currentUrl, setCurrentUrl] = useState("");
   const [lastSubmittedUrl, setLastSubmittedUrl] = useState("");
+
+  // Rotate loading facts
+  useEffect(() => {
+    if (loading) {
+      const interval = setInterval(() => {
+        setLoadingFactIndex((prev) => (prev + 1) % loadingFacts.length);
+      }, 2500);
+      return () => clearInterval(interval);
+    }
+  }, [loading]);
 
   async function refreshUsage() {
     try {
@@ -42,6 +65,7 @@ function HomeContent() {
     if (!url.trim()) return;
 
     setLastSubmittedUrl(url);
+    setLoadingFactIndex(0);
     
     try {
       setIsLoading(true);
@@ -156,7 +180,7 @@ function HomeContent() {
       {/* Hero section */}
       <div className={`transition-all duration-500 ease-in-out flex flex-col items-center px-4 ${isActive ? 'pt-8 pb-6' : 'justify-center min-h-[80vh]'}`}>
         
-        {/* Logo */}
+        {/* Logo - 20% larger on mobile */}
         <Link href="/" className="mb-6 hover:opacity-90 transition-opacity">
           <Image
             src="/logo.png"
@@ -164,7 +188,7 @@ function HomeContent() {
             width={400}
             height={100}
             priority
-            className="w-40 sm:w-56 md:w-72 lg:w-96 h-auto"
+            className="w-48 sm:w-64 md:w-72 lg:w-96 h-auto"
           />
         </Link>
 
@@ -255,7 +279,19 @@ function HomeContent() {
               </div>
               
               {loading ? (
-                <SummarySkeleton />
+                <div>
+                  {/* Animated loading message */}
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="relative w-8 h-8">
+                      <div className="absolute inset-0 rounded-full border-2 border-blue-200"></div>
+                      <div className="absolute inset-0 rounded-full border-2 border-blue-600 border-t-transparent animate-spin"></div>
+                    </div>
+                    <p className="text-blue-600 font-medium animate-pulse">
+                      {loadingFacts[loadingFactIndex]}
+                    </p>
+                  </div>
+                  <SummarySkeleton />
+                </div>
               ) : (
                 <div className="prose prose-slate leading-relaxed text-slate-700">
                   {summary ? (

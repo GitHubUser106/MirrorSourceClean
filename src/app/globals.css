@@ -1,3 +1,19 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+@keyframes skeleton {
+  0%, 100% {
+    opacity: 1;
+    background-color: rgb(219 234 254); /* blue-100 */
+  }
+  50% {
+    opacity: 0.5;
+    background-color: rgb(191 219 254); /* blue-200 */
+  }
+}
+
+.animate-skeleton {
+  animation: skeleton 1.5s ease-in-out infinite;
+}
