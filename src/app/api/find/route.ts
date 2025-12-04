@@ -20,8 +20,152 @@ export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
+// --- Archive Result Types ---
+interface ArchiveResult {
+  found: boolean;
+  url?: string;
+  source: 'wayback' | 'archive.today';
+  timestamp?: string;
+}
+
+// --- Check Wayback Machine ---
+async function checkWaybackMachine(url: string): Promise<ArchiveResult> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const apiUrl = `https://archive.org/wayback/available?url=${encodeURIComponent(url)}`;
+    const response = await fetch(apiUrl, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'MirrorSource/1.0' },
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) return { found: false, source: 'wayback' };
+    
+    const data = await response.json();
+    const snapshot = data?.archived_snapshots?.closest;
+    
+    if (snapshot?.available && snapshot?.url) {
+      return {
+        found: true,
+        url: snapshot.url,
+        source: 'wayback',
+        timestamp: snapshot.timestamp,
+      };
+    }
+    
+    return { found: false, source: 'wayback' };
+  } catch (error) {
+    console.log('Wayback check failed:', error);
+    return { found: false, source: 'wayback' };
+  }
+}
+
+// --- Check Archive.today ---
+async function checkArchiveToday(url: string): Promise<ArchiveResult> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    // Archive.today returns the most recent snapshot at this URL pattern
+    const checkUrl = `https://archive.today/newest/${encodeURIComponent(url)}`;
+    
+    const response = await fetch(checkUrl, {
+      method: 'HEAD',
+      redirect: 'manual', // Don't follow redirects, we just want to see if it exists
+      signal: controller.signal,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MirrorSource/1.0)' },
+    });
+    
+    clearTimeout(timeoutId);
+    
+    // If we get a redirect (301/302), an archive exists
+    if (response.status === 301 || response.status === 302) {
+      const archiveUrl = response.headers.get('location');
+      if (archiveUrl) {
+        return {
+          found: true,
+          url: archiveUrl,
+          source: 'archive.today',
+        };
+      }
+    }
+    
+    // Also check if we got a 200 (direct hit)
+    if (response.status === 200) {
+      return {
+        found: true,
+        url: checkUrl.replace('/newest/', '/'),
+        source: 'archive.today',
+      };
+    }
+    
+    return { found: false, source: 'archive.today' };
+  } catch (error) {
+    console.log('Archive.today check failed:', error);
+    return { found: false, source: 'archive.today' };
+  }
+}
+
+// --- Check All Archives in Parallel ---
+async function checkArchives(url: string): Promise<ArchiveResult[]> {
+  const results = await Promise.allSettled([
+    checkWaybackMachine(url),
+    checkArchiveToday(url),
+  ]);
+  
+  return results
+    .filter((r): r is PromiseFulfilledResult<ArchiveResult> => r.status === 'fulfilled')
+    .map(r => r.value)
+    .filter(r => r.found);
+}
+
+// --- Syndication Partners Map ---
+// Maps paywalled domains to their known free syndication partners
+const SYNDICATION_PARTNERS: Record<string, string[]> = {
+  'wsj.com': ['finance.yahoo.com', 'msn.com'],
+  'bloomberg.com': ['finance.yahoo.com', 'msn.com', 'washingtonpost.com'],
+  'nytimes.com': ['msn.com'],
+  'washingtonpost.com': ['msn.com'],
+  'ft.com': ['finance.yahoo.com', 'msn.com'],
+  'economist.com': ['msn.com'],
+  'businessinsider.com': ['finance.yahoo.com', 'msn.com'],
+  'theatlantic.com': ['msn.com'],
+  'wired.com': ['msn.com'],
+};
+
+// Known paywalled domains
+const PAYWALLED_DOMAINS = new Set([
+  'wsj.com', 'nytimes.com', 'washingtonpost.com', 'ft.com', 
+  'economist.com', 'bloomberg.com', 'theatlantic.com', 'newyorker.com',
+  'businessinsider.com', 'wired.com', 'latimes.com', 'bostonglobe.com',
+]);
+
+function isPaywalledSource(url: string): boolean {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase().replace('www.', '');
+    return Array.from(PAYWALLED_DOMAINS).some(domain => hostname.includes(domain));
+  } catch {
+    return false;
+  }
+}
+
+function getSyndicationPartners(url: string): string[] {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase().replace('www.', '');
+    for (const [domain, partners] of Object.entries(SYNDICATION_PARTNERS)) {
+      if (hostname.includes(domain)) {
+        return partners;
+      }
+    }
+  } catch {}
+  return [];
+}
+
 // --- Source type classification ---
-type SourceType = 'wire' | 'national' | 'international' | 'local' | 'public' | 'magazine' | 'reference';
+type SourceType = 'wire' | 'national' | 'international' | 'local' | 'public' | 'magazine' | 'reference' | 'syndication' | 'archive';
 
 interface SourceInfo {
   displayName: string;
@@ -32,6 +176,10 @@ function getSourceInfo(domain: string): SourceInfo {
   if (!domain) return { displayName: 'SOURCE', type: 'local' };
   
   const lower = domain.toLowerCase();
+  
+  // Syndication/Aggregator sites (prioritize these for paywall bypass)
+  if (lower.includes('finance.yahoo.com') || lower.includes('news.yahoo.com')) return { displayName: 'YAHOO', type: 'syndication' };
+  if (lower.includes('msn.com')) return { displayName: 'MSN', type: 'syndication' };
   
   // Wire Services
   if (lower.includes('apnews.com')) return { displayName: 'AP NEWS', type: 'wire' };
@@ -72,9 +220,9 @@ function getSourceInfo(domain: string): SourceInfo {
   // Reference
   if (lower.includes('wikipedia.org')) return { displayName: 'WIKIPEDIA', type: 'reference' };
   
-  // Aggregators
-  if (lower.includes('yahoo.com')) return { displayName: 'YAHOO NEWS', type: 'national' };
-  if (lower.includes('msn.com')) return { displayName: 'MSN', type: 'national' };
+  // Archives
+  if (lower.includes('archive.org') || lower.includes('web.archive.org')) return { displayName: 'WAYBACK MACHINE', type: 'archive' };
+  if (lower.includes('archive.today') || lower.includes('archive.is') || lower.includes('archive.ph')) return { displayName: 'ARCHIVE.TODAY', type: 'archive' };
   
   // Default: local news
   const parts = domain.split('.');
@@ -220,9 +368,10 @@ async function resolveVertexRedirect(redirectUrl: string): Promise<{ url: string
 // --- Process grounding chunks ---
 async function processGroundingChunks(
   chunks: any[],
-  existingDomains: Set<string> = new Set()
-): Promise<Array<{ uri: string; title: string; displayName: string; sourceDomain: string; sourceType: SourceType }>> {
-  const results: Array<{ uri: string; title: string; displayName: string; sourceDomain: string; sourceType: SourceType }> = [];
+  existingDomains: Set<string> = new Set(),
+  syndicationPartners: string[] = []
+): Promise<Array<{ uri: string; title: string; displayName: string; sourceDomain: string; sourceType: SourceType; isSyndicated: boolean }>> {
+  const results: Array<{ uri: string; title: string; displayName: string; sourceDomain: string; sourceType: SourceType; isSyndicated: boolean }> = [];
   const seen = new Set<string>(existingDomains);
 
   const processChunk = async (chunk: any) => {
@@ -246,6 +395,9 @@ async function processGroundingChunks(
       if (!isEnglishContent(articleTitle)) return null;
 
       const sourceInfo = getSourceInfo(domain);
+      
+      // Check if this is a syndicated version
+      const isSyndicated = syndicationPartners.some(partner => domain.includes(partner));
 
       return {
         uri: resolved.url,
@@ -253,6 +405,7 @@ async function processGroundingChunks(
         displayName: sourceInfo.displayName,
         sourceDomain: domain,
         sourceType: sourceInfo.type,
+        isSyndicated,
       };
     } catch {
       return null;
@@ -271,6 +424,24 @@ async function processGroundingChunks(
       }
     }
   }
+
+  // Sort: syndicated sources first, then by type priority
+  const typePriority: Record<SourceType, number> = {
+    'syndication': 0,
+    'archive': 1,
+    'wire': 2,
+    'public': 3,
+    'international': 4,
+    'national': 5,
+    'magazine': 6,
+    'local': 7,
+    'reference': 8,
+  };
+
+  results.sort((a, b) => {
+    if (a.isSyndicated !== b.isSyndicated) return a.isSyndicated ? -1 : 1;
+    return typePriority[a.sourceType] - typePriority[b.sourceType];
+  });
 
   return results;
 }
@@ -295,10 +466,15 @@ function validateUrl(url: string): { valid: boolean; error?: string } {
 }
 
 // --- Core Gemini call function ---
-async function callGemini(url: string, isRetry: boolean = false): Promise<{
+async function callGemini(url: string, syndicationPartners: string[], isRetry: boolean = false): Promise<{
   summary: string;
   alternatives: any[];
 }> {
+  // If we have syndication partners, include them in the search hint
+  const syndicationHint = syndicationPartners.length > 0 
+    ? `Also specifically search for this article on: ${syndicationPartners.join(', ')}.`
+    : '';
+
   const prompt = isRetry
     ? `
 **ROLE:** You are MirrorSource, a news research assistant.
@@ -306,7 +482,9 @@ async function callGemini(url: string, isRetry: boolean = false): Promise<{
 **TASK:**
 1. Search broadly for different news outlets covering the story at this URL: "${url}"
 2. Find coverage from wire services (AP, Reuters), international outlets (BBC, Guardian, Al Jazeera), and major national sources.
-3. Write a neutral, 2-3 sentence summary of the news event.
+3. Also search for free versions on Yahoo Finance, Yahoo News, MSN, and other aggregators.
+${syndicationHint}
+4. Write a neutral, 2-3 sentence summary of the news event.
 
 **OUTPUT FORMAT (JSON only):**
 {
@@ -318,6 +496,7 @@ async function callGemini(url: string, isRetry: boolean = false): Promise<{
 
 **TASK:**
 1. Search for news coverage of the story at this URL: "${url}"
+${syndicationHint}
 2. Write a neutral, 2-3 sentence summary of the news event.
 
 **OUTPUT FORMAT (JSON only):**
@@ -356,7 +535,7 @@ async function callGemini(url: string, isRetry: boolean = false): Promise<{
   // Process alternatives
   let alternatives: any[] = [];
   try {
-    alternatives = await processGroundingChunks(groundingChunks);
+    alternatives = await processGroundingChunks(groundingChunks, new Set(), syndicationPartners);
   } catch (e) {
     console.error("Error processing grounding chunks:", e);
   }
@@ -399,15 +578,24 @@ export async function POST(req: NextRequest) {
     // 3. Increment Usage
     const { info: usageInfo, cookieValue } = await incrementUsage(req);
 
-    // 4. First Gemini call
-    let result = await callGemini(url, false);
-    
-    // 5. Auto-retry if too few sources
+    // 4. Check if source is paywalled and get syndication partners
+    const isPaywalled = isPaywalledSource(url);
+    const syndicationPartners = getSyndicationPartners(url);
+
+    // 5. Check archives in parallel with Gemini call
+    const [archiveResults, geminiResult] = await Promise.all([
+      checkArchives(url),
+      callGemini(url, syndicationPartners, false),
+    ]);
+
+    let result = geminiResult;
+
+    // 6. Auto-retry if too few sources
     if (result.alternatives.length < MIN_SOURCES_THRESHOLD) {
       console.log(`Only ${result.alternatives.length} sources found, retrying...`);
       
       try {
-        const retryResult = await callGemini(url, true);
+        const retryResult = await callGemini(url, syndicationPartners, true);
         
         const existingDomains = new Set(result.alternatives.map(a => a.sourceDomain));
         const newAlternatives = retryResult.alternatives.filter(
@@ -426,10 +614,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 6. Build response with cookie
+    // 7. Build response
     const response = NextResponse.json({
       summary: result.summary,
       alternatives: result.alternatives,
+      archives: archiveResults,
+      isPaywalled,
       usage: usageInfo,
     }, { headers: corsHeaders });
 
