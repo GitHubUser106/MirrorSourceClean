@@ -5,9 +5,8 @@ import InstallPromptWrapper from "@/components/InstallPromptWrapper";
 export const metadata: Metadata = {
   title: "MirrorSource | See the Whole Story",
   description: "Paste any news link to get a neutral AI summary and find free, public coverage of the same story from multiple sources.",
-  keywords: ["news", "summary", "alternative sources", "media bias", "free news", "paywall"],
-  authors: [{ name: "MirrorSource" }],
-  creator: "MirrorSource",
+keywords: ["news", "summary", "alternative sources", "media bias", "free news", "news comparison"],  authors: [{ name: "MirrorSource" }],
+  creator: "MirrorSource", 
   publisher: "MirrorSource",
   metadataBase: new URL("https://mirrorsource.app"),
   openGraph: {
