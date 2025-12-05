@@ -1,16 +1,23 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import UrlInputForm from "@/components/UrlInputForm";
 import ResultsDisplay from "@/components/ResultsDisplay";
 import { SummarySkeleton, SourcesSkeleton } from "@/components/LoadingSkeletons";
 import type { GroundingSource } from "@/types";
-import { Copy, Check, RefreshCw, Share2 } from "lucide-react";
+import { Copy, Check, RefreshCw, Share2, Archive, ExternalLink } from "lucide-react";
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
+
+interface ArchiveResult {
+  found: boolean;
+  url?: string;
+  source: 'wayback' | 'archive.today';
+  timestamp?: string;
+}
 
 // Fun facts to show while loading
 const loadingFacts = [
@@ -26,10 +33,13 @@ const loadingFacts = [
 
 function HomeContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [loading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
   const [results, setResults] = useState<GroundingSource[]>([]);
+  const [archives, setArchives] = useState<ArchiveResult[]>([]);
+  const [isPaywalled, setIsPaywalled] = useState(false);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
@@ -72,6 +82,8 @@ function HomeContent() {
       setError(null);
       setSummary(null);
       setResults([]);
+      setArchives([]);
+      setIsPaywalled(false);
 
       const res = await fetch("/api/find", {
         method: "POST",
@@ -93,6 +105,8 @@ function HomeContent() {
       const data = await res.json();
       setSummary(data.summary ?? null);
       setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
+      setArchives(Array.isArray(data.archives) ? data.archives.filter((a: ArchiveResult) => a.found) : []);
+      setIsPaywalled(data.isPaywalled ?? false);
     } catch (e: any) {
       setError(e?.message || "Something went wrong. Please try again.");
     } finally {
@@ -156,8 +170,24 @@ function HomeContent() {
     }
   }
 
+  // Reset state and go to homepage
+  function handleLogoClick(e: React.MouseEvent) {
+    e.preventDefault();
+    setSummary(null);
+    setResults([]);
+    setArchives([]);
+    setIsPaywalled(false);
+    setError(null);
+    setCurrentUrl("");
+    setLastSubmittedUrl("");
+    setHasAutoSearched(false);
+    // Clear URL params
+    router.push('/');
+  }
+
   const hasContent = summary || results.length > 0;
   const isActive = loading || hasContent;
+  const foundArchives = archives.filter(a => a.found);
 
   let buttonLabel = "Look for other sources";
   if (loading) {
@@ -180,8 +210,12 @@ function HomeContent() {
       {/* Hero section */}
       <div className={`transition-all duration-500 ease-in-out flex flex-col items-center px-4 ${isActive ? 'pt-8 pb-6' : 'justify-center min-h-[80vh]'}`}>
         
-        {/* Logo - 20% larger on mobile */}
-        <Link href="/" className="mb-6 hover:opacity-90 transition-opacity">
+        {/* Logo - clickable to reset */}
+        <a 
+          href="/" 
+          onClick={handleLogoClick}
+          className="mb-6 hover:opacity-90 transition-opacity cursor-pointer"
+        >
           <Image
             src="/logo.png"
             alt="MirrorSource Logo"
@@ -190,7 +224,7 @@ function HomeContent() {
             priority
             className="w-48 sm:w-64 md:w-72 lg:w-96 h-auto"
           />
-        </Link>
+        </a>
 
         {/* Headline */}
         <div className="text-center max-w-2xl space-y-4 mb-8">
@@ -233,6 +267,41 @@ function HomeContent() {
       {isActive && (
         <div className="flex-1 bg-slate-50 px-4 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="max-w-3xl mx-auto space-y-6">
+
+            {/* Archive Alert - Show if archived version found */}
+            {!loading && foundArchives.length > 0 && (
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200 p-5">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-emerald-100 rounded-lg">
+                    <Archive className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-emerald-900 mb-1">
+                      📁 Archived Version Available
+                    </h3>
+                    <p className="text-sm text-emerald-700 mb-3">
+                      {isPaywalled 
+                        ? "This article may be behind a paywall. We found a publicly archived version:"
+                        : "A publicly archived version of this article exists:"}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {foundArchives.map((archive, idx) => (
+                        <a
+                          key={idx}
+                          href={archive.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-emerald-50 border border-emerald-200 rounded-full text-sm font-medium text-emerald-700 transition-colors"
+                        >
+                          {archive.source === 'wayback' ? '🏛️ Wayback Machine' : '📦 Archive.today'}
+                          <ExternalLink size={14} />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             
             {/* Summary card */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
