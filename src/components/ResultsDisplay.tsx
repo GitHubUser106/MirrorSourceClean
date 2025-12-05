@@ -1,7 +1,7 @@
 import { ExternalLink, Link2, Check } from 'lucide-react';
 import { useState } from 'react';
 
-type SourceType = 'wire' | 'national' | 'international' | 'local' | 'public' | 'magazine' | 'reference';
+type SourceType = 'wire' | 'national' | 'international' | 'local' | 'public' | 'magazine' | 'reference' | 'syndication' | 'archive';
 
 interface SourceResult {
   uri: string;
@@ -9,6 +9,7 @@ interface SourceResult {
   displayName?: string;
   sourceDomain?: string;
   sourceType?: SourceType;
+  isSyndicated?: boolean;
 }
 
 interface ResultsDisplayProps {
@@ -44,6 +45,14 @@ const sourceTypeBadge: Record<SourceType, { label: string; className: string }> 
   local: { 
     label: 'Local News', 
     className: 'bg-cyan-100 text-cyan-700 border-cyan-200' 
+  },
+  syndication: { 
+    label: 'Free Access', 
+    className: 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+  },
+  archive: { 
+    label: 'Archived', 
+    className: 'bg-orange-100 text-orange-700 border-orange-200' 
   },
 };
 
@@ -87,7 +96,9 @@ export default function ResultsDisplay({ results }: ResultsDisplayProps) {
         const favicon = getFaviconUrl(sourceDomain);
         const headline = getHeadline(item);
         const sourceType = item.sourceType || 'local';
-        const badge = sourceTypeBadge[sourceType];
+        
+        // Safely get badge with fallback
+        const badge = sourceTypeBadge[sourceType] || sourceTypeBadge['local'];
 
         return (
           <article
@@ -116,6 +127,11 @@ export default function ResultsDisplay({ results }: ResultsDisplayProps) {
                 <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${badge.className}`}>
                   {badge.label}
                 </span>
+                {item.isSyndicated && (
+                  <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-emerald-100 text-emerald-700 border-emerald-200">
+                    ✓ Free Version
+                  </span>
+                )}
               </div>
 
               {/* Headline */}
