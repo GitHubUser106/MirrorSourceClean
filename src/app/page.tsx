@@ -179,7 +179,7 @@ function HomeContent() {
     <main className="min-h-screen bg-slate-50 flex flex-col relative">
       
       {usage && (
-        <div className="hidden md:flex absolute top-4 right-4 z-10 items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm text-sm">
+        <div className="hidden md:flex fixed top-4 right-4 z-50 items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-md text-sm">
           <span className={`w-2 h-2 rounded-full ${usage.remaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></span>
           <span className="font-medium text-slate-600">
             {usage.remaining}/{usage.limit} <span className="hidden lg:inline">searches left</span>
