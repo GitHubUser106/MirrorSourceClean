@@ -38,6 +38,7 @@ function HomeContent() {
   const [loadingFactIndex, setLoadingFactIndex] = useState(0);
   const [currentUrl, setCurrentUrl] = useState("");
   const [lastSubmittedUrl, setLastSubmittedUrl] = useState("");
+  const [storiesCount, setStoriesCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (loading) {
@@ -48,6 +49,26 @@ function HomeContent() {
     }
   }, [loading]);
 
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('ms_stories');
+      if (stored) {
+        setStoriesCount(parseInt(stored, 10));
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (summary && !loading) {
+      try {
+        const current = parseInt(localStorage.getItem('ms_stories') || '0', 10);
+        const newCount = current + 1;
+        localStorage.setItem('ms_stories', String(newCount));
+        setStoriesCount(newCount);
+      } catch {}
+    }
+  }, [summary, loading]);
+
   async function refreshUsage() {
     try {
       const r = await fetch("/api/usage", { cache: "no-store" });
@@ -55,9 +76,7 @@ function HomeContent() {
         const data = (await r.json()) as Usage;
         setUsage(data);
       }
-    } catch {
-      // silent
-    }
+    } catch {}
   }
 
   async function handleSearchWithUrl(url: string) {
@@ -93,8 +112,9 @@ function HomeContent() {
       setSummary(data.summary ?? null);
       setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
       setIsPaywalled(data.isPaywalled ?? false);
-    } catch (e: any) {
-      setError(e?.message || "Something went wrong. Please try again.");
+    } catch (e: unknown) {
+      const err = e as Error;
+      setError(err?.message || "Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
       refreshUsage();
@@ -162,9 +182,8 @@ function HomeContent() {
     setError(null);
     setCurrentUrl("");
     setLastSubmittedUrl("");
-    setHasAutoSearched(false);
-    window.history.replaceState({}, '', '/');
-    router.refresh();
+    setHasAutoSearched(true);
+    window.history.pushState({}, '', '/');
   }
 
   const hasContent = summary || results.length > 0;
@@ -178,14 +197,23 @@ function HomeContent() {
   return (
     <main className="min-h-screen bg-slate-50 flex flex-col relative">
       
-      {usage && (
-        <div className="hidden md:flex fixed top-4 right-4 z-50 items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-md text-sm">
-          <span className={`w-2 h-2 rounded-full ${usage.remaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></span>
-          <span className="font-medium text-slate-600">
-            {usage.remaining}/{usage.limit} <span className="hidden lg:inline">searches left</span>
-          </span>
-        </div>
-      )}
+      <div className="hidden md:flex fixed top-4 right-4 z-50 items-center gap-3">
+        {storiesCount !== null && storiesCount > 0 && (
+          <div className="flex items-center gap-2 bg-blue-600 text-white px-3 py-1.5 rounded-full shadow-md text-sm">
+            <span className="font-bold">{storiesCount}</span>
+            <span className="text-blue-100">stories</span>
+          </div>
+        )}
+        
+        {usage && (
+          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-md text-sm">
+            <span className={`w-2 h-2 rounded-full ${usage.remaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></span>
+            <span className="font-medium text-slate-600">
+              {usage.remaining}/{usage.limit} <span className="hidden lg:inline">left</span>
+            </span>
+          </div>
+        )}
+      </div>
 
       <div className={`transition-all duration-500 ease-in-out flex flex-col items-center px-4 ${isActive ? 'pt-8 pb-6' : 'justify-center min-h-[80vh]'}`}>
         
@@ -209,7 +237,7 @@ function HomeContent() {
             See the whole story.
           </h1>
           <p className="text-lg text-slate-600 leading-relaxed">
-            Paste <span className="font-medium text-slate-800">any news link</span>. We'll scout the web to generate a neutral summary and find you free, public coverage of the same story.
+            Paste <span className="font-medium text-slate-800">any news link</span>. We will scout the web to generate a neutral summary and find you free, public coverage of the same story.
           </p>
         </div>
 
@@ -224,9 +252,17 @@ function HomeContent() {
         </div>
 
         {usage && !hasContent && (
-          <div className="md:hidden mt-6 flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-slate-200 text-xs text-slate-500">
-             <span className={`w-1.5 h-1.5 rounded-full ${usage.remaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></span>
-             {usage.remaining}/{usage.limit} searches left
+          <div className="md:hidden mt-6 flex items-center gap-3">
+            {storiesCount !== null && storiesCount > 0 && (
+              <div className="flex items-center gap-1 bg-blue-600 text-white px-2 py-1 rounded-full text-xs">
+                <span className="font-bold">{storiesCount}</span>
+                <span className="text-blue-100">stories</span>
+              </div>
+            )}
+            <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-slate-200 text-xs text-slate-500">
+               <span className={`w-1.5 h-1.5 rounded-full ${usage.remaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></span>
+               {usage.remaining}/{usage.limit} left
+            </div>
           </div>
         )}
 
@@ -249,7 +285,7 @@ function HomeContent() {
                   </div>
                   <div className="flex-1">
                     <p className="text-sm text-emerald-800 leading-relaxed">
-                      This publisher limits access. We've located <strong className="font-semibold">alternative sources</strong> covering this same event so you can <strong className="font-semibold">verify the facts</strong> without friction.
+                      This publisher limits access. We have located <strong className="font-semibold">alternative sources</strong> covering this same event so you can <strong className="font-semibold">verify the facts</strong> without friction.
                     </p>
                   </div>
                 </div>
@@ -384,7 +420,6 @@ function HomeContent() {
     </main>
   );
 }
-
 
 export default function HomePage() {
   return (
