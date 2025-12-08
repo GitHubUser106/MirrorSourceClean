@@ -237,7 +237,7 @@ function HomeContent() {
             See the whole story.
           </h1>
           <p className="text-lg text-slate-600 leading-relaxed">
-            Paste <span className="font-medium text-slate-800">any news link</span>. We will scout the web to generate a neutral summary and find you free, public coverage of the same story.
+            One story. Multiple sources. Zero friction.
           </p>
         </div>
 
