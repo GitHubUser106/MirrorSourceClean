@@ -8,7 +8,7 @@ import UrlInputForm from "@/components/UrlInputForm";
 import ResultsDisplay from "@/components/ResultsDisplay";
 import { SummarySkeleton, SourcesSkeleton } from "@/components/LoadingSkeletons";
 import type { GroundingSource } from "@/types";
-import { Copy, Check, RefreshCw, Share2, AlertCircle } from "lucide-react";
+import { Copy, Check, RefreshCw, Share2, AlertCircle, CheckCircle2, Scale } from "lucide-react";
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
 
@@ -23,12 +23,25 @@ const loadingFacts = [
   "Searching public news archives...",
 ];
 
+// Helper function to parse markdown bold (**text**) to JSX
+function parseMarkdownBold(text: string): React.ReactNode[] {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index} className="font-semibold">{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+}
+
 function HomeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [loading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
+  const [commonGround, setCommonGround] = useState<string | null>(null);
+  const [keyDifferences, setKeyDifferences] = useState<string | null>(null);
   const [results, setResults] = useState<GroundingSource[]>([]);
   const [isPaywalled, setIsPaywalled] = useState(false);
   const [usage, setUsage] = useState<Usage | null>(null);
@@ -88,6 +101,8 @@ function HomeContent() {
       setIsLoading(true);
       setError(null);
       setSummary(null);
+      setCommonGround(null);
+      setKeyDifferences(null);
       setResults([]);
       setIsPaywalled(false);
 
@@ -110,6 +125,8 @@ function HomeContent() {
 
       const data = await res.json();
       setSummary(data.summary ?? null);
+      setCommonGround(data.commonGround ?? null);
+      setKeyDifferences(data.keyDifferences ?? null);
       setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
       setIsPaywalled(data.isPaywalled ?? false);
     } catch (e: unknown) {
@@ -177,6 +194,8 @@ function HomeContent() {
     e.preventDefault();
     e.stopPropagation();
     setSummary(null);
+    setCommonGround(null);
+    setKeyDifferences(null);
     setResults([]);
     setIsPaywalled(false);
     setError(null);
@@ -358,6 +377,53 @@ function HomeContent() {
                 </div>
               )}
             </div>
+
+            {/* Intel Brief Section */}
+            {!loading && (commonGround || keyDifferences) && (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+                <div className="flex items-center gap-2 mb-5">
+                  <svg className="w-5 h-5 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 3v18h18" />
+                    <path d="M18 17V9" />
+                    <path d="M13 17V5" />
+                    <path d="M8 17v-3" />
+                  </svg>
+                  <h2 className="text-xl font-bold text-slate-900">Intel Brief</h2>
+                </div>
+                
+                <div className="grid md:grid-cols-2 gap-4">
+                  {/* Common Ground Box */}
+                  {commonGround && (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <h3 className="text-sm font-semibold text-emerald-800 uppercase tracking-wide">
+                          Common Ground
+                        </h3>
+                      </div>
+                      <p className="text-sm text-emerald-900 leading-relaxed">
+                        {commonGround}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Key Differences Box */}
+                  {keyDifferences && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Scale className="w-4 h-4 text-amber-600" />
+                        <h3 className="text-sm font-semibold text-amber-800 uppercase tracking-wide">
+                          Key Differences
+                        </h3>
+                      </div>
+                      <p className="text-sm text-amber-900 leading-relaxed">
+                        {parseMarkdownBold(keyDifferences)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
               <h2 className="text-xl font-bold text-slate-900 mb-4">
