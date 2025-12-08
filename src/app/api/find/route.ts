@@ -468,6 +468,8 @@ function validateUrl(url: string): { valid: boolean; error?: string } {
 // --- Core Gemini call function ---
 async function callGemini(url: string, syndicationPartners: string[], isRetry: boolean = false): Promise<{
   summary: string;
+  commonGround: string;
+  keyDifferences: string;
   alternatives: any[];
 }> {
   // If we have syndication partners, include them in the search hint
@@ -475,36 +477,53 @@ async function callGemini(url: string, syndicationPartners: string[], isRetry: b
     ? `Also specifically search for this article on: ${syndicationPartners.join(', ')}.`
     : '';
 
-  const prompt = isRetry
+const prompt = isRetry
     ? `
-**ROLE:** You are MirrorSource, a news research assistant.
+**ROLE:** You are MirrorSource, a media intelligence analyst.
 
 **TASK:**
-1. Search broadly for different news outlets covering the story at this URL: "${url}"
-2. Find coverage from wire services (AP, Reuters), international outlets (BBC, Guardian, Al Jazeera), and major national sources.
-3. Also search for free versions on Yahoo Finance, Yahoo News, MSN, and other aggregators.
+1. Search broadly for news outlets covering: "${url}"
+2. Find wire services (AP, Reuters), international (BBC, Guardian), and aggregators (Yahoo, MSN).
 ${syndicationHint}
-4. Write a neutral, 2-3 sentence summary of the news event.
 
-**OUTPUT FORMAT (JSON only):**
+**SUMMARY (Grade 8-10):** 3-5 short sentences. Plain English. Add [1], [2] citations.
+**INTEL BRIEF (Grade 12-14):**
+- commonGround: One sentence of facts ALL sources agree on.
+- keyDifferences: One sentence of disagreements. **Bold** the conflicts.
+
+**OUTPUT (JSON only):**
 {
-  "summary": "Your neutral summary of the news event."
+  "summary": "Short summary with [1] [2] citations.",
+  "commonGround": "All sources confirm...",
+  "keyDifferences": "Source A reports **X**, while Source B says **Y**."
 }
     `.trim()
     : `
-**ROLE:** You are MirrorSource, a news research assistant.
+**ROLE:** You are MirrorSource, a media intelligence analyst. Your audience is "Alex"—a busy professional who needs facts fast.
 
 **TASK:**
-1. Search for news coverage of the story at this URL: "${url}"
+1. Search for news coverage of: "${url}"
 ${syndicationHint}
-2. Write a neutral, 2-3 sentence summary of the news event.
+2. Find 3-8 alternative sources.
 
-**OUTPUT FORMAT (JSON only):**
+**COMPONENT 1: SUMMARY ("Smart Brevity")**
+- Reading Level: Grade 8-10. Plain English. Short sentences.
+- Tone: Like a text from a smart friend. Neutral, punchy.
+- Length: 3-5 sentences. No sentence over 20 words.
+- Citations: Add [1], [2], [3] after key facts (matching source order).
+
+**COMPONENT 2: INTEL BRIEF ("The Receipts")**
+- Reading Level: Grade 12-14 (Professional).
+- commonGround: One sentence of facts ALL sources agree on. Be specific.
+- keyDifferences: One sentence showing disagreements. **Bold** the conflicting points.
+
+**OUTPUT (JSON only, no markdown blocks):**
 {
-  "summary": "Your neutral summary of the news event."
+  "summary": "Short summary with [1] [2] citations.",
+  "commonGround": "All sources confirm [specific fact].",
+  "keyDifferences": "Source A reports **[claim]**, while Source B says **[other claim]**."
 }
     `.trim();
-
   const config: any = { tools: [{ googleSearch: {} }] };
 
   const geminiResponse: any = await genAI.models.generateContent({
@@ -526,6 +545,8 @@ ${syndicationHint}
   // Parse JSON
   const parsedData = extractJson(text) || {};
   const summary = parsedData.summary || "Summary not available.";
+  const commonGround = parsedData.commonGround || "";
+  const keyDifferences = parsedData.keyDifferences || "";
 
   // Get grounding chunks
   const candidates = geminiResponse?.response?.candidates ?? geminiResponse?.candidates ?? [];
@@ -540,7 +561,7 @@ ${syndicationHint}
     console.error("Error processing grounding chunks:", e);
   }
 
-  return { summary, alternatives };
+return { summary, commonGround, keyDifferences, alternatives };
 }
 
 export async function POST(req: NextRequest) {
@@ -604,8 +625,16 @@ export async function POST(req: NextRequest) {
         
         result.alternatives = [...result.alternatives, ...newAlternatives];
         
-        if (result.summary === "Summary not available." && retryResult.summary !== "Summary not available.") {
+if (result.summary === "Summary not available." && retryResult.summary !== "Summary not available.") {
           result.summary = retryResult.summary;
+        }
+        
+        // Also update Intel Brief if missing
+        if (!result.commonGround && retryResult.commonGround) {
+          result.commonGround = retryResult.commonGround;
+        }
+        if (!result.keyDifferences && retryResult.keyDifferences) {
+          result.keyDifferences = retryResult.keyDifferences;
         }
         
         console.log(`After retry: ${result.alternatives.length} total sources`);
@@ -614,9 +643,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 7. Build response
+// 7. Build response
     const response = NextResponse.json({
       summary: result.summary,
+      commonGround: result.commonGround,
+      keyDifferences: result.keyDifferences,
       alternatives: result.alternatives,
       archives: archiveResults,
       isPaywalled,
