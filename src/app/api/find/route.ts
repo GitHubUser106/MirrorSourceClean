@@ -331,24 +331,25 @@ async function callGemini(url: string, syndicationPartners: string[]): Promise<{
 
   // Optimized prompt for finding multiple sources
   const prompt = `
-You are a news research assistant. Your goal is to find as many alternative news sources as possible covering the same story.
+You are a news research assistant. Find alternative news sources covering this story.
 
 ARTICLE URL: ${url}
 ${syndicationHint}
 
-INSTRUCTIONS:
-1. Search for this exact story across multiple news outlets
-2. Find at least 5-10 different sources covering this story
-3. Prioritize: Wire services (AP, Reuters), major networks (CBS, NBC, ABC, CNN, Fox), public media (NPR, PBS, BBC), international (Guardian, Al Jazeera), and news aggregators (Yahoo News, MSN)
+Search these outlets: AP, Reuters, BBC, Guardian, CBS, NBC, ABC, CNN, NPR, PBS, Yahoo News, MSN, Al Jazeera, The Hill, Politico, Axios, Fox News.
 
-RESPONSE FORMAT (JSON only, no markdown):
+RESPONSE FORMAT (JSON only):
 {
-  "summary": "3-5 sentence summary of the story. Use **bold** for key names, numbers, dates. Grade 8-10 reading level. No citations.",
-  "commonGround": "What all sources agree on. Use **bold** for key facts.",
-  "keyDifferences": "Where sources differ in their coverage or framing. Use **bold** for source names and claims."
+  "summary": "3-4 sentences. Grade 6-8 reading level. Short sentences. Use **bold** for names, numbers, dates. No jargon.",
+  "commonGround": "1-2 sentences only. What do sources agree on? Bold key facts.",
+  "keyDifferences": "1-2 sentences only. Pick the ONE biggest contrast. Example: **CNN** emphasizes X, while **Fox** focuses on Y."
 }
 
-Focus on finding the MAXIMUM number of alternative sources. Quality and quantity of sources is the primary goal.
+CRITICAL RULES:
+- commonGround: MAX 2 sentences
+- keyDifferences: MAX 2 sentences, only mention 2 sources
+- Use simple words a 12-year-old would understand
+- No long lists of sources
   `.trim();
 
   const geminiResponse: any = await genAI.models.generateContent({
