@@ -39,12 +39,23 @@ const scannerIcons = [
   { domain: "bloomberg.com", name: "Bloomberg" },
 ];
 
-// Helper function to parse markdown bold (**text**) to JSX
-function parseMarkdownBold(text: string): React.ReactNode[] {
+// Helper function to parse markdown bold (**text**) to JSX with high-contrast styling
+function parseMarkdownBold(text: string, variant: 'summary' | 'intel' = 'summary'): React.ReactNode[] {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return parts.map((part, index) => {
     if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={index} className="font-semibold">{part.slice(2, -2)}</strong>;
+      // Bold text: darker color, heavier weight
+      return (
+        <strong 
+          key={index} 
+          className={variant === 'summary' 
+            ? "font-semibold text-slate-900" 
+            : "font-semibold"
+          }
+        >
+          {part.slice(2, -2)}
+        </strong>
+      );
     }
     return part;
   });
@@ -454,7 +465,7 @@ function HomeContent() {
               </div>
             )}
             
-            {/* Summary Section */}
+            {/* Summary Section - with strategic bolding */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 lg:p-10">
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-xl md:text-2xl font-bold text-slate-900">Summary</h2>
@@ -498,16 +509,19 @@ function HomeContent() {
                 )}
               </div>
               
-              <div className="prose prose-slate prose-lg leading-relaxed text-slate-700">
+              {/* Summary text with lighter base color for contrast with bold */}
+              <div className="leading-relaxed">
                 {summary ? (
-                  <p className="text-base md:text-lg leading-7 md:leading-8" style={{ whiteSpace: "pre-wrap" }}>{summary}</p>
+                  <p className="text-base md:text-lg leading-7 md:leading-8 text-slate-600">
+                    {parseMarkdownBold(summary, 'summary')}
+                  </p>
                 ) : (
                   <p className="text-slate-400 italic">No summary available.</p>
                 )}
               </div>
             </div>
 
-            {/* Intel Brief Section */}
+            {/* Intel Brief Section - with strategic bolding */}
             {(commonGround || keyDifferences) && (
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 lg:p-10">
                 <div className="flex items-center gap-2 mb-6">
@@ -521,7 +535,7 @@ function HomeContent() {
                 </div>
                 
                 <div className="grid md:grid-cols-2 gap-5">
-                  {/* Common Ground Box */}
+                  {/* Common Ground Box - lighter base, bold signal */}
                   {commonGround && (
                     <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5">
                       <div className="flex items-center gap-2 mb-3">
@@ -530,13 +544,13 @@ function HomeContent() {
                           Common Ground
                         </h3>
                       </div>
-                      <p className="text-sm md:text-base text-emerald-900 leading-relaxed">
-                        {commonGround}
+                      <p className="text-sm md:text-base text-emerald-700 leading-relaxed">
+                        {parseMarkdownBold(commonGround, 'intel')}
                       </p>
                     </div>
                   )}
                   
-                  {/* Key Differences Box */}
+                  {/* Key Differences Box - lighter base, bold signal */}
                   {keyDifferences && (
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
                       <div className="flex items-center gap-2 mb-3">
@@ -545,8 +559,8 @@ function HomeContent() {
                           Key Differences
                         </h3>
                       </div>
-                      <p className="text-sm md:text-base text-amber-900 leading-relaxed">
-                        {parseMarkdownBold(keyDifferences)}
+                      <p className="text-sm md:text-base text-amber-700 leading-relaxed">
+                        {parseMarkdownBold(keyDifferences, 'intel')}
                       </p>
                     </div>
                   )}
