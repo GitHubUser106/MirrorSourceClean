@@ -1,4 +1,4 @@
-import { ExternalLink, Link2, Check } from 'lucide-react';
+import { ExternalLink, Link2, Check, Clock } from 'lucide-react';
 import { useState } from 'react';
 
 type SourceType = 
@@ -23,6 +23,7 @@ interface SourceResult {
   sourceDomain?: string;
   sourceType?: SourceType;
   countryCode?: string;
+  publishedAt?: string; // ISO date string
   isSyndicated?: boolean;
 }
 
@@ -60,74 +61,94 @@ const countryFlags: Record<string, { flag: string; label: string }> = {
   INT: { flag: '🌐', label: 'Intl' },
 };
 
-// Source type badge styling and labels - expanded taxonomy
-const sourceTypeBadge: Record<SourceType, { label: string; className: string; icon?: string }> = {
+// Source type badge styling - cleaner, more compact
+const sourceTypeBadge: Record<SourceType, { label: string; className: string }> = {
   wire: { 
     label: 'Wire', 
-    className: 'bg-amber-100 text-amber-800 border-amber-300',
-    icon: '⚡'
+    className: 'bg-amber-50 text-amber-700 border-amber-200'
   },
   public: { 
     label: 'Public', 
-    className: 'bg-green-100 text-green-800 border-green-300',
-    icon: '🏛️'
+    className: 'bg-green-50 text-green-700 border-green-200'
   },
   state: { 
     label: 'State', 
-    className: 'bg-indigo-100 text-indigo-800 border-indigo-300',
-    icon: '🏛️'
+    className: 'bg-indigo-50 text-indigo-700 border-indigo-200'
   },
   corporate: { 
     label: 'Corporate', 
-    className: 'bg-slate-100 text-slate-700 border-slate-300',
-    icon: '🏢'
+    className: 'bg-slate-50 text-slate-600 border-slate-200'
   },
   analysis: { 
     label: 'Analysis', 
-    className: 'bg-violet-100 text-violet-800 border-violet-300',
-    icon: '🧠'
+    className: 'bg-violet-50 text-violet-700 border-violet-200'
   },
   national: { 
     label: 'National', 
-    className: 'bg-blue-100 text-blue-800 border-blue-300',
-    icon: '📰'
+    className: 'bg-blue-50 text-blue-700 border-blue-200'
   },
   international: { 
     label: 'International', 
-    className: 'bg-purple-100 text-purple-800 border-purple-300',
-    icon: '🌍'
+    className: 'bg-purple-50 text-purple-700 border-purple-200'
   },
   magazine: { 
     label: 'Magazine', 
-    className: 'bg-pink-100 text-pink-800 border-pink-300',
-    icon: '📖'
+    className: 'bg-pink-50 text-pink-700 border-pink-200'
   },
   local: { 
-    label: 'Local News', 
-    className: 'bg-cyan-100 text-cyan-800 border-cyan-300',
-    icon: '📍'
+    label: 'Local', 
+    className: 'bg-cyan-50 text-cyan-700 border-cyan-200'
   },
   specialized: { 
     label: 'Specialized', 
-    className: 'bg-orange-100 text-orange-800 border-orange-300',
-    icon: '🎯'
+    className: 'bg-orange-50 text-orange-700 border-orange-200'
   },
   reference: { 
     label: 'Reference', 
-    className: 'bg-gray-100 text-gray-700 border-gray-300',
-    icon: '📚'
+    className: 'bg-gray-50 text-gray-600 border-gray-200'
   },
   syndication: { 
-    label: 'Free Access', 
-    className: 'bg-emerald-100 text-emerald-700 border-emerald-300',
-    icon: '✓'
+    label: 'Syndicated', 
+    className: 'bg-emerald-50 text-emerald-700 border-emerald-200'
   },
   archive: { 
-    label: 'Archived', 
-    className: 'bg-orange-100 text-orange-700 border-orange-300',
-    icon: '🗄️'
+    label: 'Archive', 
+    className: 'bg-orange-50 text-orange-700 border-orange-200'
   },
 };
+
+// Format relative time for freshness display
+function formatFreshness(dateString?: string): string | null {
+  if (!dateString) return null;
+  
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 60) {
+      return `${diffMins}m ago`;
+    } else if (diffHours < 24) {
+      return `${diffHours}h ago`;
+    } else if (diffDays === 1) {
+      return 'Yesterday';
+    } else if (diffDays < 7) {
+      return `${diffDays}d ago`;
+    } else {
+      // Format as "Dec 5" or "Dec 5, 2024" if different year
+      const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+      if (date.getFullYear() !== now.getFullYear()) {
+        options.year = 'numeric';
+      }
+      return date.toLocaleDateString('en-US', options);
+    }
+  } catch {
+    return null;
+  }
+}
 
 function getFaviconUrl(sourceDomain: string): string {
   if (!sourceDomain) return '/favicon.ico';
@@ -172,13 +193,11 @@ export default function ResultsDisplay({ results }: ResultsDisplayProps) {
           const headline = getHeadline(item);
           const sourceType = item.sourceType || 'corporate';
           const countryCode = item.countryCode || 'US';
+          const freshness = formatFreshness(item.publishedAt);
           
           // Get badge info with fallback
           const badge = sourceTypeBadge[sourceType] || sourceTypeBadge['corporate'];
           const country = countryFlags[countryCode] || countryFlags['US'];
-          
-          // Citation number (1-indexed)
-          const citationNum = index + 1;
 
           return (
             <article
@@ -189,11 +208,10 @@ export default function ResultsDisplay({ results }: ResultsDisplayProps) {
                 href={item.uri}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex flex-col gap-2"
+                className="flex flex-col gap-2.5"
               >
-                {/* Source info row with badges */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Favicon */}
+                {/* Top row: Logo + Name + Country */}
+                <div className="flex items-center gap-2">
                   <img 
                     src={favicon} 
                     alt="" 
@@ -202,33 +220,30 @@ export default function ResultsDisplay({ results }: ResultsDisplayProps) {
                       (e.target as HTMLImageElement).style.display = 'none'; 
                     }} 
                   />
-                  
-                  {/* Source name */}
                   <span className="text-sm font-bold uppercase tracking-wide text-blue-600">
                     {displayName}
                   </span>
-                  
-                  {/* Country badge */}
-                  <span className="inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded border bg-slate-50 border-slate-200 text-slate-600">
-                    <span>{country.flag}</span>
-                    <span className="font-medium">{country.label}</span>
+                  <span className="text-sm" title={country.label}>
+                    {country.flag}
                   </span>
-                  
-                  {/* Source type badge */}
-                  <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded border font-medium ${badge.className}`}>
-                    {badge.icon && <span className="text-[10px]">{badge.icon}</span>}
+                </div>
+                
+                {/* Badge row: Type + Freshness */}
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${badge.className}`}>
                     {badge.label}
                   </span>
                   
-                  {/* Citation number */}
-                  <span className="inline-flex items-center justify-center text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5 min-w-[24px]">
-                    [{citationNum}]
-                  </span>
+                  {freshness && (
+                    <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+                      <Clock size={11} />
+                      {freshness}
+                    </span>
+                  )}
                   
-                  {/* Free version badge if syndicated */}
                   {item.isSyndicated && (
-                    <span className="text-xs px-2 py-0.5 rounded border font-medium bg-emerald-100 text-emerald-700 border-emerald-300">
-                      ✓ Free
+                    <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-emerald-50 text-emerald-600 border-emerald-200">
+                      Free
                     </span>
                   )}
                 </div>
