@@ -233,6 +233,19 @@ function HomeContent() {
           100% { transform: scale(1); opacity: 1; }
         }
         .icon-pop { animation: popIn 0.4s ease-out forwards; }
+        
+        @keyframes progress {
+          0% { width: 0%; }
+          10% { width: 15%; }
+          30% { width: 40%; }
+          50% { width: 60%; }
+          70% { width: 75%; }
+          90% { width: 88%; }
+          100% { width: 95%; }
+        }
+        .animate-progress { 
+          animation: progress 20s ease-out forwards;
+        }
       `}} />
       
       {/* Usage badge - rate limit only */}
@@ -291,16 +304,71 @@ function HomeContent() {
 
       {/* Loading */}
       {loading && (
-        <div className="flex flex-col items-center justify-center px-4 pt-8 pb-12 animate-in fade-in duration-500">
-          <div className="flex flex-col items-center gap-5">
+        <div className="flex flex-col items-center px-4 pt-6 pb-12 animate-in fade-in duration-500">
+          {/* Progress section */}
+          <div className="flex flex-col items-center gap-4 mb-8">
+            {/* Animated icon */}
             <div className="relative">
-              <div className="w-28 h-28 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-cyan-50 to-blue-100 flex items-center justify-center shadow-lg animate-pulse">
-                <img key={currentScannerIcon.domain} src={getHighResFavicon(currentScannerIcon.domain)} alt={currentScannerIcon.name} className="w-14 h-14 md:w-16 md:h-16 object-contain rounded-lg animate-in fade-in zoom-in duration-300" onError={(e) => { (e.target as HTMLImageElement).src = '/favicon.ico'; }} />
+              <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-br from-cyan-50 to-blue-100 flex items-center justify-center shadow-lg">
+                <img key={currentScannerIcon.domain} src={getHighResFavicon(currentScannerIcon.domain)} alt={currentScannerIcon.name} className="w-12 h-12 md:w-14 md:h-14 object-contain rounded-lg animate-in fade-in zoom-in duration-300" onError={(e) => { (e.target as HTMLImageElement).src = '/favicon.ico'; }} />
               </div>
               <div className="absolute inset-0 rounded-full border-2 border-cyan-400 animate-ping opacity-30"></div>
             </div>
-            <p className="text-cyan-600 font-semibold text-sm uppercase tracking-wider">Scanning...</p>
-            <p className="text-slate-500 text-base animate-pulse text-center max-w-sm">{loadingFacts[loadingFactIndex]}</p>
+            
+            {/* Status text */}
+            <div className="text-center">
+              <p className="text-cyan-600 font-semibold text-sm uppercase tracking-wider mb-1">Scanning...</p>
+              <p className="text-slate-500 text-sm">{loadingFacts[loadingFactIndex]}</p>
+            </div>
+
+            {/* Progress bar */}
+            <div className="w-64 md:w-80">
+              <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full animate-progress"></div>
+              </div>
+              <p className="text-xs text-slate-400 text-center mt-2">Usually takes 10-15 seconds</p>
+            </div>
+          </div>
+
+          {/* Skeleton preview - shows what's coming */}
+          <div className="w-full max-w-4xl space-y-4 opacity-40">
+            {/* Skeleton source icons */}
+            <div className="flex justify-center gap-4 py-4">
+              {[1,2,3,4,5].map((i) => (
+                <div key={i} className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-slate-200 animate-pulse" style={{ animationDelay: `${i * 100}ms` }}></div>
+              ))}
+            </div>
+            
+            {/* Skeleton summary card */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-6">
+              <div className="h-5 w-24 bg-slate-200 rounded animate-pulse mb-4"></div>
+              <div className="space-y-2">
+                <div className="h-4 bg-slate-200 rounded animate-pulse w-full"></div>
+                <div className="h-4 bg-slate-200 rounded animate-pulse w-11/12"></div>
+                <div className="h-4 bg-slate-200 rounded animate-pulse w-4/5"></div>
+              </div>
+            </div>
+
+            {/* Skeleton Intel Brief */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-6">
+              <div className="h-5 w-28 bg-slate-200 rounded animate-pulse mb-4"></div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="bg-emerald-50 rounded-xl p-4">
+                  <div className="h-3 w-20 bg-emerald-200 rounded animate-pulse mb-3"></div>
+                  <div className="space-y-2">
+                    <div className="h-3 bg-emerald-100 rounded animate-pulse w-full"></div>
+                    <div className="h-3 bg-emerald-100 rounded animate-pulse w-3/4"></div>
+                  </div>
+                </div>
+                <div className="bg-amber-50 rounded-xl p-4">
+                  <div className="h-3 w-24 bg-amber-200 rounded animate-pulse mb-3"></div>
+                  <div className="space-y-2">
+                    <div className="h-3 bg-amber-100 rounded animate-pulse w-full"></div>
+                    <div className="h-3 bg-amber-100 rounded animate-pulse w-2/3"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
