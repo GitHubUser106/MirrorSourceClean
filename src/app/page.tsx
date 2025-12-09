@@ -8,7 +8,7 @@ import UrlInputForm from "@/components/UrlInputForm";
 import ResultsDisplay from "@/components/ResultsDisplay";
 import { SummarySkeleton, SourcesSkeleton } from "@/components/LoadingSkeletons";
 import type { GroundingSource } from "@/types";
-import { Copy, Check, RefreshCw, Share2, AlertCircle, CheckCircle2, Scale } from "lucide-react";
+import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale } from "lucide-react";
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
 
@@ -23,6 +23,18 @@ const loadingFacts = [
   "Searching public news archives...",
 ];
 
+// Sample news source icons to rotate through during scanning
+const scannerIcons = [
+  { domain: "theguardian.com", name: "The Guardian" },
+  { domain: "reuters.com", name: "Reuters" },
+  { domain: "apnews.com", name: "AP News" },
+  { domain: "bbc.com", name: "BBC" },
+  { domain: "forbes.com", name: "Forbes" },
+  { domain: "cbsnews.com", name: "CBS News" },
+  { domain: "npr.org", name: "NPR" },
+  { domain: "washingtonpost.com", name: "Washington Post" },
+];
+
 // Helper function to parse markdown bold (**text**) to JSX
 function parseMarkdownBold(text: string): React.ReactNode[] {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
@@ -32,6 +44,11 @@ function parseMarkdownBold(text: string): React.ReactNode[] {
     }
     return part;
   });
+}
+
+function getFaviconUrl(domain: string): string {
+  const cleanDomain = domain.replace(/^www\./, '');
+  return `https://icons.duckduckgo.com/ip3/${cleanDomain}.ico`;
 }
 
 function HomeContent() {
@@ -49,10 +66,13 @@ function HomeContent() {
   const [shared, setShared] = useState(false);
   const [hasAutoSearched, setHasAutoSearched] = useState(false);
   const [loadingFactIndex, setLoadingFactIndex] = useState(0);
+  const [scannerIconIndex, setScannerIconIndex] = useState(0);
   const [currentUrl, setCurrentUrl] = useState("");
   const [lastSubmittedUrl, setLastSubmittedUrl] = useState("");
   const [storiesCount, setStoriesCount] = useState<number | null>(null);
+  const [visibleIcons, setVisibleIcons] = useState(0);
 
+  // Rotate loading facts
   useEffect(() => {
     if (loading) {
       const interval = setInterval(() => {
@@ -61,6 +81,33 @@ function HomeContent() {
       return () => clearInterval(interval);
     }
   }, [loading]);
+
+  // Rotate scanner icons during loading
+  useEffect(() => {
+    if (loading) {
+      const interval = setInterval(() => {
+        setScannerIconIndex((prev) => (prev + 1) % scannerIcons.length);
+      }, 800);
+      return () => clearInterval(interval);
+    }
+  }, [loading]);
+
+  // Staggered icon reveal animation after results load
+  useEffect(() => {
+    if (!loading && results.length > 0) {
+      setVisibleIcons(0);
+      const timer = setInterval(() => {
+        setVisibleIcons((prev) => {
+          if (prev >= results.length) {
+            clearInterval(timer);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 150);
+      return () => clearInterval(timer);
+    }
+  }, [loading, results.length]);
 
   useEffect(() => {
     try {
@@ -96,6 +143,8 @@ function HomeContent() {
     if (!url.trim()) return;
     setLastSubmittedUrl(url);
     setLoadingFactIndex(0);
+    setScannerIconIndex(0);
+    setVisibleIcons(0);
     
     try {
       setIsLoading(true);
@@ -202,6 +251,7 @@ function HomeContent() {
     setCurrentUrl("");
     setLastSubmittedUrl("");
     setHasAutoSearched(true);
+    setVisibleIcons(0);
     window.history.pushState({}, '', '/');
   }
 
@@ -212,6 +262,8 @@ function HomeContent() {
   if (loading) {
     buttonLabel = "Searching...";
   }
+
+  const currentScannerIcon = scannerIcons[scannerIconIndex];
 
   return (
     <main className="min-h-screen bg-slate-50 flex flex-col relative">
@@ -270,7 +322,7 @@ function HomeContent() {
           />
         </div>
 
-        {usage && !hasContent && (
+        {usage && !hasContent && !loading && (
           <div className="md:hidden mt-6 flex items-center gap-3">
             {storiesCount !== null && storiesCount > 0 && (
               <div className="flex items-center gap-1 bg-blue-600 text-white px-2 py-1 rounded-full text-xs">
@@ -292,29 +344,89 @@ function HomeContent() {
         )}
       </div>
 
-      {isActive && (
+      {/* Loading State - Scanning Animation */}
+      {loading && (
+        <div className="flex-1 flex flex-col items-center justify-center px-4 pb-20 animate-in fade-in duration-500">
+          <div className="flex flex-col items-center gap-4">
+            {/* Rotating Scanner Icon */}
+            <div className="relative">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-50 to-blue-100 flex items-center justify-center shadow-lg animate-pulse">
+                <img
+                  key={currentScannerIcon.domain}
+                  src={getFaviconUrl(currentScannerIcon.domain)}
+                  alt={currentScannerIcon.name}
+                  className="w-12 h-12 object-contain rounded-lg animate-in fade-in zoom-in duration-300"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/favicon.ico';
+                  }}
+                />
+              </div>
+              {/* Scanning ring animation */}
+              <div className="absolute inset-0 rounded-full border-2 border-cyan-400 animate-ping opacity-30"></div>
+            </div>
+            
+            {/* Scanning text */}
+            <p className="text-cyan-600 font-semibold text-sm uppercase tracking-wider">
+              Scanning...
+            </p>
+            
+            {/* Rotating status message */}
+            <p className="text-slate-500 text-sm animate-pulse">
+              {loadingFacts[loadingFactIndex]}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Results Content */}
+      {!loading && hasContent && (
         <div className="flex-1 bg-slate-50 px-4 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="max-w-3xl mx-auto space-y-6">
 
-            {!loading && isPaywalled && (
-              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200 p-5">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-emerald-100 rounded-lg">
-                    <AlertCircle className="w-5 h-5 text-emerald-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-emerald-800 leading-relaxed">
-                      This publisher limits access. We have located <strong className="font-semibold">alternative sources</strong> covering this same event so you can <strong className="font-semibold">verify the facts</strong> without friction.
-                    </p>
-                  </div>
-                </div>
+            {/* Source Icons Header */}
+            {results.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-4 md:gap-6 py-4">
+                {results.map((item, index) => {
+                  const sourceDomain = item.sourceDomain || '';
+                  const isVisible = index < visibleIcons;
+                  
+                  return (
+                    <a
+                      key={index}
+                      href={item.uri}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`flex flex-col items-center gap-2 group transition-all duration-300 ${
+                        isVisible 
+                          ? 'opacity-100 translate-y-0' 
+                          : 'opacity-0 translate-y-4'
+                      }`}
+                      style={{ transitionDelay: `${index * 50}ms` }}
+                    >
+                      <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white shadow-md border border-slate-200 flex items-center justify-center group-hover:shadow-lg group-hover:border-blue-300 transition-all">
+                        <img
+                          src={getFaviconUrl(sourceDomain)}
+                          alt={sourceDomain}
+                          className="w-8 h-8 md:w-10 md:h-10 object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium text-slate-500 uppercase tracking-wide group-hover:text-blue-600 transition-colors text-center max-w-[80px] truncate">
+                        {sourceDomain.replace(/^www\./, '').split('.')[0]}
+                      </span>
+                    </a>
+                  );
+                })}
               </div>
             )}
             
+            {/* Summary Section */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-slate-900">Summary</h2>
-                {summary && !loading && (
+                {summary && (
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleCopySummary}
@@ -354,32 +466,17 @@ function HomeContent() {
                 )}
               </div>
               
-              {loading ? (
-                <div>
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="relative w-8 h-8">
-                      <div className="absolute inset-0 rounded-full border-2 border-blue-200"></div>
-                      <div className="absolute inset-0 rounded-full border-2 border-blue-600 border-t-transparent animate-spin"></div>
-                    </div>
-                    <p className="text-blue-600 font-medium animate-pulse">
-                      {loadingFacts[loadingFactIndex]}
-                    </p>
-                  </div>
-                  <SummarySkeleton />
-                </div>
-              ) : (
-                <div className="prose prose-slate leading-relaxed text-slate-700">
-                  {summary ? (
-                    <p style={{ whiteSpace: "pre-wrap" }}>{summary}</p>
-                  ) : (
-                    <p className="text-slate-400 italic">No summary available.</p>
-                  )}
-                </div>
-              )}
+              <div className="prose prose-slate leading-relaxed text-slate-700">
+                {summary ? (
+                  <p style={{ whiteSpace: "pre-wrap" }}>{summary}</p>
+                ) : (
+                  <p className="text-slate-400 italic">No summary available.</p>
+                )}
+              </div>
             </div>
 
             {/* Intel Brief Section */}
-            {!loading && (commonGround || keyDifferences) && (
+            {(commonGround || keyDifferences) && (
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
                 <div className="flex items-center gap-2 mb-5">
                   <svg className="w-5 h-5 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -425,40 +522,35 @@ function HomeContent() {
               </div>
             )}
 
+            {/* Alternative Sources Section */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
               <h2 className="text-xl font-bold text-slate-900 mb-4">
                 Alternative Sources
               </h2>
 
-              {loading ? (
-                <SourcesSkeleton />
-              ) : (
+              {results.length > 0 ? (
                 <>
-                  {results.length > 0 ? (
-                    <>
-                      <ResultsDisplay results={results} />
-                      
-                      <div className="mt-6 pt-6 border-t border-slate-100">
-                        <p className="text-sm text-slate-500 text-center mb-3">
-                          Results may vary. Try again for different sources.
-                        </p>
-                        <button
-                          onClick={handleSearch}
-                          disabled={loading}
-                          className="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 disabled:bg-slate-50 text-slate-700 font-medium py-3 px-6 rounded-full transition-colors border border-slate-200"
-                        >
-                          <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-                          Find different sources
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-center text-slate-500 py-8">
-                      <p>No sources found for this article.</p>
-                      <p className="text-sm mt-2">Try searching again or check if the URL is correct.</p>
-                    </div>
-                  )}
+                  <ResultsDisplay results={results} />
+                  
+                  <div className="mt-6 pt-6 border-t border-slate-100">
+                    <p className="text-sm text-slate-500 text-center mb-3">
+                      Results may vary. Try again for different sources.
+                    </p>
+                    <button
+                      onClick={handleSearch}
+                      disabled={loading}
+                      className="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 disabled:bg-slate-50 text-slate-700 font-medium py-3 px-6 rounded-full transition-colors border border-slate-200"
+                    >
+                      <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                      Find different sources
+                    </button>
+                  </div>
                 </>
+              ) : (
+                <div className="text-center text-slate-500 py-8">
+                  <p>No sources found for this article.</p>
+                  <p className="text-sm mt-2">Try searching again or check if the URL is correct.</p>
+                </div>
               )}
             </div>
 
