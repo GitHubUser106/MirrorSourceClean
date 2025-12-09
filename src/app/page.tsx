@@ -6,11 +6,17 @@ import Image from "next/image";
 import Link from "next/link";
 import UrlInputForm from "@/components/UrlInputForm";
 import ResultsDisplay from "@/components/ResultsDisplay";
-import { SummarySkeleton, SourcesSkeleton } from "@/components/LoadingSkeletons";
 import type { GroundingSource } from "@/types";
-import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale } from "lucide-react";
+import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, Archive, ExternalLink, AlertCircle } from "lucide-react";
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
+
+interface ArchiveResult {
+  found: boolean;
+  url?: string;
+  source: 'wayback' | 'archive.today';
+  timestamp?: string;
+}
 
 const loadingFacts = [
   "Scanning thousands of news sources...",
@@ -23,7 +29,21 @@ const loadingFacts = [
   "Searching public news archives...",
 ];
 
-// High-profile news sources with high-res logo URLs
+// Extended loading messages for retry phases
+const expandedLoadingFacts = [
+  "Expanding search to more outlets...",
+  "Checking wire services...",
+  "Scanning international sources...",
+  "Searching news aggregators...",
+];
+
+const topicLoadingFacts = [
+  "Searching by topic keywords...",
+  "Casting a wider net...",
+  "Looking for related coverage...",
+];
+
+// High-profile news sources for scanner animation
 const scannerIcons = [
   { domain: "theguardian.com", name: "The Guardian" },
   { domain: "reuters.com", name: "Reuters" },
@@ -39,12 +59,11 @@ const scannerIcons = [
   { domain: "bloomberg.com", name: "Bloomberg" },
 ];
 
-// Helper function to parse markdown bold (**text**) to JSX with high-contrast styling
+// Helper function to parse markdown bold (**text**) to JSX
 function parseMarkdownBold(text: string, variant: 'summary' | 'intel' = 'summary'): React.ReactNode[] {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return parts.map((part, index) => {
     if (part.startsWith('**') && part.endsWith('**')) {
-      // Bold text: darker color, heavier weight
       return (
         <strong 
           key={index} 
@@ -61,13 +80,12 @@ function parseMarkdownBold(text: string, variant: 'summary' | 'intel' = 'summary
   });
 }
 
-// High-res favicon using Google's service (128px)
+// High-res favicon using Google's service
 function getHighResFavicon(domain: string): string {
   const cleanDomain = domain.replace(/^www\./, '');
   return `https://www.google.com/s2/favicons?domain=${cleanDomain}&sz=128`;
 }
 
-// Standard favicon for results
 function getFaviconUrl(domain: string): string {
   const cleanDomain = domain.replace(/^www\./, '');
   return `https://www.google.com/s2/favicons?domain=${cleanDomain}&sz=64`;
@@ -82,6 +100,7 @@ function HomeContent() {
   const [commonGround, setCommonGround] = useState<string | null>(null);
   const [keyDifferences, setKeyDifferences] = useState<string | null>(null);
   const [results, setResults] = useState<GroundingSource[]>([]);
+  const [archives, setArchives] = useState<ArchiveResult[]>([]);
   const [isPaywalled, setIsPaywalled] = useState(false);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [copied, setCopied] = useState(false);
@@ -93,16 +112,36 @@ function HomeContent() {
   const [lastSubmittedUrl, setLastSubmittedUrl] = useState("");
   const [storiesCount, setStoriesCount] = useState<number | null>(null);
   const [visibleIcons, setVisibleIcons] = useState(0);
+  const [loadingPhase, setLoadingPhase] = useState<'initial' | 'expanded' | 'topic'>('initial');
+  const [loadingStartTime, setLoadingStartTime] = useState<number>(0);
 
-  // Rotate loading facts
+  // Rotate loading facts with phase awareness
   useEffect(() => {
     if (loading) {
       const interval = setInterval(() => {
-        setLoadingFactIndex((prev) => (prev + 1) % loadingFacts.length);
+        const elapsed = Date.now() - loadingStartTime;
+        
+        // After 8 seconds, show expanded search messages
+        if (elapsed > 8000 && loadingPhase === 'initial') {
+          setLoadingPhase('expanded');
+        }
+        // After 15 seconds, show topic search messages
+        if (elapsed > 15000 && loadingPhase === 'expanded') {
+          setLoadingPhase('topic');
+        }
+        
+        setLoadingFactIndex((prev) => {
+          if (loadingPhase === 'topic') {
+            return prev >= topicLoadingFacts.length - 1 ? 0 : prev + 1;
+          } else if (loadingPhase === 'expanded') {
+            return prev >= expandedLoadingFacts.length - 1 ? 0 : prev + 1;
+          }
+          return (prev + 1) % loadingFacts.length;
+        });
       }, 2500);
       return () => clearInterval(interval);
     }
-  }, [loading]);
+  }, [loading, loadingStartTime, loadingPhase]);
 
   // Rotate scanner icons during loading
   useEffect(() => {
@@ -167,6 +206,8 @@ function HomeContent() {
     setLoadingFactIndex(0);
     setScannerIconIndex(0);
     setVisibleIcons(0);
+    setLoadingPhase('initial');
+    setLoadingStartTime(Date.now());
     
     try {
       setIsLoading(true);
@@ -175,6 +216,7 @@ function HomeContent() {
       setCommonGround(null);
       setKeyDifferences(null);
       setResults([]);
+      setArchives([]);
       setIsPaywalled(false);
 
       const res = await fetch("/api/find", {
@@ -199,12 +241,14 @@ function HomeContent() {
       setCommonGround(data.commonGround ?? null);
       setKeyDifferences(data.keyDifferences ?? null);
       setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
+      setArchives(Array.isArray(data.archives) ? data.archives : []);
       setIsPaywalled(data.isPaywalled ?? false);
     } catch (e: unknown) {
       const err = e as Error;
       setError(err?.message || "Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
+      setLoadingPhase('initial');
       refreshUsage();
     }
   }
@@ -233,7 +277,7 @@ function HomeContent() {
   async function handleCopySummary() {
     if (!summary) return;
     try {
-      await navigator.clipboard.writeText(summary);
+      await navigator.clipboard.writeText(summary.replace(/\*\*/g, ''));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -244,7 +288,7 @@ function HomeContent() {
   async function handleShare() {
     const shareData = {
       title: 'MirrorSource - See the Whole Story',
-      text: summary ? summary.slice(0, 100) + '...' : 'Find free, public coverage of any news story.',
+      text: summary ? summary.replace(/\*\*/g, '').slice(0, 100) + '...' : 'Find free, public coverage of any news story.',
       url: window.location.origin,
     };
 
@@ -268,6 +312,7 @@ function HomeContent() {
     setCommonGround(null);
     setKeyDifferences(null);
     setResults([]);
+    setArchives([]);
     setIsPaywalled(false);
     setError(null);
     setCurrentUrl("");
@@ -286,28 +331,24 @@ function HomeContent() {
   }
 
   const currentScannerIcon = scannerIcons[scannerIconIndex];
+  
+  // Get current loading message based on phase
+  const currentLoadingMessage = loadingPhase === 'topic' 
+    ? topicLoadingFacts[loadingFactIndex % topicLoadingFacts.length]
+    : loadingPhase === 'expanded'
+    ? expandedLoadingFacts[loadingFactIndex % expandedLoadingFacts.length]
+    : loadingFacts[loadingFactIndex];
 
   return (
     <main className="min-h-screen bg-slate-50 flex flex-col relative">
       {/* Pop-in animation keyframes */}
       <style jsx>{`
         @keyframes popIn {
-          0% {
-            transform: scale(0);
-            opacity: 0;
-          }
-          70% {
-            transform: scale(1.1);
-            opacity: 1;
-          }
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
+          0% { transform: scale(0); opacity: 0; }
+          70% { transform: scale(1.1); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
         }
-        .icon-pop {
-          animation: popIn 0.4s ease-out forwards;
-        }
+        .icon-pop { animation: popIn 0.4s ease-out forwards; }
       `}</style>
       
       <div className="hidden md:flex fixed top-4 right-4 z-50 items-center gap-3">
@@ -390,7 +431,6 @@ function HomeContent() {
       {loading && (
         <div className="flex flex-col items-center justify-center px-4 pt-8 pb-12 animate-in fade-in duration-500">
           <div className="flex flex-col items-center gap-5">
-            {/* Rotating Scanner Icon - larger with high-res image */}
             <div className="relative">
               <div className="w-28 h-28 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-cyan-50 to-blue-100 flex items-center justify-center shadow-lg animate-pulse">
                 <img
@@ -403,19 +443,23 @@ function HomeContent() {
                   }}
                 />
               </div>
-              {/* Scanning ring animation */}
               <div className="absolute inset-0 rounded-full border-2 border-cyan-400 animate-ping opacity-30"></div>
             </div>
             
-            {/* Scanning text */}
             <p className="text-cyan-600 font-semibold text-sm uppercase tracking-wider">
-              Scanning...
+              {loadingPhase === 'expanded' ? 'Expanding Search...' : 
+               loadingPhase === 'topic' ? 'Deep Searching...' : 'Scanning...'}
             </p>
             
-            {/* Rotating status message */}
-            <p className="text-slate-500 text-base animate-pulse">
-              {loadingFacts[loadingFactIndex]}
+            <p className="text-slate-500 text-base animate-pulse text-center max-w-sm">
+              {currentLoadingMessage}
             </p>
+            
+            {loadingPhase !== 'initial' && (
+              <p className="text-slate-400 text-xs">
+                This may take a moment for comprehensive results
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -465,7 +509,7 @@ function HomeContent() {
               </div>
             )}
             
-            {/* Summary Section - with strategic bolding */}
+            {/* Summary Section */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 lg:p-10">
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-xl md:text-2xl font-bold text-slate-900">Summary</h2>
@@ -509,7 +553,6 @@ function HomeContent() {
                 )}
               </div>
               
-              {/* Summary text with lighter base color for contrast with bold */}
               <div className="leading-relaxed">
                 {summary ? (
                   <p className="text-base md:text-lg leading-7 md:leading-8 text-slate-600">
@@ -521,7 +564,7 @@ function HomeContent() {
               </div>
             </div>
 
-            {/* Intel Brief Section - with strategic bolding */}
+            {/* Intel Brief Section */}
             {(commonGround || keyDifferences) && (
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 lg:p-10">
                 <div className="flex items-center gap-2 mb-6">
@@ -535,7 +578,6 @@ function HomeContent() {
                 </div>
                 
                 <div className="grid md:grid-cols-2 gap-5">
-                  {/* Common Ground Box - lighter base, bold signal */}
                   {commonGround && (
                     <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5">
                       <div className="flex items-center gap-2 mb-3">
@@ -550,7 +592,6 @@ function HomeContent() {
                     </div>
                   )}
                   
-                  {/* Key Differences Box - lighter base, bold signal */}
                   {keyDifferences && (
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
                       <div className="flex items-center gap-2 mb-3">
@@ -593,9 +634,62 @@ function HomeContent() {
                   </div>
                 </>
               ) : (
-                <div className="text-center text-slate-500 py-8">
-                  <p>No sources found for this article.</p>
-                  <p className="text-sm mt-2">Try searching again or check if the URL is correct.</p>
+                <div className="space-y-4">
+                  {/* No sources found message */}
+                  <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <AlertCircle className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-slate-600 font-medium">Limited coverage found</p>
+                      <p className="text-sm text-slate-500 mt-1">
+                        We searched extensively but couldn't find free alternative sources for this specific article.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Show archives if available */}
+                  {archives.length > 0 && (
+                    <div className="space-y-3">
+                      <p className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                        <Archive size={16} />
+                        Archived versions available:
+                      </p>
+                      <div className="grid gap-3">
+                        {archives.map((archive, index) => (
+                          <a
+                            key={index}
+                            href={archive.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between p-4 bg-orange-50 border border-orange-200 rounded-xl hover:bg-orange-100 transition-colors group"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+                                <Archive size={20} className="text-orange-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-orange-800">
+                                  {archive.source === 'wayback' ? 'Wayback Machine' : 'Archive.today'}
+                                </p>
+                                <p className="text-xs text-orange-600">
+                                  View archived snapshot
+                                </p>
+                              </div>
+                            </div>
+                            <ExternalLink size={18} className="text-orange-400 group-hover:text-orange-600" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <button
+                    onClick={handleSearch}
+                    disabled={loading}
+                    className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-3 px-6 rounded-full transition-colors"
+                  >
+                    <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                    Try searching again
+                  </button>
                 </div>
               )}
             </div>
