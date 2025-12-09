@@ -56,6 +56,7 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const [loading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorRetryable, setErrorRetryable] = useState(true);
   const [summary, setSummary] = useState<string | null>(null);
   const [commonGround, setCommonGround] = useState<string | null>(null);
   const [keyDifferences, setKeyDifferences] = useState<string | null>(null);
@@ -141,6 +142,7 @@ function HomeContent() {
     try {
       setIsLoading(true);
       setError(null);
+      setErrorRetryable(true);
       setSummary(null);
       setCommonGround(null);
       setKeyDifferences(null);
@@ -154,13 +156,13 @@ function HomeContent() {
       });
 
       if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data?.error || "Something went wrong. Please try again.");
+        setErrorRetryable(data?.retryable !== false);
         if (res.status === 429) {
-          const data = await res.json().catch(() => ({}));
-          setError(data?.error || "You've reached today's limit.");
           await refreshUsage();
-          return;
         }
-        throw new Error("Unable to process search. Please try again.");
+        return;
       }
 
       const data = await res.json();
@@ -170,8 +172,9 @@ function HomeContent() {
       setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
       setIsPaywalled(data.isPaywalled ?? false);
     } catch (e: unknown) {
-      const err = e as Error;
-      setError(err?.message || "Something went wrong. Please try again.");
+      // Network error - browser couldn't reach the server
+      setError("Unable to connect. Please check your internet connection and try again.");
+      setErrorRetryable(true);
     } finally {
       setIsLoading(false);
       refreshUsage();
@@ -228,6 +231,7 @@ function HomeContent() {
     setResults([]);
     setIsPaywalled(false);
     setError(null);
+    setErrorRetryable(true);
     setCurrentUrl("");
     setLastSubmittedUrl("");
     setHasAutoSearched(true);
@@ -299,15 +303,19 @@ function HomeContent() {
         {error && (
           <div className="mt-6 w-full max-w-2xl lg:max-w-3xl bg-amber-50 border border-amber-200 rounded-xl p-5 text-center">
             <p className="text-amber-800 font-medium mb-2">{error}</p>
-            <p className="text-amber-600 text-sm mb-4">Search results vary each time. Give it another shot!</p>
-            <button
-              onClick={() => handleSearchWithUrl(currentUrl)}
-              disabled={loading || !currentUrl}
-              className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white font-medium py-2 px-5 rounded-full transition-colors text-sm"
-            >
-              <RefreshCw size={16} />
-              Try Again
-            </button>
+            {errorRetryable && (
+              <>
+                <p className="text-amber-600 text-sm mb-4">Search results vary each time. Give it another shot!</p>
+                <button
+                  onClick={() => handleSearchWithUrl(currentUrl)}
+                  disabled={loading || !currentUrl}
+                  className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white font-medium py-2 px-5 rounded-full transition-colors text-sm"
+                >
+                  <RefreshCw size={16} />
+                  Try Again
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>

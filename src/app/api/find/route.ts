@@ -3,7 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import { checkRateLimit, incrementUsage, COOKIE_OPTIONS } from "../../../lib/rate-limiter";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 25;
+export const maxDuration = 30;
 
 const apiKey = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenAI({ apiKey: apiKey || "" });
@@ -16,6 +16,48 @@ const corsHeaders = {
 
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
+}
+
+// --- Error Types ---
+type ErrorType = 'INVALID_URL' | 'NETWORK_ERROR' | 'TIMEOUT' | 'RATE_LIMITED' | 'API_ERROR';
+
+interface AppError {
+  type: ErrorType;
+  userMessage: string;
+  statusCode: number;
+  retryable: boolean;
+}
+
+function createError(type: ErrorType, details?: string): AppError {
+  const errors: Record<ErrorType, Omit<AppError, 'type'>> = {
+    INVALID_URL: {
+      userMessage: 'Please enter a valid news article URL (must start with http:// or https://)',
+      statusCode: 400,
+      retryable: false,
+    },
+    NETWORK_ERROR: {
+      userMessage: 'Unable to connect. Please check your internet connection and try again.',
+      statusCode: 503,
+      retryable: true,
+    },
+    TIMEOUT: {
+      userMessage: 'The search took too long. Please try again - results vary each time.',
+      statusCode: 504,
+      retryable: true,
+    },
+    RATE_LIMITED: {
+      userMessage: details || 'You\'ve reached your daily limit. Try again tomorrow!',
+      statusCode: 429,
+      retryable: false,
+    },
+    API_ERROR: {
+      userMessage: 'Search failed. Please try again - results vary each time.',
+      statusCode: 500,
+      retryable: true,
+    },
+  };
+  
+  return { type, ...errors[type] };
 }
 
 // --- Syndication ---
@@ -57,44 +99,61 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
   const lower = domain.toLowerCase();
   
   const sources: Record<string, { displayName: string; type: SourceType; countryCode: string }> = {
-    'finance.yahoo.com': { displayName: 'YAHOO', type: 'syndication', countryCode: 'US' },
-    'news.yahoo.com': { displayName: 'YAHOO', type: 'syndication', countryCode: 'US' },
-    'nz.news.yahoo.com': { displayName: 'YAHOO', type: 'syndication', countryCode: 'NZ' },
+    // Syndication
+    'finance.yahoo.com': { displayName: 'YAHOO FINANCE', type: 'syndication', countryCode: 'US' },
+    'news.yahoo.com': { displayName: 'YAHOO NEWS', type: 'syndication', countryCode: 'US' },
+    'yahoo.com': { displayName: 'YAHOO', type: 'syndication', countryCode: 'US' },
     'msn.com': { displayName: 'MSN', type: 'syndication', countryCode: 'US' },
+    // Wire
     'apnews.com': { displayName: 'AP NEWS', type: 'wire', countryCode: 'US' },
     'reuters.com': { displayName: 'REUTERS', type: 'wire', countryCode: 'UK' },
+    'afp.com': { displayName: 'AFP', type: 'wire', countryCode: 'FR' },
+    // Public Broadcasting
     'npr.org': { displayName: 'NPR', type: 'public', countryCode: 'US' },
     'pbs.org': { displayName: 'PBS', type: 'public', countryCode: 'US' },
     'opb.org': { displayName: 'OPB', type: 'public', countryCode: 'US' },
     'bbc.com': { displayName: 'BBC', type: 'public', countryCode: 'UK' },
     'bbc.co.uk': { displayName: 'BBC', type: 'public', countryCode: 'UK' },
     'cbc.ca': { displayName: 'CBC', type: 'public', countryCode: 'CA' },
+    'abc.net.au': { displayName: 'ABC AUSTRALIA', type: 'public', countryCode: 'AU' },
+    // International
     'aljazeera.com': { displayName: 'AL JAZEERA', type: 'international', countryCode: 'QA' },
     'theguardian.com': { displayName: 'THE GUARDIAN', type: 'international', countryCode: 'UK' },
     'thehindu.com': { displayName: 'THE HINDU', type: 'international', countryCode: 'IN' },
+    'dw.com': { displayName: 'DW', type: 'international', countryCode: 'DE' },
+    'france24.com': { displayName: 'FRANCE 24', type: 'international', countryCode: 'FR' },
+    'scmp.com': { displayName: 'SCMP', type: 'international', countryCode: 'CN' },
+    // US Corporate
     'cnn.com': { displayName: 'CNN', type: 'corporate', countryCode: 'US' },
     'foxnews.com': { displayName: 'FOX NEWS', type: 'corporate', countryCode: 'US' },
     'nbcnews.com': { displayName: 'NBC NEWS', type: 'corporate', countryCode: 'US' },
     'cbsnews.com': { displayName: 'CBS NEWS', type: 'corporate', countryCode: 'US' },
     'abcnews.go.com': { displayName: 'ABC NEWS', type: 'corporate', countryCode: 'US' },
-    'politico.com': { displayName: 'POLITICO', type: 'analysis', countryCode: 'US' },
-    'axios.com': { displayName: 'AXIOS', type: 'national', countryCode: 'US' },
+    'msnbc.com': { displayName: 'MSNBC', type: 'corporate', countryCode: 'US' },
+    // National
     'usatoday.com': { displayName: 'USA TODAY', type: 'national', countryCode: 'US' },
+    'axios.com': { displayName: 'AXIOS', type: 'national', countryCode: 'US' },
     'thehill.com': { displayName: 'THE HILL', type: 'analysis', countryCode: 'US' },
+    'politico.com': { displayName: 'POLITICO', type: 'analysis', countryCode: 'US' },
+    // Magazines
     'forbes.com': { displayName: 'FORBES', type: 'magazine', countryCode: 'US' },
     'time.com': { displayName: 'TIME', type: 'magazine', countryCode: 'US' },
     'newsweek.com': { displayName: 'NEWSWEEK', type: 'magazine', countryCode: 'US' },
+    'economist.com': { displayName: 'THE ECONOMIST', type: 'magazine', countryCode: 'UK' },
+    // Specialized
     'wired.com': { displayName: 'WIRED', type: 'specialized', countryCode: 'US' },
+    'techcrunch.com': { displayName: 'TECHCRUNCH', type: 'specialized', countryCode: 'US' },
+    'theverge.com': { displayName: 'THE VERGE', type: 'specialized', countryCode: 'US' },
     'producer.com': { displayName: 'PRODUCER', type: 'specialized', countryCode: 'US' },
     'successfulfarming.com': { displayName: 'SUCCESSFUL FARMING', type: 'specialized', countryCode: 'US' },
-    'startribune.com': { displayName: 'STAR TRIBUNE', type: 'local', countryCode: 'US' },
-    'mint': { displayName: 'MINT', type: 'international', countryCode: 'IN' },
+    'livemint.com': { displayName: 'MINT', type: 'specialized', countryCode: 'IN' },
   };
   
   for (const [key, info] of Object.entries(sources)) {
     if (lower.includes(key)) return info;
   }
   
+  // Country from TLD
   let countryCode = 'US';
   if (lower.endsWith('.uk') || lower.endsWith('.co.uk')) countryCode = 'UK';
   else if (lower.endsWith('.ca')) countryCode = 'CA';
@@ -102,7 +161,8 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
   else if (lower.endsWith('.de')) countryCode = 'DE';
   else if (lower.endsWith('.in')) countryCode = 'IN';
   else if (lower.endsWith('.nz')) countryCode = 'NZ';
-  else if (lower.endsWith('.sg')) countryCode = 'SG';
+  else if (lower.endsWith('.ie')) countryCode = 'IE';
+  else if (lower.endsWith('.fr')) countryCode = 'FR';
   
   const parts = domain.split('.');
   return { displayName: parts[0].toUpperCase(), type: 'local', countryCode };
@@ -128,7 +188,7 @@ function isEnglishContent(text: string): boolean {
 function isErrorTitle(title: string): boolean {
   if (!title) return true;
   const lower = title.toLowerCase();
-  return ['access denied', 'page not found', '404', '403', 'forbidden', 'error', 'blocked', 'captcha', 'just a moment'].some(p => lower.includes(p));
+  return ['access denied', 'page not found', '404', '403', 'forbidden', 'error', 'blocked', 'captcha', 'just a moment', 'subscribe', 'sign in'].some(p => lower.includes(p));
 }
 
 function extractJson(text: string): any {
@@ -143,20 +203,22 @@ function extractJson(text: string): any {
   return null;
 }
 
-async function resolveVertexRedirect(redirectUrl: string): Promise<string | null> {
+// --- URL Resolution ---
+async function resolveUrl(redirectUrl: string): Promise<string | null> {
+  // Skip Google's redirect URLs
   if (!redirectUrl.includes('vertexaisearch.cloud.google.com')) {
     return redirectUrl;
   }
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
 
     const response = await fetch(redirectUrl, {
       method: 'GET',
       redirect: 'follow',
       signal: controller.signal,
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MirrorSource/1.0)' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)' },
     });
 
     clearTimeout(timeoutId);
@@ -171,6 +233,7 @@ async function resolveVertexRedirect(redirectUrl: string): Promise<string | null
   }
 }
 
+// --- Process Grounding Chunks ---
 async function processGroundingChunks(
   chunks: any[],
   syndicationPartners: string[] = []
@@ -182,16 +245,19 @@ async function processGroundingChunks(
     try {
       const web = chunk?.web;
       if (!web?.uri) return null;
-      if ((web.title || '').toLowerCase().includes('google')) return null;
+      
+      const title = web.title || '';
+      if (title.toLowerCase().includes('google')) return null;
 
-      const resolvedUrl = await resolveVertexRedirect(web.uri);
+      const resolvedUrl = await resolveUrl(web.uri);
       if (!resolvedUrl) return null;
 
       const urlObj = new URL(resolvedUrl);
       const domain = urlObj.hostname.replace(/^www\./, '');
 
-      let articleTitle = decodeHtmlEntities(web.title || domain);
-      if (isErrorTitle(articleTitle) || !isEnglishContent(articleTitle)) return null;
+      let articleTitle = decodeHtmlEntities(title || domain);
+      if (isErrorTitle(articleTitle)) return null;
+      if (!isEnglishContent(articleTitle)) return null;
 
       const sourceInfo = getSourceInfo(domain);
       const isSyndicated = syndicationPartners.some(partner => domain.includes(partner));
@@ -208,8 +274,8 @@ async function processGroundingChunks(
     } catch { return null; }
   };
 
-  // Process up to 10 chunks in parallel for maximum sources
-  const settled = await Promise.allSettled(chunks.slice(0, 10).map(processChunk));
+  // Process up to 15 chunks in parallel for maximum source coverage
+  const settled = await Promise.allSettled(chunks.slice(0, 15).map(processChunk));
 
   for (const result of settled) {
     if (result.status === 'fulfilled' && result.value) {
@@ -236,50 +302,53 @@ async function processGroundingChunks(
   return results;
 }
 
-function validateUrl(url: string): { valid: boolean; error?: string } {
+// --- URL Validation ---
+function validateUrl(url: string): { valid: boolean; error?: AppError } {
   if (!url || typeof url !== 'string' || !url.trim()) {
-    return { valid: false, error: 'URL is required' };
+    return { valid: false, error: createError('INVALID_URL') };
   }
   try {
     const parsed = new URL(url.trim());
     if (!['http:', 'https:'].includes(parsed.protocol)) {
-      return { valid: false, error: 'URL must start with http:// or https://' };
+      return { valid: false, error: createError('INVALID_URL') };
     }
     return { valid: true };
   } catch {
-    return { valid: false, error: 'Invalid URL format' };
+    return { valid: false, error: createError('INVALID_URL') };
   }
 }
 
-// --- Gemini call optimized for maximum sources ---
+// --- Gemini Call (Optimized for Maximum Sources) ---
 async function callGemini(url: string, syndicationPartners: string[]): Promise<{
   summary: string;
   commonGround: string;
   keyDifferences: string;
   alternatives: any[];
-  sourceNames: string[];
 }> {
   const syndicationHint = syndicationPartners.length > 0 
-    ? `Priority: search ${syndicationPartners.join(', ')} for syndicated versions.`
+    ? `PRIORITY: Search for syndicated versions on ${syndicationPartners.join(', ')}.`
     : '';
 
+  // Optimized prompt for finding multiple sources
   const prompt = `
-Find alternative news sources for this article. Maximize the number of different sources found.
+You are a news research assistant. Your goal is to find as many alternative news sources as possible covering the same story.
 
-URL: "${url}"
+ARTICLE URL: ${url}
 ${syndicationHint}
 
-Search these outlets: AP News, Reuters, BBC, The Guardian, CBS News, NBC News, ABC News, CNN, NPR, PBS, Yahoo News, MSN, Al Jazeera, The Hill, Politico, Axios, Fox News, USA Today, Forbes, Time, Newsweek.
+INSTRUCTIONS:
+1. Search for this exact story across multiple news outlets
+2. Find at least 5-10 different sources covering this story
+3. Prioritize: Wire services (AP, Reuters), major networks (CBS, NBC, ABC, CNN, Fox), public media (NPR, PBS, BBC), international (Guardian, Al Jazeera), and news aggregators (Yahoo News, MSN)
 
-Return JSON only:
+RESPONSE FORMAT (JSON only, no markdown):
 {
-  "summary": "3-5 sentences summarizing the story. Use **bold** for key names, numbers, dates. Grade 8-10 reading level. No citations.",
-  "sourceList": ["Guardian", "CBS News", "Yahoo"],
-  "commonGround": "What these sources agree on. Bold key facts.",
-  "keyDifferences": "How coverage differs. Format: **Source A** emphasizes X, while **Source B** focuses on Y. ONLY mention sources from sourceList."
+  "summary": "3-5 sentence summary of the story. Use **bold** for key names, numbers, dates. Grade 8-10 reading level. No citations.",
+  "commonGround": "What all sources agree on. Use **bold** for key facts.",
+  "keyDifferences": "Where sources differ in their coverage or framing. Use **bold** for source names and claims."
 }
 
-CRITICAL: sourceList must contain the display names of sources you found. commonGround and keyDifferences can ONLY reference sources in sourceList.
+Focus on finding the MAXIMUM number of alternative sources. Quality and quantity of sources is the primary goal.
   `.trim();
 
   const geminiResponse: any = await genAI.models.generateContent({
@@ -299,12 +368,11 @@ CRITICAL: sourceList must contain the display names of sources you found. common
 
   const parsedData = extractJson(text) || {};
   
-  // Clean any citations that slipped through
+  // Clean citations
   const citationRegex = /\s*\[\d+(?:,\s*\d+)*\]/g;
   let summary = (parsedData.summary || 'Summary not available.').replace(citationRegex, '');
   let commonGround = (parsedData.commonGround || '').replace(citationRegex, '');
   let keyDifferences = (parsedData.keyDifferences || '').replace(citationRegex, '');
-  const sourceNames = parsedData.sourceList || [];
 
   // Get grounding chunks
   const candidates = geminiResponse?.response?.candidates ?? geminiResponse?.candidates ?? [];
@@ -312,67 +380,65 @@ CRITICAL: sourceList must contain the display names of sources you found. common
 
   const alternatives = await processGroundingChunks(groundingChunks, syndicationPartners);
 
-  return { summary, commonGround, keyDifferences, alternatives, sourceNames };
-}
-
-// --- Post-process Intel Brief to only reference found sources ---
-function filterIntelBrief(
-  commonGround: string, 
-  keyDifferences: string, 
-  foundSources: string[]
-): { commonGround: string; keyDifferences: string } {
-  // If we have very few sources, simplify the Intel Brief
-  if (foundSources.length < 2) {
-    return {
-      commonGround: commonGround,
-      keyDifferences: '' // Don't show differences if we only have 1 source
-    };
+  // If we have very few sources, clear keyDifferences (can't compare with 1 source)
+  if (alternatives.length < 2) {
+    keyDifferences = '';
   }
-  
-  return { commonGround, keyDifferences };
+
+  return { summary, commonGround, keyDifferences, alternatives };
 }
 
+// --- Main Handler ---
 export async function POST(req: NextRequest) {
   try {
+    // 1. Rate Limit Check
     const limitCheck = await checkRateLimit(req);
     if (!limitCheck.success) {
+      const error = createError('RATE_LIMITED', `Daily limit reached. You have 0/${limitCheck.info.limit} remaining.`);
       return NextResponse.json(
-        { error: `Daily limit reached. You have 0/${limitCheck.info.limit} remaining.` },
-        { status: 429, headers: corsHeaders }
+        { error: error.userMessage, errorType: error.type, retryable: error.retryable },
+        { status: error.statusCode, headers: corsHeaders }
       );
     }
 
+    // 2. Parse Request Body
     let body: any;
-    try { body = await req.json(); } 
-    catch { return NextResponse.json({ error: 'Invalid request body' }, { status: 400, headers: corsHeaders }); }
+    try { 
+      body = await req.json(); 
+    } catch { 
+      const error = createError('INVALID_URL');
+      return NextResponse.json(
+        { error: 'Invalid request body', errorType: error.type, retryable: false },
+        { status: 400, headers: corsHeaders }
+      );
+    }
 
+    // 3. Validate URL
     const validation = validateUrl(body.url);
-    if (!validation.valid) {
-      return NextResponse.json({ error: validation.error }, { status: 400, headers: corsHeaders });
+    if (!validation.valid && validation.error) {
+      return NextResponse.json(
+        { error: validation.error.userMessage, errorType: validation.error.type, retryable: validation.error.retryable },
+        { status: validation.error.statusCode, headers: corsHeaders }
+      );
     }
 
     const url = body.url.trim();
+    
+    // 4. Increment Usage
     const { info: usageInfo, cookieValue } = await incrementUsage(req);
+    
+    // 5. Get Source Info
     const isPaywalled = isPaywalledSource(url);
     const syndicationPartners = getSyndicationPartners(url);
 
-    // Single optimized Gemini call
+    // 6. Call Gemini
     const result = await callGemini(url, syndicationPartners);
-    
-    // Get the display names of sources we actually found
-    const foundSourceNames = result.alternatives.map(a => a.displayName);
-    
-    // Filter Intel Brief to only reference found sources
-    const { commonGround, keyDifferences } = filterIntelBrief(
-      result.commonGround, 
-      result.keyDifferences, 
-      foundSourceNames
-    );
 
+    // 7. Build Response
     const response = NextResponse.json({
       summary: result.summary,
-      commonGround,
-      keyDifferences,
+      commonGround: result.commonGround,
+      keyDifferences: result.keyDifferences,
       alternatives: result.alternatives,
       isPaywalled,
       usage: usageInfo,
@@ -382,11 +448,22 @@ export async function POST(req: NextRequest) {
     return response;
 
   } catch (error: any) {
-    console.error('Error in /api/find:', error);
+    console.error('Error in /api/find:', error?.message || error);
+    
+    // Determine error type
+    let appError: AppError;
+    
+    if (error.message?.includes('fetch failed') || error.message?.includes('ENOTFOUND') || error.message?.includes('network')) {
+      appError = createError('NETWORK_ERROR');
+    } else if (error.message?.includes('timeout') || error.message?.includes('aborted') || error.name === 'AbortError' || error.message?.includes('DEADLINE_EXCEEDED')) {
+      appError = createError('TIMEOUT');
+    } else {
+      appError = createError('API_ERROR');
+    }
     
     return NextResponse.json(
-      { error: 'Search failed. Please try again - results vary each time.' },
-      { status: 500, headers: corsHeaders }
+      { error: appError.userMessage, errorType: appError.type, retryable: appError.retryable },
+      { status: appError.statusCode, headers: corsHeaders }
     );
   }
 }
