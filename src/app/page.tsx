@@ -20,14 +20,22 @@ const loadingFacts = [
 ];
 
 const scannerIcons = [
-  { domain: "theguardian.com", name: "The Guardian" },
-  { domain: "reuters.com", name: "Reuters" },
   { domain: "apnews.com", name: "AP News" },
+  { domain: "reuters.com", name: "Reuters" },
   { domain: "bbc.com", name: "BBC" },
-  { domain: "cbsnews.com", name: "CBS News" },
+  { domain: "theguardian.com", name: "The Guardian" },
   { domain: "npr.org", name: "NPR" },
+  { domain: "cbsnews.com", name: "CBS News" },
+  { domain: "nbcnews.com", name: "NBC News" },
+  { domain: "cnn.com", name: "CNN" },
+  { domain: "foxnews.com", name: "Fox News" },
+  { domain: "pbs.org", name: "PBS" },
+  { domain: "politico.com", name: "Politico" },
+  { domain: "axios.com", name: "Axios" },
+  { domain: "thehill.com", name: "The Hill" },
+  { domain: "usatoday.com", name: "USA Today" },
+  { domain: "aljazeera.com", name: "Al Jazeera" },
   { domain: "forbes.com", name: "Forbes" },
-  { domain: "bloomberg.com", name: "Bloomberg" },
 ];
 
 function parseMarkdownBold(text: string, variant: 'summary' | 'intel' = 'summary'): React.ReactNode[] {
@@ -82,12 +90,12 @@ function HomeContent() {
     }
   }, [loading]);
 
-  // Rotate scanner icons
+  // Rotate scanner icons - 1100ms is optimal (research: 1000-1200ms feels steady, not frantic)
   useEffect(() => {
     if (loading) {
       const interval = setInterval(() => {
         setScannerIconIndex((prev) => (prev + 1) % scannerIcons.length);
-      }, 800);
+      }, 1100);
       return () => clearInterval(interval);
     }
   }, [loading]);
@@ -312,7 +320,6 @@ function HomeContent() {
               <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-br from-cyan-50 to-blue-100 flex items-center justify-center shadow-lg">
                 <img key={currentScannerIcon.domain} src={getHighResFavicon(currentScannerIcon.domain)} alt={currentScannerIcon.name} className="w-12 h-12 md:w-14 md:h-14 object-contain rounded-lg animate-in fade-in zoom-in duration-300" onError={(e) => { (e.target as HTMLImageElement).src = '/favicon.ico'; }} />
               </div>
-              <div className="absolute inset-0 rounded-full border-2 border-cyan-400 animate-ping opacity-30"></div>
             </div>
             
             {/* Status text */}
