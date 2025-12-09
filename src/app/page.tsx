@@ -23,7 +23,7 @@ const loadingFacts = [
   "Searching public news archives...",
 ];
 
-// Sample news source icons to rotate through during scanning
+// High-profile news sources with high-res logo URLs
 const scannerIcons = [
   { domain: "theguardian.com", name: "The Guardian" },
   { domain: "reuters.com", name: "Reuters" },
@@ -33,6 +33,10 @@ const scannerIcons = [
   { domain: "cbsnews.com", name: "CBS News" },
   { domain: "npr.org", name: "NPR" },
   { domain: "washingtonpost.com", name: "Washington Post" },
+  { domain: "wsj.com", name: "WSJ" },
+  { domain: "economist.com", name: "The Economist" },
+  { domain: "ft.com", name: "Financial Times" },
+  { domain: "bloomberg.com", name: "Bloomberg" },
 ];
 
 // Helper function to parse markdown bold (**text**) to JSX
@@ -46,9 +50,16 @@ function parseMarkdownBold(text: string): React.ReactNode[] {
   });
 }
 
+// High-res favicon using Google's service (128px)
+function getHighResFavicon(domain: string): string {
+  const cleanDomain = domain.replace(/^www\./, '');
+  return `https://www.google.com/s2/favicons?domain=${cleanDomain}&sz=128`;
+}
+
+// Standard favicon for results
 function getFaviconUrl(domain: string): string {
   const cleanDomain = domain.replace(/^www\./, '');
-  return `https://icons.duckduckgo.com/ip3/${cleanDomain}.ico`;
+  return `https://www.google.com/s2/favicons?domain=${cleanDomain}&sz=64`;
 }
 
 function HomeContent() {
@@ -319,20 +330,20 @@ function HomeContent() {
             width={400}
             height={100}
             priority
-            className="w-48 sm:w-64 md:w-72 lg:w-96 h-auto"
+            className="w-48 sm:w-64 md:w-80 lg:w-[420px] h-auto"
           />
         </button>
 
         <div className="text-center max-w-2xl space-y-4 mb-8">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight md:whitespace-nowrap">
+          <h1 className="text-4xl md:text-5xl lg:text-[56px] font-extrabold text-slate-900 tracking-tight md:whitespace-nowrap">
             See the whole story.
           </h1>
-          <p className="text-lg text-slate-600 leading-relaxed">
+          <p className="text-lg md:text-xl text-slate-600 leading-relaxed">
             One story. Multiple sources. Zero friction.
           </p>
         </div>
 
-        <div className="w-full max-w-2xl relative z-20">
+        <div className="w-full max-w-2xl lg:max-w-3xl relative z-20">
           <UrlInputForm 
             onSubmit={handleSubmit} 
             isLoading={loading}
@@ -358,7 +369,7 @@ function HomeContent() {
         )}
 
         {error && (
-          <div className="mt-6 w-full max-w-2xl bg-red-50 border border-red-200 rounded-lg p-4 text-red-600 text-center text-sm">
+          <div className="mt-6 w-full max-w-2xl lg:max-w-3xl bg-red-50 border border-red-200 rounded-lg p-4 text-red-600 text-center text-sm">
             {error}
           </div>
         )}
@@ -367,15 +378,15 @@ function HomeContent() {
       {/* Loading State - Scanning Animation */}
       {loading && (
         <div className="flex flex-col items-center justify-center px-4 pt-8 pb-12 animate-in fade-in duration-500">
-          <div className="flex flex-col items-center gap-4">
-            {/* Rotating Scanner Icon */}
+          <div className="flex flex-col items-center gap-5">
+            {/* Rotating Scanner Icon - larger with high-res image */}
             <div className="relative">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-50 to-blue-100 flex items-center justify-center shadow-lg animate-pulse">
+              <div className="w-28 h-28 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-cyan-50 to-blue-100 flex items-center justify-center shadow-lg animate-pulse">
                 <img
                   key={currentScannerIcon.domain}
-                  src={getFaviconUrl(currentScannerIcon.domain)}
+                  src={getHighResFavicon(currentScannerIcon.domain)}
                   alt={currentScannerIcon.name}
-                  className="w-12 h-12 object-contain rounded-lg animate-in fade-in zoom-in duration-300"
+                  className="w-14 h-14 md:w-16 md:h-16 object-contain rounded-lg animate-in fade-in zoom-in duration-300"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = '/favicon.ico';
                   }}
@@ -391,7 +402,7 @@ function HomeContent() {
             </p>
             
             {/* Rotating status message */}
-            <p className="text-slate-500 text-sm animate-pulse">
+            <p className="text-slate-500 text-base animate-pulse">
               {loadingFacts[loadingFactIndex]}
             </p>
           </div>
@@ -401,11 +412,11 @@ function HomeContent() {
       {/* Results Content */}
       {!loading && hasContent && (
         <div className="flex-1 bg-slate-50 px-4 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <div className="max-w-3xl mx-auto space-y-6">
+          <div className="max-w-4xl mx-auto space-y-6">
 
             {/* Source Icons Header */}
             {results.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-4 md:gap-6 py-4">
+              <div className="flex flex-wrap justify-center gap-5 md:gap-8 py-6">
                 {results.map((item, index) => {
                   const sourceDomain = item.sourceDomain || '';
                   const isVisible = index < visibleIcons;
@@ -424,17 +435,17 @@ function HomeContent() {
                         animationFillMode: 'forwards'
                       }}
                     >
-                      <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white shadow-md border border-slate-200 flex items-center justify-center group-hover:shadow-lg group-hover:border-blue-300 transition-all">
+                      <div className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 rounded-full bg-white shadow-md border border-slate-200 flex items-center justify-center group-hover:shadow-lg group-hover:border-blue-300 transition-all">
                         <img
                           src={getFaviconUrl(sourceDomain)}
                           alt={sourceDomain}
-                          className="w-8 h-8 md:w-10 md:h-10 object-contain"
+                          className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 object-contain"
                           onError={(e) => {
                             (e.target as HTMLImageElement).style.display = 'none';
                           }}
                         />
                       </div>
-                      <span className="text-xs font-medium text-slate-500 uppercase tracking-wide group-hover:text-blue-600 transition-colors text-center max-w-[80px] truncate">
+                      <span className="text-xs md:text-sm font-medium text-slate-500 uppercase tracking-wide group-hover:text-blue-600 transition-colors text-center max-w-[90px] truncate">
                         {sourceDomain.replace(/^www\./, '').split('.')[0]}
                       </span>
                     </a>
@@ -444,9 +455,9 @@ function HomeContent() {
             )}
             
             {/* Summary Section */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-slate-900">Summary</h2>
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 lg:p-10">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl md:text-2xl font-bold text-slate-900">Summary</h2>
                 {summary && (
                   <div className="flex items-center gap-2">
                     <button
@@ -487,9 +498,9 @@ function HomeContent() {
                 )}
               </div>
               
-              <div className="prose prose-slate leading-relaxed text-slate-700">
+              <div className="prose prose-slate prose-lg leading-relaxed text-slate-700">
                 {summary ? (
-                  <p style={{ whiteSpace: "pre-wrap" }}>{summary}</p>
+                  <p className="text-base md:text-lg leading-7 md:leading-8" style={{ whiteSpace: "pre-wrap" }}>{summary}</p>
                 ) : (
                   <p className="text-slate-400 italic">No summary available.</p>
                 )}
@@ -498,28 +509,28 @@ function HomeContent() {
 
             {/* Intel Brief Section */}
             {(commonGround || keyDifferences) && (
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
-                <div className="flex items-center gap-2 mb-5">
-                  <svg className="w-5 h-5 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 lg:p-10">
+                <div className="flex items-center gap-2 mb-6">
+                  <svg className="w-5 h-5 md:w-6 md:h-6 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 3v18h18" />
                     <path d="M18 17V9" />
                     <path d="M13 17V5" />
                     <path d="M8 17v-3" />
                   </svg>
-                  <h2 className="text-xl font-bold text-slate-900">Intel Brief</h2>
+                  <h2 className="text-xl md:text-2xl font-bold text-slate-900">Intel Brief</h2>
                 </div>
                 
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid md:grid-cols-2 gap-5">
                   {/* Common Ground Box */}
                   {commonGround && (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5">
                       <div className="flex items-center gap-2 mb-3">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                         <h3 className="text-sm font-semibold text-emerald-800 uppercase tracking-wide">
                           Common Ground
                         </h3>
                       </div>
-                      <p className="text-sm text-emerald-900 leading-relaxed">
+                      <p className="text-sm md:text-base text-emerald-900 leading-relaxed">
                         {commonGround}
                       </p>
                     </div>
@@ -527,14 +538,14 @@ function HomeContent() {
                   
                   {/* Key Differences Box */}
                   {keyDifferences && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
                       <div className="flex items-center gap-2 mb-3">
                         <Scale className="w-4 h-4 text-amber-600" />
                         <h3 className="text-sm font-semibold text-amber-800 uppercase tracking-wide">
                           Key Differences
                         </h3>
                       </div>
-                      <p className="text-sm text-amber-900 leading-relaxed">
+                      <p className="text-sm md:text-base text-amber-900 leading-relaxed">
                         {parseMarkdownBold(keyDifferences)}
                       </p>
                     </div>
@@ -544,8 +555,8 @@ function HomeContent() {
             )}
 
             {/* Alternative Sources Section */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
-              <h2 className="text-xl font-bold text-slate-900 mb-4">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 lg:p-10">
+              <h2 className="text-xl md:text-2xl font-bold text-slate-900 mb-5">
                 Alternative Sources
               </h2>
 
@@ -580,7 +591,7 @@ function HomeContent() {
       )}
 
       <footer className="py-6 px-4 border-t border-slate-200 bg-white mt-auto">
-        <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
           <p>&copy; {new Date().getFullYear()} MirrorSource</p>
           <div className="flex items-center gap-6">
             <Link href="/about" className="hover:text-blue-600 transition-colors">
