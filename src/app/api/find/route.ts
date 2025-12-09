@@ -3,7 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import { checkRateLimit, incrementUsage, COOKIE_OPTIONS } from "../../../lib/rate-limiter";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 25; // Reduced to avoid timeout
+export const maxDuration = 25;
 
 const apiKey = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenAI({ apiKey: apiKey || "" });
@@ -16,70 +16,6 @@ const corsHeaders = {
 
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
-}
-
-// --- Archive functions (fast, parallel) ---
-interface ArchiveResult {
-  found: boolean;
-  url?: string;
-  source: 'wayback' | 'archive.today';
-}
-
-async function checkWaybackMachine(url: string): Promise<ArchiveResult> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
-    
-    const response = await fetch(`https://archive.org/wayback/available?url=${encodeURIComponent(url)}`, {
-      signal: controller.signal,
-      headers: { 'User-Agent': 'MirrorSource/1.0' },
-    });
-    
-    clearTimeout(timeoutId);
-    if (!response.ok) return { found: false, source: 'wayback' };
-    
-    const data = await response.json();
-    const snapshot = data?.archived_snapshots?.closest;
-    
-    if (snapshot?.available && snapshot?.url) {
-      return { found: true, url: snapshot.url, source: 'wayback' };
-    }
-    return { found: false, source: 'wayback' };
-  } catch {
-    return { found: false, source: 'wayback' };
-  }
-}
-
-async function checkArchiveToday(url: string): Promise<ArchiveResult> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
-    
-    const response = await fetch(`https://archive.today/newest/${encodeURIComponent(url)}`, {
-      method: 'HEAD',
-      redirect: 'manual',
-      signal: controller.signal,
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MirrorSource/1.0)' },
-    });
-    
-    clearTimeout(timeoutId);
-    
-    if (response.status === 301 || response.status === 302) {
-      const archiveUrl = response.headers.get('location');
-      if (archiveUrl) return { found: true, url: archiveUrl, source: 'archive.today' };
-    }
-    return { found: false, source: 'archive.today' };
-  } catch {
-    return { found: false, source: 'archive.today' };
-  }
-}
-
-async function checkArchives(url: string): Promise<ArchiveResult[]> {
-  const results = await Promise.allSettled([checkWaybackMachine(url), checkArchiveToday(url)]);
-  return results
-    .filter((r): r is PromiseFulfilledResult<ArchiveResult> => r.status === 'fulfilled')
-    .map(r => r.value)
-    .filter(r => r.found);
 }
 
 // --- Syndication ---
@@ -114,7 +50,7 @@ function getSyndicationPartners(url: string): string[] {
 }
 
 // --- Source classification ---
-type SourceType = 'wire' | 'public' | 'corporate' | 'state' | 'analysis' | 'local' | 'national' | 'international' | 'magazine' | 'specialized' | 'reference' | 'syndication' | 'archive';
+type SourceType = 'wire' | 'public' | 'corporate' | 'state' | 'analysis' | 'local' | 'national' | 'international' | 'magazine' | 'specialized' | 'reference' | 'syndication';
 
 function getSourceInfo(domain: string): { displayName: string; type: SourceType; countryCode: string } {
   if (!domain) return { displayName: 'SOURCE', type: 'local', countryCode: 'US' };
@@ -123,11 +59,13 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
   const sources: Record<string, { displayName: string; type: SourceType; countryCode: string }> = {
     'finance.yahoo.com': { displayName: 'YAHOO', type: 'syndication', countryCode: 'US' },
     'news.yahoo.com': { displayName: 'YAHOO', type: 'syndication', countryCode: 'US' },
+    'nz.news.yahoo.com': { displayName: 'YAHOO', type: 'syndication', countryCode: 'NZ' },
     'msn.com': { displayName: 'MSN', type: 'syndication', countryCode: 'US' },
     'apnews.com': { displayName: 'AP NEWS', type: 'wire', countryCode: 'US' },
     'reuters.com': { displayName: 'REUTERS', type: 'wire', countryCode: 'UK' },
     'npr.org': { displayName: 'NPR', type: 'public', countryCode: 'US' },
     'pbs.org': { displayName: 'PBS', type: 'public', countryCode: 'US' },
+    'opb.org': { displayName: 'OPB', type: 'public', countryCode: 'US' },
     'bbc.com': { displayName: 'BBC', type: 'public', countryCode: 'UK' },
     'bbc.co.uk': { displayName: 'BBC', type: 'public', countryCode: 'UK' },
     'cbc.ca': { displayName: 'CBC', type: 'public', countryCode: 'CA' },
@@ -147,6 +85,10 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
     'time.com': { displayName: 'TIME', type: 'magazine', countryCode: 'US' },
     'newsweek.com': { displayName: 'NEWSWEEK', type: 'magazine', countryCode: 'US' },
     'wired.com': { displayName: 'WIRED', type: 'specialized', countryCode: 'US' },
+    'producer.com': { displayName: 'PRODUCER', type: 'specialized', countryCode: 'US' },
+    'successfulfarming.com': { displayName: 'SUCCESSFUL FARMING', type: 'specialized', countryCode: 'US' },
+    'startribune.com': { displayName: 'STAR TRIBUNE', type: 'local', countryCode: 'US' },
+    'mint': { displayName: 'MINT', type: 'international', countryCode: 'IN' },
   };
   
   for (const [key, info] of Object.entries(sources)) {
@@ -159,6 +101,8 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
   else if (lower.endsWith('.au')) countryCode = 'AU';
   else if (lower.endsWith('.de')) countryCode = 'DE';
   else if (lower.endsWith('.in')) countryCode = 'IN';
+  else if (lower.endsWith('.nz')) countryCode = 'NZ';
+  else if (lower.endsWith('.sg')) countryCode = 'SG';
   
   const parts = domain.split('.');
   return { displayName: parts[0].toUpperCase(), type: 'local', countryCode };
@@ -199,14 +143,14 @@ function extractJson(text: string): any {
   return null;
 }
 
-async function resolveVertexRedirect(redirectUrl: string): Promise<{ url: string; title: string | null } | null> {
+async function resolveVertexRedirect(redirectUrl: string): Promise<string | null> {
   if (!redirectUrl.includes('vertexaisearch.cloud.google.com')) {
-    return { url: redirectUrl, title: null };
+    return redirectUrl;
   }
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
 
     const response = await fetch(redirectUrl, {
       method: 'GET',
@@ -219,7 +163,7 @@ async function resolveVertexRedirect(redirectUrl: string): Promise<{ url: string
     const finalUrl = response.url;
     
     if (!finalUrl.includes('vertexaisearch.cloud.google.com')) {
-      return { url: finalUrl, title: null };
+      return finalUrl;
     }
     return null;
   } catch {
@@ -240,24 +184,32 @@ async function processGroundingChunks(
       if (!web?.uri) return null;
       if ((web.title || '').toLowerCase().includes('google')) return null;
 
-      const resolved = await resolveVertexRedirect(web.uri);
-      if (!resolved) return null;
+      const resolvedUrl = await resolveVertexRedirect(web.uri);
+      if (!resolvedUrl) return null;
 
-      const urlObj = new URL(resolved.url);
+      const urlObj = new URL(resolvedUrl);
       const domain = urlObj.hostname.replace(/^www\./, '');
 
-      let articleTitle = decodeHtmlEntities(resolved.title || web.title || domain);
+      let articleTitle = decodeHtmlEntities(web.title || domain);
       if (isErrorTitle(articleTitle) || !isEnglishContent(articleTitle)) return null;
 
       const sourceInfo = getSourceInfo(domain);
       const isSyndicated = syndicationPartners.some(partner => domain.includes(partner));
 
-      return { uri: resolved.url, title: articleTitle, displayName: sourceInfo.displayName, sourceDomain: domain, sourceType: sourceInfo.type, countryCode: sourceInfo.countryCode, isSyndicated };
+      return { 
+        uri: resolvedUrl, 
+        title: articleTitle, 
+        displayName: sourceInfo.displayName, 
+        sourceDomain: domain, 
+        sourceType: sourceInfo.type, 
+        countryCode: sourceInfo.countryCode, 
+        isSyndicated 
+      };
     } catch { return null; }
   };
 
-  // Process only 6 chunks for speed
-  const settled = await Promise.allSettled(chunks.slice(0, 6).map(processChunk));
+  // Process up to 10 chunks in parallel for maximum sources
+  const settled = await Promise.allSettled(chunks.slice(0, 10).map(processChunk));
 
   for (const result of settled) {
     if (result.status === 'fulfilled' && result.value) {
@@ -269,11 +221,11 @@ async function processGroundingChunks(
     }
   }
 
-  // Sort by priority
+  // Sort: syndicated first, then by type priority
   const typePriority: Record<SourceType, number> = {
-    'syndication': 0, 'archive': 1, 'wire': 2, 'public': 3, 'state': 4,
-    'international': 5, 'national': 6, 'corporate': 7, 'magazine': 8,
-    'specialized': 9, 'analysis': 10, 'local': 11, 'reference': 12,
+    'syndication': 0, 'wire': 1, 'public': 2, 'state': 3,
+    'international': 4, 'national': 5, 'corporate': 6, 'magazine': 7,
+    'specialized': 8, 'analysis': 9, 'local': 10, 'reference': 11,
   };
 
   results.sort((a, b) => {
@@ -299,34 +251,35 @@ function validateUrl(url: string): { valid: boolean; error?: string } {
   }
 }
 
-// --- Single Gemini call (NO RETRY) ---
+// --- Gemini call optimized for maximum sources ---
 async function callGemini(url: string, syndicationPartners: string[]): Promise<{
   summary: string;
   commonGround: string;
   keyDifferences: string;
   alternatives: any[];
+  sourceNames: string[];
 }> {
   const syndicationHint = syndicationPartners.length > 0 
-    ? `Also search on ${syndicationPartners.join(', ')}.`
+    ? `Priority: search ${syndicationPartners.join(', ')} for syndicated versions.`
     : '';
 
   const prompt = `
-You are MirrorSource. Find alternative free sources for this article.
+Find alternative news sources for this article. Maximize the number of different sources found.
 
 URL: "${url}"
 ${syndicationHint}
 
-Find 3-8 news sources covering this story. Search: AP, Reuters, BBC, Guardian, CBS, NBC, ABC, CNN, NPR, PBS, Yahoo News, MSN, Al Jazeera, The Hill, Politico, Axios.
+Search these outlets: AP News, Reuters, BBC, The Guardian, CBS News, NBC News, ABC News, CNN, NPR, PBS, Yahoo News, MSN, Al Jazeera, The Hill, Politico, Axios, Fox News, USA Today, Forbes, Time, Newsweek.
 
-Return JSON only (no markdown):
-
+Return JSON only:
 {
-  "summary": "3-5 sentences. Use **bold** for names, numbers, dates, outcomes. Grade 8-10 reading. NO citations.",
-  "commonGround": "What sources agree on. Bold key facts. Only cite sources you found links for.",
-  "keyDifferences": "Where sources differ. Bold **Source Name** and **claims**. Only cite sources you found links for."
+  "summary": "3-5 sentences summarizing the story. Use **bold** for key names, numbers, dates. Grade 8-10 reading level. No citations.",
+  "sourceList": ["Guardian", "CBS News", "Yahoo"],
+  "commonGround": "What these sources agree on. Bold key facts.",
+  "keyDifferences": "How coverage differs. Format: **Source A** emphasizes X, while **Source B** focuses on Y. ONLY mention sources from sourceList."
 }
 
-IMPORTANT: In commonGround and keyDifferences, only mention sources that appear in your search results with actual article links.
+CRITICAL: sourceList must contain the display names of sources you found. commonGround and keyDifferences can ONLY reference sources in sourceList.
   `.trim();
 
   const geminiResponse: any = await genAI.models.generateContent({
@@ -346,11 +299,12 @@ IMPORTANT: In commonGround and keyDifferences, only mention sources that appear 
 
   const parsedData = extractJson(text) || {};
   
-  // Clean citations
+  // Clean any citations that slipped through
   const citationRegex = /\s*\[\d+(?:,\s*\d+)*\]/g;
   let summary = (parsedData.summary || 'Summary not available.').replace(citationRegex, '');
   let commonGround = (parsedData.commonGround || '').replace(citationRegex, '');
   let keyDifferences = (parsedData.keyDifferences || '').replace(citationRegex, '');
+  const sourceNames = parsedData.sourceList || [];
 
   // Get grounding chunks
   const candidates = geminiResponse?.response?.candidates ?? geminiResponse?.candidates ?? [];
@@ -358,7 +312,24 @@ IMPORTANT: In commonGround and keyDifferences, only mention sources that appear 
 
   const alternatives = await processGroundingChunks(groundingChunks, syndicationPartners);
 
-  return { summary, commonGround, keyDifferences, alternatives };
+  return { summary, commonGround, keyDifferences, alternatives, sourceNames };
+}
+
+// --- Post-process Intel Brief to only reference found sources ---
+function filterIntelBrief(
+  commonGround: string, 
+  keyDifferences: string, 
+  foundSources: string[]
+): { commonGround: string; keyDifferences: string } {
+  // If we have very few sources, simplify the Intel Brief
+  if (foundSources.length < 2) {
+    return {
+      commonGround: commonGround,
+      keyDifferences: '' // Don't show differences if we only have 1 source
+    };
+  }
+  
+  return { commonGround, keyDifferences };
 }
 
 export async function POST(req: NextRequest) {
@@ -385,18 +356,24 @@ export async function POST(req: NextRequest) {
     const isPaywalled = isPaywalledSource(url);
     const syndicationPartners = getSyndicationPartners(url);
 
-    // Run archive check and Gemini in parallel
-    const [archiveResults, geminiResult] = await Promise.all([
-      checkArchives(url),
-      callGemini(url, syndicationPartners),
-    ]);
+    // Single optimized Gemini call
+    const result = await callGemini(url, syndicationPartners);
+    
+    // Get the display names of sources we actually found
+    const foundSourceNames = result.alternatives.map(a => a.displayName);
+    
+    // Filter Intel Brief to only reference found sources
+    const { commonGround, keyDifferences } = filterIntelBrief(
+      result.commonGround, 
+      result.keyDifferences, 
+      foundSourceNames
+    );
 
     const response = NextResponse.json({
-      summary: geminiResult.summary,
-      commonGround: geminiResult.commonGround,
-      keyDifferences: geminiResult.keyDifferences,
-      alternatives: geminiResult.alternatives,
-      archives: archiveResults,
+      summary: result.summary,
+      commonGround,
+      keyDifferences,
+      alternatives: result.alternatives,
       isPaywalled,
       usage: usageInfo,
     }, { headers: corsHeaders });
@@ -406,14 +383,6 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error('Error in /api/find:', error);
-    
-    // More specific error for timeout
-    if (error.message?.includes('timeout') || error.name === 'AbortError' || error.message?.includes('DEADLINE_EXCEEDED')) {
-      return NextResponse.json(
-        { error: 'Search timed out. Please try again - results vary each time.' },
-        { status: 504, headers: corsHeaders }
-      );
-    }
     
     return NextResponse.json(
       { error: 'Search failed. Please try again - results vary each time.' },

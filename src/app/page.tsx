@@ -7,23 +7,16 @@ import Link from "next/link";
 import UrlInputForm from "@/components/UrlInputForm";
 import ResultsDisplay from "@/components/ResultsDisplay";
 import type { GroundingSource } from "@/types";
-import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, Archive, ExternalLink, AlertCircle } from "lucide-react";
+import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle } from "lucide-react";
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
-
-interface ArchiveResult {
-  found: boolean;
-  url?: string;
-  source: 'wayback' | 'archive.today';
-  timestamp?: string;
-}
 
 const loadingFacts = [
   "Scanning news sources...",
   "Finding alternative perspectives...",
   "Comparing coverage across outlets...",
   "Checking international sources...",
-  "Searching public archives...",
+  "Looking for wire services...",
 ];
 
 const scannerIcons = [
@@ -67,7 +60,6 @@ function HomeContent() {
   const [commonGround, setCommonGround] = useState<string | null>(null);
   const [keyDifferences, setKeyDifferences] = useState<string | null>(null);
   const [results, setResults] = useState<GroundingSource[]>([]);
-  const [archives, setArchives] = useState<ArchiveResult[]>([]);
   const [isPaywalled, setIsPaywalled] = useState(false);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [copied, setCopied] = useState(false);
@@ -153,7 +145,6 @@ function HomeContent() {
       setCommonGround(null);
       setKeyDifferences(null);
       setResults([]);
-      setArchives([]);
       setIsPaywalled(false);
 
       const res = await fetch("/api/find", {
@@ -177,7 +168,6 @@ function HomeContent() {
       setCommonGround(data.commonGround ?? null);
       setKeyDifferences(data.keyDifferences ?? null);
       setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
-      setArchives(Array.isArray(data.archives) ? data.archives : []);
       setIsPaywalled(data.isPaywalled ?? false);
     } catch (e: unknown) {
       const err = e as Error;
@@ -236,7 +226,6 @@ function HomeContent() {
     setCommonGround(null);
     setKeyDifferences(null);
     setResults([]);
-    setArchives([]);
     setIsPaywalled(false);
     setError(null);
     setCurrentUrl("");
@@ -385,12 +374,9 @@ function HomeContent() {
             {/* Intel Brief */}
             {(commonGround || keyDifferences) && (
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 lg:p-10">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 md:w-6 md:h-6 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></svg>
-                    <h2 className="text-xl md:text-2xl font-bold text-slate-900">Intel Brief</h2>
-                  </div>
-                  <span className="text-xs text-slate-400">Based on broader search</span>
+                <div className="flex items-center gap-2 mb-6">
+                  <svg className="w-5 h-5 md:w-6 md:h-6 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></svg>
+                  <h2 className="text-xl md:text-2xl font-bold text-slate-900">Intel Brief</h2>
                 </div>
                 <div className="grid md:grid-cols-2 gap-5">
                   {commonGround && (
@@ -439,26 +425,6 @@ function HomeContent() {
                       <p className="text-sm text-slate-500 mt-1">We searched but couldn't find free alternative sources for this specific article. This can happen with breaking news or niche topics.</p>
                     </div>
                   </div>
-                  
-                  {archives.length > 0 && (
-                    <div className="space-y-3">
-                      <p className="text-sm font-medium text-slate-700 flex items-center gap-2"><Archive size={16} />Archived versions available:</p>
-                      <div className="grid gap-3">
-                        {archives.map((archive, index) => (
-                          <a key={index} href={archive.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 bg-orange-50 border border-orange-200 rounded-xl hover:bg-orange-100 transition-colors group">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center"><Archive size={20} className="text-orange-600" /></div>
-                              <div>
-                                <p className="font-medium text-orange-800">{archive.source === 'wayback' ? 'Wayback Machine' : 'Archive.today'}</p>
-                                <p className="text-xs text-orange-600">View archived snapshot</p>
-                              </div>
-                            </div>
-                            <ExternalLink size={18} className="text-orange-400 group-hover:text-orange-600" />
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                   
                   <button onClick={() => handleSearchWithUrl(lastSubmittedUrl)} disabled={loading} className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-3 px-6 rounded-full transition-colors">
                     <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
