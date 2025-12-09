@@ -3,75 +3,59 @@ import { GoogleGenAI } from "@google/genai";
 import { checkRateLimit, incrementUsage, COOKIE_OPTIONS } from "../../../lib/rate-limiter";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60; // Increased for retries
+export const maxDuration = 25; // Reduced to avoid timeout
 
 const apiKey = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenAI({ apiKey: apiKey || "" });
 
-// CORS headers for extension support
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
-// Handle OPTIONS preflight request
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
-// --- Archive Result Types ---
+// --- Archive functions (fast, parallel) ---
 interface ArchiveResult {
   found: boolean;
   url?: string;
   source: 'wayback' | 'archive.today';
-  timestamp?: string;
 }
 
-// --- Check Wayback Machine ---
 async function checkWaybackMachine(url: string): Promise<ArchiveResult> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
     
-    const apiUrl = `https://archive.org/wayback/available?url=${encodeURIComponent(url)}`;
-    const response = await fetch(apiUrl, {
+    const response = await fetch(`https://archive.org/wayback/available?url=${encodeURIComponent(url)}`, {
       signal: controller.signal,
       headers: { 'User-Agent': 'MirrorSource/1.0' },
     });
     
     clearTimeout(timeoutId);
-    
     if (!response.ok) return { found: false, source: 'wayback' };
     
     const data = await response.json();
     const snapshot = data?.archived_snapshots?.closest;
     
     if (snapshot?.available && snapshot?.url) {
-      return {
-        found: true,
-        url: snapshot.url,
-        source: 'wayback',
-        timestamp: snapshot.timestamp,
-      };
+      return { found: true, url: snapshot.url, source: 'wayback' };
     }
-    
     return { found: false, source: 'wayback' };
-  } catch (error) {
-    console.log('Wayback check failed:', error);
+  } catch {
     return { found: false, source: 'wayback' };
   }
 }
 
-// --- Check Archive.today ---
 async function checkArchiveToday(url: string): Promise<ArchiveResult> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
     
-    const checkUrl = `https://archive.today/newest/${encodeURIComponent(url)}`;
-    
-    const response = await fetch(checkUrl, {
+    const response = await fetch(`https://archive.today/newest/${encodeURIComponent(url)}`, {
       method: 'HEAD',
       redirect: 'manual',
       signal: controller.signal,
@@ -82,269 +66,136 @@ async function checkArchiveToday(url: string): Promise<ArchiveResult> {
     
     if (response.status === 301 || response.status === 302) {
       const archiveUrl = response.headers.get('location');
-      if (archiveUrl) {
-        return {
-          found: true,
-          url: archiveUrl,
-          source: 'archive.today',
-        };
-      }
+      if (archiveUrl) return { found: true, url: archiveUrl, source: 'archive.today' };
     }
-    
-    if (response.status === 200) {
-      return {
-        found: true,
-        url: checkUrl.replace('/newest/', '/'),
-        source: 'archive.today',
-      };
-    }
-    
     return { found: false, source: 'archive.today' };
-  } catch (error) {
-    console.log('Archive.today check failed:', error);
+  } catch {
     return { found: false, source: 'archive.today' };
   }
 }
 
-// --- Check All Archives in Parallel ---
 async function checkArchives(url: string): Promise<ArchiveResult[]> {
-  const results = await Promise.allSettled([
-    checkWaybackMachine(url),
-    checkArchiveToday(url),
-  ]);
-  
+  const results = await Promise.allSettled([checkWaybackMachine(url), checkArchiveToday(url)]);
   return results
     .filter((r): r is PromiseFulfilledResult<ArchiveResult> => r.status === 'fulfilled')
     .map(r => r.value)
     .filter(r => r.found);
 }
 
-// --- Syndication Partners Map ---
+// --- Syndication ---
 const SYNDICATION_PARTNERS: Record<string, string[]> = {
   'wsj.com': ['finance.yahoo.com', 'msn.com'],
-  'bloomberg.com': ['finance.yahoo.com', 'msn.com', 'washingtonpost.com'],
+  'bloomberg.com': ['finance.yahoo.com', 'msn.com'],
   'nytimes.com': ['msn.com'],
   'washingtonpost.com': ['msn.com'],
   'ft.com': ['finance.yahoo.com', 'msn.com'],
-  'economist.com': ['msn.com'],
-  'businessinsider.com': ['finance.yahoo.com', 'msn.com'],
-  'theatlantic.com': ['msn.com'],
-  'wired.com': ['msn.com'],
 };
 
-// Known paywalled domains
 const PAYWALLED_DOMAINS = new Set([
   'wsj.com', 'nytimes.com', 'washingtonpost.com', 'ft.com', 
   'economist.com', 'bloomberg.com', 'theatlantic.com', 'newyorker.com',
-  'businessinsider.com', 'wired.com', 'latimes.com', 'bostonglobe.com',
 ]);
 
 function isPaywalledSource(url: string): boolean {
   try {
     const hostname = new URL(url).hostname.toLowerCase().replace('www.', '');
     return Array.from(PAYWALLED_DOMAINS).some(domain => hostname.includes(domain));
-  } catch {
-    return false;
-  }
+  } catch { return false; }
 }
 
 function getSyndicationPartners(url: string): string[] {
   try {
     const hostname = new URL(url).hostname.toLowerCase().replace('www.', '');
     for (const [domain, partners] of Object.entries(SYNDICATION_PARTNERS)) {
-      if (hostname.includes(domain)) {
-        return partners;
-      }
+      if (hostname.includes(domain)) return partners;
     }
   } catch {}
   return [];
 }
 
-// --- Extract topic from URL for broader search ---
-function extractTopicFromUrl(url: string): string {
-  try {
-    const urlObj = new URL(url);
-    const path = urlObj.pathname;
-    
-    // Extract meaningful words from the path
-    const words = path
-      .split(/[/-]/)
-      .filter(word => word.length > 3)
-      .filter(word => !word.match(/^\d+$/)) // Remove pure numbers
-      .filter(word => !['html', 'htm', 'php', 'asp', 'article', 'story', 'news'].includes(word.toLowerCase()))
-      .slice(0, 6); // Take up to 6 meaningful words
-    
-    return words.join(' ');
-  } catch {
-    return '';
-  }
-}
-
-// --- Source type classification ---
+// --- Source classification ---
 type SourceType = 'wire' | 'public' | 'corporate' | 'state' | 'analysis' | 'local' | 'national' | 'international' | 'magazine' | 'specialized' | 'reference' | 'syndication' | 'archive';
 
-interface SourceInfo {
-  displayName: string;
-  type: SourceType;
-  countryCode: string;
-}
-
-function getSourceInfo(domain: string): SourceInfo {
+function getSourceInfo(domain: string): { displayName: string; type: SourceType; countryCode: string } {
   if (!domain) return { displayName: 'SOURCE', type: 'local', countryCode: 'US' };
-  
   const lower = domain.toLowerCase();
   
-  // Syndication/Aggregator sites
-  if (lower.includes('finance.yahoo.com') || lower.includes('news.yahoo.com')) return { displayName: 'YAHOO', type: 'syndication', countryCode: 'US' };
-  if (lower.includes('msn.com')) return { displayName: 'MSN', type: 'syndication', countryCode: 'US' };
+  const sources: Record<string, { displayName: string; type: SourceType; countryCode: string }> = {
+    'finance.yahoo.com': { displayName: 'YAHOO', type: 'syndication', countryCode: 'US' },
+    'news.yahoo.com': { displayName: 'YAHOO', type: 'syndication', countryCode: 'US' },
+    'msn.com': { displayName: 'MSN', type: 'syndication', countryCode: 'US' },
+    'apnews.com': { displayName: 'AP NEWS', type: 'wire', countryCode: 'US' },
+    'reuters.com': { displayName: 'REUTERS', type: 'wire', countryCode: 'UK' },
+    'npr.org': { displayName: 'NPR', type: 'public', countryCode: 'US' },
+    'pbs.org': { displayName: 'PBS', type: 'public', countryCode: 'US' },
+    'bbc.com': { displayName: 'BBC', type: 'public', countryCode: 'UK' },
+    'bbc.co.uk': { displayName: 'BBC', type: 'public', countryCode: 'UK' },
+    'cbc.ca': { displayName: 'CBC', type: 'public', countryCode: 'CA' },
+    'aljazeera.com': { displayName: 'AL JAZEERA', type: 'international', countryCode: 'QA' },
+    'theguardian.com': { displayName: 'THE GUARDIAN', type: 'international', countryCode: 'UK' },
+    'thehindu.com': { displayName: 'THE HINDU', type: 'international', countryCode: 'IN' },
+    'cnn.com': { displayName: 'CNN', type: 'corporate', countryCode: 'US' },
+    'foxnews.com': { displayName: 'FOX NEWS', type: 'corporate', countryCode: 'US' },
+    'nbcnews.com': { displayName: 'NBC NEWS', type: 'corporate', countryCode: 'US' },
+    'cbsnews.com': { displayName: 'CBS NEWS', type: 'corporate', countryCode: 'US' },
+    'abcnews.go.com': { displayName: 'ABC NEWS', type: 'corporate', countryCode: 'US' },
+    'politico.com': { displayName: 'POLITICO', type: 'analysis', countryCode: 'US' },
+    'axios.com': { displayName: 'AXIOS', type: 'national', countryCode: 'US' },
+    'usatoday.com': { displayName: 'USA TODAY', type: 'national', countryCode: 'US' },
+    'thehill.com': { displayName: 'THE HILL', type: 'analysis', countryCode: 'US' },
+    'forbes.com': { displayName: 'FORBES', type: 'magazine', countryCode: 'US' },
+    'time.com': { displayName: 'TIME', type: 'magazine', countryCode: 'US' },
+    'newsweek.com': { displayName: 'NEWSWEEK', type: 'magazine', countryCode: 'US' },
+    'wired.com': { displayName: 'WIRED', type: 'specialized', countryCode: 'US' },
+  };
   
-  // Wire Services
-  if (lower.includes('apnews.com')) return { displayName: 'AP NEWS', type: 'wire', countryCode: 'US' };
-  if (lower.includes('reuters.com')) return { displayName: 'REUTERS', type: 'wire', countryCode: 'UK' };
-  if (lower.includes('afp.com')) return { displayName: 'AFP', type: 'wire', countryCode: 'FR' };
+  for (const [key, info] of Object.entries(sources)) {
+    if (lower.includes(key)) return info;
+  }
   
-  // Public Broadcasting
-  if (lower.includes('npr.org')) return { displayName: 'NPR', type: 'public', countryCode: 'US' };
-  if (lower.includes('pbs.org')) return { displayName: 'PBS', type: 'public', countryCode: 'US' };
-  if (lower.includes('bbc.com') || lower.includes('bbc.co.uk')) return { displayName: 'BBC', type: 'public', countryCode: 'UK' };
-  if (lower.includes('cbc.ca')) return { displayName: 'CBC', type: 'public', countryCode: 'CA' };
-  
-  // Government / State sources
-  if (lower.includes('.gov')) return { displayName: domain.split('.')[0].toUpperCase(), type: 'state', countryCode: 'US' };
-  
-  // Major International
-  if (lower.includes('aljazeera.com')) return { displayName: 'AL JAZEERA', type: 'international', countryCode: 'QA' };
-  if (lower.includes('theguardian.com')) return { displayName: 'THE GUARDIAN', type: 'international', countryCode: 'UK' };
-  if (lower.includes('scmp.com')) return { displayName: 'SCMP', type: 'international', countryCode: 'CN' };
-  if (lower.includes('thehindu.com')) return { displayName: 'THE HINDU', type: 'international', countryCode: 'IN' };
-  if (lower.includes('dw.com')) return { displayName: 'DW', type: 'international', countryCode: 'DE' };
-  if (lower.includes('france24.com')) return { displayName: 'FRANCE 24', type: 'international', countryCode: 'FR' };
-  
-  // Major US National
-  if (lower.includes('nytimes.com')) return { displayName: 'NY TIMES', type: 'national', countryCode: 'US' };
-  if (lower.includes('washingtonpost.com')) return { displayName: 'WASHINGTON POST', type: 'national', countryCode: 'US' };
-  if (lower.includes('cnn.com')) return { displayName: 'CNN', type: 'corporate', countryCode: 'US' };
-  if (lower.includes('foxnews.com')) return { displayName: 'FOX NEWS', type: 'corporate', countryCode: 'US' };
-  if (lower.includes('nbcnews.com')) return { displayName: 'NBC NEWS', type: 'corporate', countryCode: 'US' };
-  if (lower.includes('cbsnews.com')) return { displayName: 'CBS NEWS', type: 'corporate', countryCode: 'US' };
-  if (lower.includes('abcnews.go.com')) return { displayName: 'ABC NEWS', type: 'corporate', countryCode: 'US' };
-  if (lower.includes('politico.com')) return { displayName: 'POLITICO', type: 'analysis', countryCode: 'US' };
-  if (lower.includes('axios.com')) return { displayName: 'AXIOS', type: 'national', countryCode: 'US' };
-  if (lower.includes('usatoday.com')) return { displayName: 'USA TODAY', type: 'national', countryCode: 'US' };
-  if (lower.includes('semafor.com')) return { displayName: 'SEMAFOR', type: 'analysis', countryCode: 'US' };
-  
-  // Business / Finance
-  if (lower.includes('wsj.com')) return { displayName: 'WSJ', type: 'corporate', countryCode: 'US' };
-  if (lower.includes('bloomberg.com')) return { displayName: 'BLOOMBERG', type: 'corporate', countryCode: 'US' };
-  if (lower.includes('ft.com')) return { displayName: 'FT', type: 'corporate', countryCode: 'UK' };
-  if (lower.includes('cnbc.com')) return { displayName: 'CNBC', type: 'corporate', countryCode: 'US' };
-  if (lower.includes('investing.com')) return { displayName: 'INVESTING', type: 'specialized', countryCode: 'US' };
-  
-  // Magazines
-  if (lower.includes('time.com')) return { displayName: 'TIME', type: 'magazine', countryCode: 'US' };
-  if (lower.includes('newsweek.com')) return { displayName: 'NEWSWEEK', type: 'magazine', countryCode: 'US' };
-  if (lower.includes('forbes.com')) return { displayName: 'FORBES', type: 'magazine', countryCode: 'US' };
-  if (lower.includes('economist.com')) return { displayName: 'THE ECONOMIST', type: 'magazine', countryCode: 'UK' };
-  if (lower.includes('wired.com')) return { displayName: 'WIRED', type: 'specialized', countryCode: 'US' };
-  if (lower.includes('techcrunch.com')) return { displayName: 'TECHCRUNCH', type: 'specialized', countryCode: 'US' };
-  if (lower.includes('theverge.com')) return { displayName: 'THE VERGE', type: 'specialized', countryCode: 'US' };
-  
-  // Reference & Archives
-  if (lower.includes('wikipedia.org')) return { displayName: 'WIKIPEDIA', type: 'reference', countryCode: 'INT' };
-  if (lower.includes('archive.org')) return { displayName: 'WAYBACK MACHINE', type: 'archive', countryCode: 'US' };
-  if (lower.includes('archive.today') || lower.includes('archive.is')) return { displayName: 'ARCHIVE.TODAY', type: 'archive', countryCode: 'INT' };
-  
-  // Country detection from TLD
   let countryCode = 'US';
   if (lower.endsWith('.uk') || lower.endsWith('.co.uk')) countryCode = 'UK';
   else if (lower.endsWith('.ca')) countryCode = 'CA';
   else if (lower.endsWith('.au')) countryCode = 'AU';
   else if (lower.endsWith('.de')) countryCode = 'DE';
-  else if (lower.endsWith('.fr')) countryCode = 'FR';
   else if (lower.endsWith('.in')) countryCode = 'IN';
   
   const parts = domain.split('.');
-  if (parts.length > 2 && parts[0].length <= 3) {
-    return { displayName: parts[1].toUpperCase(), type: 'local', countryCode };
-  }
   return { displayName: parts[0].toUpperCase(), type: 'local', countryCode };
 }
 
-// --- Decode HTML entities ---
+// --- Helpers ---
 function decodeHtmlEntities(text: string): string {
   if (!text) return text;
   return text
     .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)))
     .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-    .replace(/&quot;/g, '"')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&ndash;/g, '\u2013')
-    .replace(/&mdash;/g, '\u2014')
-    .replace(/&lsquo;/g, '\u2018')
-    .replace(/&rsquo;/g, '\u2019')
-    .replace(/&ldquo;/g, '\u201C')
-    .replace(/&rdquo;/g, '\u201D');
+    .replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>').replace(/&apos;/g, "'").replace(/&nbsp;/g, ' ');
 }
 
 function isEnglishContent(text: string): boolean {
   if (!text) return false;
   const latinChars = (text.match(/[a-zA-Z]/g) || []).length;
-  const nonLatinChars = (text.match(/[\u0400-\u04FF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0600-\u06FF]/g) || []).length;
-  const totalAlpha = latinChars + nonLatinChars;
-  return totalAlpha === 0 || (latinChars / totalAlpha) > 0.7;
+  const nonLatinChars = (text.match(/[\u0400-\u04FF\u4E00-\u9FFF\u3040-\u30FF\uAC00-\uD7AF\u0600-\u06FF]/g) || []).length;
+  return latinChars > nonLatinChars * 0.7;
 }
 
 function isErrorTitle(title: string): boolean {
   if (!title) return true;
-  const lower = title.toLowerCase().trim();
-  const errorPatterns = ['access denied', 'page not found', '404', '403', 'forbidden', 'error', 'blocked', 'captcha', 'just a moment'];
-  return errorPatterns.some(pattern => lower.includes(pattern));
-}
-
-function cleanJsonText(text: string): string {
-  let cleaned = text.trim();
-  if (cleaned.startsWith("```")) {
-    cleaned = cleaned.replace(/^```[a-z]*\s*/i, "").replace(/```$/, "");
-  }
-  return cleaned.trim();
+  const lower = title.toLowerCase();
+  return ['access denied', 'page not found', '404', '403', 'forbidden', 'error', 'blocked', 'captcha', 'just a moment'].some(p => lower.includes(p));
 }
 
 function extractJson(text: string): any {
-  let cleaned = cleanJsonText(text);
+  let cleaned = text.trim().replace(/^```[a-z]*\s*/i, '').replace(/```$/, '').trim();
   try { return JSON.parse(cleaned); } catch {}
   
-  const firstBrace = cleaned.indexOf("{");
-  const lastBrace = cleaned.lastIndexOf("}");
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
   if (firstBrace !== -1 && lastBrace > firstBrace) {
     try { return JSON.parse(cleaned.substring(firstBrace, lastBrace + 1)); } catch {}
   }
-  
-  const summaryMatch = cleaned.match(/"summary"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-  if (summaryMatch) {
-    return { summary: summaryMatch[1].replace(/\\"/g, '"').replace(/\\n/g, "\n") };
-  }
-  return null;
-}
-
-function extractPageTitle(html: string): string | null {
-  const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-  if (titleMatch) {
-    let title = decodeHtmlEntities(titleMatch[1].trim());
-    if (title.length > 10 && !isErrorTitle(title) && isEnglishContent(title)) {
-      return title;
-    }
-  }
-  
-  const ogMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i);
-  if (ogMatch) {
-    const title = decodeHtmlEntities(ogMatch[1].trim());
-    if (!isErrorTitle(title) && isEnglishContent(title)) return title;
-  }
-  
   return null;
 }
 
@@ -355,64 +206,39 @@ async function resolveVertexRedirect(redirectUrl: string): Promise<{ url: string
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
 
     const response = await fetch(redirectUrl, {
       method: 'GET',
       redirect: 'follow',
       signal: controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; MirrorSource/1.0)',
-        'Accept': 'text/html',
-      },
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MirrorSource/1.0)' },
     });
 
     clearTimeout(timeoutId);
-
-    let finalUrl = response.url;
+    const finalUrl = response.url;
     
     if (!finalUrl.includes('vertexaisearch.cloud.google.com')) {
-      const html = await response.text();
-      const pageTitle = extractPageTitle(html);
-      return { url: finalUrl, title: pageTitle };
+      return { url: finalUrl, title: null };
     }
-    
-    const html = await response.text();
-    
-    const urlMatch = html.match(/https?:\/\/(?:www\.)?[a-z0-9-]+\.[a-z]{2,}\/[^\s"'<>]+/gi);
-    if (urlMatch) {
-      const realUrl = urlMatch.find(u => 
-        !u.includes('google.com') && 
-        !u.includes('vertexai') &&
-        !u.includes('googleapis')
-      );
-      if (realUrl) {
-        return { url: realUrl, title: null };
-      }
-    }
-    
     return null;
-  } catch (error) {
-    console.log('Redirect resolution skipped:', redirectUrl.substring(0, 50));
+  } catch {
     return null;
   }
 }
 
 async function processGroundingChunks(
   chunks: any[],
-  existingDomains: Set<string> = new Set(),
   syndicationPartners: string[] = []
 ): Promise<Array<{ uri: string; title: string; displayName: string; sourceDomain: string; sourceType: SourceType; countryCode: string; isSyndicated: boolean }>> {
   const results: Array<{ uri: string; title: string; displayName: string; sourceDomain: string; sourceType: SourceType; countryCode: string; isSyndicated: boolean }> = [];
-  const seen = new Set<string>(existingDomains);
+  const seen = new Set<string>();
 
   const processChunk = async (chunk: any) => {
     try {
       const web = chunk?.web;
       if (!web?.uri) return null;
-
-      const chunkTitle = (web.title || '').toLowerCase();
-      if (chunkTitle.includes('google') || chunkTitle.includes('vertexai')) return null;
+      if ((web.title || '').toLowerCase().includes('google')) return null;
 
       const resolved = await resolveVertexRedirect(web.uri);
       if (!resolved) return null;
@@ -420,31 +246,18 @@ async function processGroundingChunks(
       const urlObj = new URL(resolved.url);
       const domain = urlObj.hostname.replace(/^www\./, '');
 
-      let articleTitle = resolved.title || web.title || domain;
-      articleTitle = decodeHtmlEntities(articleTitle);
-      
-      if (isErrorTitle(articleTitle)) return null;
-      if (!isEnglishContent(articleTitle)) return null;
+      let articleTitle = decodeHtmlEntities(resolved.title || web.title || domain);
+      if (isErrorTitle(articleTitle) || !isEnglishContent(articleTitle)) return null;
 
       const sourceInfo = getSourceInfo(domain);
       const isSyndicated = syndicationPartners.some(partner => domain.includes(partner));
 
-      return {
-        uri: resolved.url,
-        title: articleTitle,
-        displayName: sourceInfo.displayName,
-        sourceDomain: domain,
-        sourceType: sourceInfo.type,
-        countryCode: sourceInfo.countryCode,
-        isSyndicated,
-      };
-    } catch {
-      return null;
-    }
+      return { uri: resolved.url, title: articleTitle, displayName: sourceInfo.displayName, sourceDomain: domain, sourceType: sourceInfo.type, countryCode: sourceInfo.countryCode, isSyndicated };
+    } catch { return null; }
   };
 
-  const resolvePromises = chunks.slice(0, 12).map(processChunk);
-  const settled = await Promise.allSettled(resolvePromises);
+  // Process only 6 chunks for speed
+  const settled = await Promise.allSettled(chunks.slice(0, 6).map(processChunk));
 
   for (const result of settled) {
     if (result.status === 'fulfilled' && result.value) {
@@ -456,6 +269,7 @@ async function processGroundingChunks(
     }
   }
 
+  // Sort by priority
   const typePriority: Record<SourceType, number> = {
     'syndication': 0, 'archive': 1, 'wire': 2, 'public': 3, 'state': 4,
     'international': 5, 'national': 6, 'corporate': 7, 'magazine': 8,
@@ -471,178 +285,78 @@ async function processGroundingChunks(
 }
 
 function validateUrl(url: string): { valid: boolean; error?: string } {
-  if (!url || typeof url !== "string" || url.trim().length === 0) {
-    return { valid: false, error: "URL is required" };
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    return { valid: false, error: 'URL is required' };
   }
   try {
     const parsed = new URL(url.trim());
-    if (!["http:", "https:"].includes(parsed.protocol)) {
-      return { valid: false, error: "URL must start with http:// or https://" };
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return { valid: false, error: 'URL must start with http:// or https://' };
     }
     return { valid: true };
   } catch {
-    return { valid: false, error: "Invalid URL format" };
+    return { valid: false, error: 'Invalid URL format' };
   }
 }
 
-// --- Gemini call with retry phases ---
-type SearchPhase = 'initial' | 'expanded' | 'topic';
-
-async function callGemini(
-  url: string, 
-  syndicationPartners: string[], 
-  phase: SearchPhase = 'initial',
-  topic: string = ''
-): Promise<{
+// --- Single Gemini call (NO RETRY) ---
+async function callGemini(url: string, syndicationPartners: string[]): Promise<{
   summary: string;
   commonGround: string;
   keyDifferences: string;
   alternatives: any[];
 }> {
   const syndicationHint = syndicationPartners.length > 0 
-    ? `Also specifically search for this article on: ${syndicationPartners.join(', ')}.`
+    ? `Also search on ${syndicationPartners.join(', ')}.`
     : '';
 
-  let prompt: string;
-  
-  if (phase === 'topic' && topic) {
-    // Phase 3: Topic-based search (most aggressive)
-    prompt = `
-You are MirrorSource, a media intelligence analyst.
+  const prompt = `
+You are MirrorSource. Find alternative free sources for this article.
 
-TASK: Search for recent news coverage about: "${topic}"
-This is a broad topic search. Find 5-10 news sources covering this topic from the past week.
-Search across: AP News, Reuters, BBC, Guardian, CBS News, NBC News, CNN, NPR, PBS, Yahoo News, MSN.
-
-SUMMARY (3-5 sentences, Grade 8-10, NO CITATIONS):
-- Use **bold** for entities, numbers, dates, outcomes
-- Plain English, short sentences
-
-INTEL BRIEF:
-- commonGround: Bold the key agreed facts
-- keyDifferences: Bold source names AND claims
-
-Return ONLY valid JSON:
-{
-  "summary": "**Entity** did **action**...",
-  "commonGround": "All sources confirm **fact**.",
-  "keyDifferences": "**Source A** says **X**, while **Source B** says **Y**."
-}
-    `.trim();
-  } else if (phase === 'expanded') {
-    // Phase 2: Broader URL-based search
-    prompt = `
-You are MirrorSource, a media intelligence analyst.
-
-TASK: Search BROADLY for news coverage of: "${url}"
+URL: "${url}"
 ${syndicationHint}
 
-IMPORTANT: Cast a wide net. Search for:
-- Wire services: AP News, Reuters, AFP
-- International: BBC, Guardian, Al Jazeera, DW, France24
-- US Networks: CBS, NBC, ABC, CNN, Fox, PBS, NPR
-- Aggregators: Yahoo News, MSN, Google News
-- Business: Bloomberg, CNBC, MarketWatch
-- Magazines: Time, Newsweek, Forbes
+Find 3-8 news sources covering this story. Search: AP, Reuters, BBC, Guardian, CBS, NBC, ABC, CNN, NPR, PBS, Yahoo News, MSN, Al Jazeera, The Hill, Politico, Axios.
 
-Find at least 5 alternative sources covering this story.
+Return JSON only (no markdown):
 
-SUMMARY (3-5 sentences, Grade 8-10, NO CITATIONS):
-Use **bold** for: entities (**Trump**, **Nvidia**), numbers (**$12B**), dates (**Dec 8**), outcomes (**approved**)
-
-INTEL BRIEF:
-- commonGround: One sentence, bold key facts
-- keyDifferences: Bold **Source Name** and **their claim**
-
-Return ONLY valid JSON. NO citations [1][2].
 {
-  "summary": "**Bold entities** and **numbers**...",
-  "commonGround": "All sources confirm **key fact**.",
-  "keyDifferences": "**Source** reports **X**, while **Other** says **Y**."
-}
-    `.trim();
-  } else {
-    // Phase 1: Initial search
-    prompt = `
-You are MirrorSource, a media intelligence analyst. Your audience is "Alex"—a busy professional who needs facts in 10 seconds.
-
-TASK: Search for news coverage of: "${url}"
-${syndicationHint}
-Find 3-8 alternative sources.
-
-═══════════════════════════════════════════════════════════════
-CRITICAL: BOLD FORMATTING IS MANDATORY
-You MUST wrap key information in **double asterisks** for bold.
-═══════════════════════════════════════════════════════════════
-
-COMPONENT 1: SUMMARY
-- Reading Level: Grade 8-10. Plain English. Short sentences.
-- Length: 3-5 sentences. No sentence over 20 words.
-- NO CITATIONS. Do not include [1], [2], [3] or any bracketed numbers.
-
-MANDATORY BOLDING (use **double asterisks**):
-✓ Entity names: **President Trump**, **Nvidia**, **China**, **U.S. farmers**
-✓ Numbers/amounts: **$12 billion**, **25%**, **H200 chips**
-✓ Dates: **December 8, 2025**, **February 2026**
-✓ Key outcomes: **approved**, **announced**, **rejected**, **excluded**
-
-✗ DO NOT bold: adjectives (massive), common verbs, articles (the, a)
-
-COMPONENT 2: INTEL BRIEF
-commonGround: One sentence. Bold the consensus facts.
-keyDifferences: One sentence. Bold source names AND claims.
-
-═══════════════════════════════════════════════════════════════
-EXAMPLE OUTPUT:
-═══════════════════════════════════════════════════════════════
-{
-  "summary": "**President Trump** announced a policy allowing **Nvidia** to export **H200 AI chips** to **China**. The deal requires **25%** of sales revenue to go to the **U.S. government**. The announcement was made on **December 8, 2025**.",
-  "commonGround": "All sources confirm **Trump** approved **Nvidia's H200** sales to **China** with **25%** revenue sharing.",
-  "keyDifferences": "**CBS News** emphasizes **diplomatic significance**, while **The Hindu** focuses on **China's response**."
+  "summary": "3-5 sentences. Use **bold** for names, numbers, dates, outcomes. Grade 8-10 reading. NO citations.",
+  "commonGround": "What sources agree on. Bold key facts. Only cite sources you found links for.",
+  "keyDifferences": "Where sources differ. Bold **Source Name** and **claims**. Only cite sources you found links for."
 }
 
-Return ONLY valid JSON. NO markdown blocks. NO CITATIONS.
-    `.trim();
-  }
-
-  const config: any = { tools: [{ googleSearch: {} }] };
+IMPORTANT: In commonGround and keyDifferences, only mention sources that appear in your search results with actual article links.
+  `.trim();
 
   const geminiResponse: any = await genAI.models.generateContent({
     model: "gemini-2.5-flash",
     contents: [{ role: "user", parts: [{ text: prompt }] }],
-    config,
+    config: { tools: [{ googleSearch: {} }] },
   });
 
   let text: string | undefined;
-  if (geminiResponse?.response && typeof geminiResponse.response.text === "function") {
+  if (geminiResponse?.response && typeof geminiResponse.response.text === 'function') {
     text = geminiResponse.response.text();
   } else if (Array.isArray(geminiResponse?.candidates)) {
     text = geminiResponse.candidates[0]?.content?.parts?.[0]?.text;
   }
 
-  if (!text) throw new Error("Model response did not contain text.");
+  if (!text) throw new Error('No response from model');
 
   const parsedData = extractJson(text) || {};
-  let summary = parsedData.summary || "Summary not available.";
-  let commonGround = parsedData.commonGround || "";
-  let keyDifferences = parsedData.keyDifferences || "";
   
-  // Remove any citations that slipped through
+  // Clean citations
   const citationRegex = /\s*\[\d+(?:,\s*\d+)*\]/g;
-  summary = summary.replace(citationRegex, '');
-  commonGround = commonGround.replace(citationRegex, '');
-  keyDifferences = keyDifferences.replace(citationRegex, '');
+  let summary = (parsedData.summary || 'Summary not available.').replace(citationRegex, '');
+  let commonGround = (parsedData.commonGround || '').replace(citationRegex, '');
+  let keyDifferences = (parsedData.keyDifferences || '').replace(citationRegex, '');
 
+  // Get grounding chunks
   const candidates = geminiResponse?.response?.candidates ?? geminiResponse?.candidates ?? [];
-  const groundingMetadata = candidates[0]?.groundingMetadata;
-  const groundingChunks = groundingMetadata?.groundingChunks ?? [];
+  const groundingChunks = candidates[0]?.groundingMetadata?.groundingChunks ?? [];
 
-  let alternatives: any[] = [];
-  try {
-    alternatives = await processGroundingChunks(groundingChunks, new Set(), syndicationPartners);
-  } catch (e) {
-    console.error("Error processing grounding chunks:", e);
-  }
+  const alternatives = await processGroundingChunks(groundingChunks, syndicationPartners);
 
   return { summary, commonGround, keyDifferences, alternatives };
 }
@@ -658,121 +372,52 @@ export async function POST(req: NextRequest) {
     }
 
     let body: any;
-    try {
-      body = await req.json();
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid request body" },
-        { status: 400, headers: corsHeaders }
-      );
-    }
+    try { body = await req.json(); } 
+    catch { return NextResponse.json({ error: 'Invalid request body' }, { status: 400, headers: corsHeaders }); }
 
     const validation = validateUrl(body.url);
     if (!validation.valid) {
-      return NextResponse.json(
-        { error: validation.error },
-        { status: 400, headers: corsHeaders }
-      );
+      return NextResponse.json({ error: validation.error }, { status: 400, headers: corsHeaders });
     }
 
     const url = body.url.trim();
     const { info: usageInfo, cookieValue } = await incrementUsage(req);
     const isPaywalled = isPaywalledSource(url);
     const syndicationPartners = getSyndicationPartners(url);
-    const topic = extractTopicFromUrl(url);
 
-    // Start archive check in parallel
-    const archivePromise = checkArchives(url);
-
-    // Phase 1: Initial search
-    console.log('Phase 1: Initial search');
-    let result = await callGemini(url, syndicationPartners, 'initial');
-    let searchPhase: SearchPhase = 'initial';
-
-    // Phase 2: Expanded search if too few sources
-    if (result.alternatives.length < 3) {
-      console.log(`Phase 2: Expanded search (found ${result.alternatives.length} sources)`);
-      searchPhase = 'expanded';
-      
-      try {
-        const expandedResult = await callGemini(url, syndicationPartners, 'expanded');
-        
-        // Merge alternatives
-        const existingDomains = new Set(result.alternatives.map(a => a.sourceDomain));
-        const newAlternatives = expandedResult.alternatives.filter(
-          a => !existingDomains.has(a.sourceDomain)
-        );
-        result.alternatives = [...result.alternatives, ...newAlternatives];
-        
-        // Use expanded summary/intel if original was weak
-        if (!result.summary || result.summary === "Summary not available.") {
-          result.summary = expandedResult.summary;
-          result.commonGround = expandedResult.commonGround;
-          result.keyDifferences = expandedResult.keyDifferences;
-        }
-      } catch (e) {
-        console.error("Expanded search failed:", e);
-      }
-    }
-
-    // Phase 3: Topic-based search if still no sources
-    if (result.alternatives.length === 0 && topic) {
-      console.log(`Phase 3: Topic search for "${topic}"`);
-      searchPhase = 'topic';
-      
-      try {
-        const topicResult = await callGemini(url, syndicationPartners, 'topic', topic);
-        result.alternatives = topicResult.alternatives;
-        
-        // Keep original summary if available, otherwise use topic search
-        if (!result.summary || result.summary === "Summary not available.") {
-          result.summary = topicResult.summary;
-          result.commonGround = topicResult.commonGround;
-          result.keyDifferences = topicResult.keyDifferences;
-        }
-      } catch (e) {
-        console.error("Topic search failed:", e);
-      }
-    }
-
-    // Wait for archives
-    const archiveResults = await archivePromise;
+    // Run archive check and Gemini in parallel
+    const [archiveResults, geminiResult] = await Promise.all([
+      checkArchives(url),
+      callGemini(url, syndicationPartners),
+    ]);
 
     const response = NextResponse.json({
-      summary: result.summary,
-      commonGround: result.commonGround,
-      keyDifferences: result.keyDifferences,
-      alternatives: result.alternatives,
+      summary: geminiResult.summary,
+      commonGround: geminiResult.commonGround,
+      keyDifferences: geminiResult.keyDifferences,
+      alternatives: geminiResult.alternatives,
       archives: archiveResults,
       isPaywalled,
-      searchPhase, // Let frontend know which phase we reached
       usage: usageInfo,
     }, { headers: corsHeaders });
 
     response.cookies.set(COOKIE_OPTIONS.name, cookieValue, COOKIE_OPTIONS);
-
     return response;
 
   } catch (error: any) {
-    console.error("Error in /api/find route:", error);
+    console.error('Error in /api/find:', error);
     
-    let userMessage = "Something went wrong. Please try again.";
-    let statusCode = 500;
-    
-    if (error.message?.includes("fetch") || error.message?.includes("ENOTFOUND")) {
-      userMessage = "Unable to connect. Please check your internet connection.";
-      statusCode = 503;
-    } else if (error.message?.includes("timeout") || error.name === "AbortError") {
-      userMessage = "The request took too long. Please try again.";
-      statusCode = 504;
-    } else if (error.message?.includes("quota") || error.status === 429) {
-      userMessage = "Service temporarily unavailable. Please try again later.";
-      statusCode = 503;
+    // More specific error for timeout
+    if (error.message?.includes('timeout') || error.name === 'AbortError' || error.message?.includes('DEADLINE_EXCEEDED')) {
+      return NextResponse.json(
+        { error: 'Search timed out. Please try again - results vary each time.' },
+        { status: 504, headers: corsHeaders }
+      );
     }
     
     return NextResponse.json(
-      { error: userMessage },
-      { status: statusCode, headers: corsHeaders }
+      { error: 'Search failed. Please try again - results vary each time.' },
+      { status: 500, headers: corsHeaders }
     );
   }
 }

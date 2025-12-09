@@ -308,8 +308,17 @@ function HomeContent() {
         )}
 
         {error && (
-          <div className="mt-6 w-full max-w-2xl lg:max-w-3xl bg-red-50 border border-red-200 rounded-lg p-4 text-red-600 text-center text-sm">
-            {error}
+          <div className="mt-6 w-full max-w-2xl lg:max-w-3xl bg-amber-50 border border-amber-200 rounded-xl p-5 text-center">
+            <p className="text-amber-800 font-medium mb-2">{error}</p>
+            <p className="text-amber-600 text-sm mb-4">Search results vary each time. Give it another shot!</p>
+            <button
+              onClick={() => handleSearchWithUrl(currentUrl)}
+              disabled={loading || !currentUrl}
+              className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white font-medium py-2 px-5 rounded-full transition-colors text-sm"
+            >
+              <RefreshCw size={16} />
+              Try Again
+            </button>
           </div>
         )}
       </div>
@@ -376,9 +385,12 @@ function HomeContent() {
             {/* Intel Brief */}
             {(commonGround || keyDifferences) && (
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 lg:p-10">
-                <div className="flex items-center gap-2 mb-6">
-                  <svg className="w-5 h-5 md:w-6 md:h-6 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></svg>
-                  <h2 className="text-xl md:text-2xl font-bold text-slate-900">Intel Brief</h2>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 md:w-6 md:h-6 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></svg>
+                    <h2 className="text-xl md:text-2xl font-bold text-slate-900">Intel Brief</h2>
+                  </div>
+                  <span className="text-xs text-slate-400">Based on broader search</span>
                 </div>
                 <div className="grid md:grid-cols-2 gap-5">
                   {commonGround && (
