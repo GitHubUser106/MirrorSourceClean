@@ -165,71 +165,113 @@ function getSyndicationPartners(url: string): string[] {
 }
 
 // --- Source type classification ---
-type SourceType = 'wire' | 'national' | 'international' | 'local' | 'public' | 'magazine' | 'reference' | 'syndication' | 'archive';
+type SourceType = 'wire' | 'public' | 'corporate' | 'state' | 'analysis' | 'local' | 'national' | 'international' | 'magazine' | 'specialized' | 'reference' | 'syndication' | 'archive';
 
 interface SourceInfo {
   displayName: string;
   type: SourceType;
+  countryCode: string;
 }
 
 function getSourceInfo(domain: string): SourceInfo {
-  if (!domain) return { displayName: 'SOURCE', type: 'local' };
+  if (!domain) return { displayName: 'SOURCE', type: 'local', countryCode: 'US' };
   
   const lower = domain.toLowerCase();
   
   // Syndication/Aggregator sites (prioritize these for paywall bypass)
-  if (lower.includes('finance.yahoo.com') || lower.includes('news.yahoo.com')) return { displayName: 'YAHOO', type: 'syndication' };
-  if (lower.includes('msn.com')) return { displayName: 'MSN', type: 'syndication' };
+  if (lower.includes('finance.yahoo.com') || lower.includes('news.yahoo.com')) return { displayName: 'YAHOO', type: 'syndication', countryCode: 'US' };
+  if (lower.includes('msn.com')) return { displayName: 'MSN', type: 'syndication', countryCode: 'US' };
   
   // Wire Services
-  if (lower.includes('apnews.com')) return { displayName: 'AP NEWS', type: 'wire' };
-  if (lower.includes('reuters.com')) return { displayName: 'REUTERS', type: 'wire' };
-  if (lower.includes('afp.com')) return { displayName: 'AFP', type: 'wire' };
+  if (lower.includes('apnews.com')) return { displayName: 'AP NEWS', type: 'wire', countryCode: 'US' };
+  if (lower.includes('reuters.com')) return { displayName: 'REUTERS', type: 'wire', countryCode: 'UK' };
+  if (lower.includes('afp.com')) return { displayName: 'AFP', type: 'wire', countryCode: 'FR' };
   
   // Public Broadcasting
-  if (lower.includes('npr.org')) return { displayName: 'NPR', type: 'public' };
-  if (lower.includes('pbs.org')) return { displayName: 'PBS', type: 'public' };
-  if (lower.includes('bbc.com') || lower.includes('bbc.co.uk')) return { displayName: 'BBC', type: 'public' };
-  if (lower.includes('cbc.ca')) return { displayName: 'CBC', type: 'public' };
+  if (lower.includes('npr.org')) return { displayName: 'NPR', type: 'public', countryCode: 'US' };
+  if (lower.includes('pbs.org')) return { displayName: 'PBS', type: 'public', countryCode: 'US' };
+  if (lower.includes('bbc.com') || lower.includes('bbc.co.uk')) return { displayName: 'BBC', type: 'public', countryCode: 'UK' };
+  if (lower.includes('cbc.ca')) return { displayName: 'CBC', type: 'public', countryCode: 'CA' };
+  
+  // Government / State sources
+  if (lower.includes('.gov')) return { displayName: domain.split('.')[0].toUpperCase(), type: 'state', countryCode: 'US' };
+  if (lower.includes('usda.gov')) return { displayName: 'USDA', type: 'state', countryCode: 'US' };
   
   // Major International
-  if (lower.includes('aljazeera.com')) return { displayName: 'AL JAZEERA', type: 'international' };
-  if (lower.includes('theguardian.com')) return { displayName: 'THE GUARDIAN', type: 'international' };
-  if (lower.includes('scmp.com')) return { displayName: 'SCMP', type: 'international' };
-  if (lower.includes('globalnews.ca')) return { displayName: 'GLOBAL NEWS', type: 'international' };
-  if (lower.includes('ctvnews.ca')) return { displayName: 'CTV NEWS', type: 'international' };
+  if (lower.includes('aljazeera.com')) return { displayName: 'AL JAZEERA', type: 'international', countryCode: 'QA' };
+  if (lower.includes('theguardian.com')) return { displayName: 'THE GUARDIAN', type: 'international', countryCode: 'UK' };
+  if (lower.includes('scmp.com')) return { displayName: 'SCMP', type: 'international', countryCode: 'CN' };
+  if (lower.includes('globalnews.ca')) return { displayName: 'GLOBAL NEWS', type: 'international', countryCode: 'CA' };
+  if (lower.includes('ctvnews.ca')) return { displayName: 'CTV NEWS', type: 'international', countryCode: 'CA' };
+  if (lower.includes('dw.com')) return { displayName: 'DW', type: 'international', countryCode: 'DE' };
+  if (lower.includes('france24.com')) return { displayName: 'FRANCE 24', type: 'international', countryCode: 'FR' };
+  if (lower.includes('abc.net.au')) return { displayName: 'ABC AU', type: 'public', countryCode: 'AU' };
+  if (lower.includes('smh.com.au')) return { displayName: 'SMH', type: 'national', countryCode: 'AU' };
+  if (lower.includes('thehindu.com')) return { displayName: 'THE HINDU', type: 'international', countryCode: 'IN' };
   
   // Major US National
-  if (lower.includes('nytimes.com')) return { displayName: 'NY TIMES', type: 'national' };
-  if (lower.includes('washingtonpost.com')) return { displayName: 'WASHINGTON POST', type: 'national' };
-  if (lower.includes('cnn.com')) return { displayName: 'CNN', type: 'national' };
-  if (lower.includes('foxnews.com')) return { displayName: 'FOX NEWS', type: 'national' };
-  if (lower.includes('nbcnews.com')) return { displayName: 'NBC NEWS', type: 'national' };
-  if (lower.includes('cbsnews.com')) return { displayName: 'CBS NEWS', type: 'national' };
-  if (lower.includes('abcnews.go.com')) return { displayName: 'ABC NEWS', type: 'national' };
-  if (lower.includes('politico.com')) return { displayName: 'POLITICO', type: 'national' };
-  if (lower.includes('axios.com')) return { displayName: 'AXIOS', type: 'national' };
-  if (lower.includes('usatoday.com')) return { displayName: 'USA TODAY', type: 'national' };
+  if (lower.includes('nytimes.com')) return { displayName: 'NY TIMES', type: 'national', countryCode: 'US' };
+  if (lower.includes('washingtonpost.com')) return { displayName: 'WASHINGTON POST', type: 'national', countryCode: 'US' };
+  if (lower.includes('cnn.com')) return { displayName: 'CNN', type: 'corporate', countryCode: 'US' };
+  if (lower.includes('foxnews.com')) return { displayName: 'FOX NEWS', type: 'corporate', countryCode: 'US' };
+  if (lower.includes('nbcnews.com')) return { displayName: 'NBC NEWS', type: 'corporate', countryCode: 'US' };
+  if (lower.includes('cbsnews.com')) return { displayName: 'CBS NEWS', type: 'corporate', countryCode: 'US' };
+  if (lower.includes('abcnews.go.com')) return { displayName: 'ABC NEWS', type: 'corporate', countryCode: 'US' };
+  if (lower.includes('politico.com')) return { displayName: 'POLITICO', type: 'analysis', countryCode: 'US' };
+  if (lower.includes('axios.com')) return { displayName: 'AXIOS', type: 'national', countryCode: 'US' };
+  if (lower.includes('usatoday.com')) return { displayName: 'USA TODAY', type: 'national', countryCode: 'US' };
+  if (lower.includes('thehill.com')) return { displayName: 'THE HILL', type: 'analysis', countryCode: 'US' };
+  if (lower.includes('semafor.com')) return { displayName: 'SEMAFOR', type: 'analysis', countryCode: 'US' };
+  
+  // Business / Finance
+  if (lower.includes('wsj.com')) return { displayName: 'WSJ', type: 'corporate', countryCode: 'US' };
+  if (lower.includes('bloomberg.com')) return { displayName: 'BLOOMBERG', type: 'corporate', countryCode: 'US' };
+  if (lower.includes('ft.com')) return { displayName: 'FT', type: 'corporate', countryCode: 'UK' };
+  if (lower.includes('cnbc.com')) return { displayName: 'CNBC', type: 'corporate', countryCode: 'US' };
+  if (lower.includes('marketwatch.com')) return { displayName: 'MARKETWATCH', type: 'corporate', countryCode: 'US' };
+  if (lower.includes('investing.com')) return { displayName: 'INVESTING', type: 'specialized', countryCode: 'US' };
   
   // Magazines
-  if (lower.includes('time.com')) return { displayName: 'TIME', type: 'magazine' };
-  if (lower.includes('newsweek.com')) return { displayName: 'NEWSWEEK', type: 'magazine' };
-  if (lower.includes('forbes.com')) return { displayName: 'FORBES', type: 'magazine' };
-  if (lower.includes('businessinsider.com')) return { displayName: 'BUSINESS INSIDER', type: 'magazine' };
+  if (lower.includes('time.com')) return { displayName: 'TIME', type: 'magazine', countryCode: 'US' };
+  if (lower.includes('newsweek.com')) return { displayName: 'NEWSWEEK', type: 'magazine', countryCode: 'US' };
+  if (lower.includes('forbes.com')) return { displayName: 'FORBES', type: 'magazine', countryCode: 'US' };
+  if (lower.includes('businessinsider.com')) return { displayName: 'BUSINESS INSIDER', type: 'magazine', countryCode: 'US' };
+  if (lower.includes('economist.com')) return { displayName: 'THE ECONOMIST', type: 'magazine', countryCode: 'UK' };
+  if (lower.includes('theatlantic.com')) return { displayName: 'THE ATLANTIC', type: 'analysis', countryCode: 'US' };
+  if (lower.includes('newyorker.com')) return { displayName: 'THE NEW YORKER', type: 'analysis', countryCode: 'US' };
+  if (lower.includes('wired.com')) return { displayName: 'WIRED', type: 'specialized', countryCode: 'US' };
+  if (lower.includes('techcrunch.com')) return { displayName: 'TECHCRUNCH', type: 'specialized', countryCode: 'US' };
+  if (lower.includes('theverge.com')) return { displayName: 'THE VERGE', type: 'specialized', countryCode: 'US' };
+  if (lower.includes('arstechnica.com')) return { displayName: 'ARS TECHNICA', type: 'specialized', countryCode: 'US' };
+  
+  // Agriculture / Specialized
+  if (lower.includes('agriculture.com') || lower.includes('agri')) return { displayName: domain.split('.')[0].toUpperCase(), type: 'specialized', countryCode: 'US' };
+  if (lower.includes('farm')) return { displayName: domain.split('.')[0].toUpperCase(), type: 'specialized', countryCode: 'US' };
   
   // Reference
-  if (lower.includes('wikipedia.org')) return { displayName: 'WIKIPEDIA', type: 'reference' };
+  if (lower.includes('wikipedia.org')) return { displayName: 'WIKIPEDIA', type: 'reference', countryCode: 'INT' };
   
   // Archives
-  if (lower.includes('archive.org') || lower.includes('web.archive.org')) return { displayName: 'WAYBACK MACHINE', type: 'archive' };
-  if (lower.includes('archive.today') || lower.includes('archive.is') || lower.includes('archive.ph')) return { displayName: 'ARCHIVE.TODAY', type: 'archive' };
+  if (lower.includes('archive.org') || lower.includes('web.archive.org')) return { displayName: 'WAYBACK MACHINE', type: 'archive', countryCode: 'US' };
+  if (lower.includes('archive.today') || lower.includes('archive.is') || lower.includes('archive.ph')) return { displayName: 'ARCHIVE.TODAY', type: 'archive', countryCode: 'INT' };
+  
+  // Try to detect country from TLD
+  let countryCode = 'US';
+  if (lower.endsWith('.uk') || lower.endsWith('.co.uk')) countryCode = 'UK';
+  else if (lower.endsWith('.ca')) countryCode = 'CA';
+  else if (lower.endsWith('.au')) countryCode = 'AU';
+  else if (lower.endsWith('.de')) countryCode = 'DE';
+  else if (lower.endsWith('.fr')) countryCode = 'FR';
+  else if (lower.endsWith('.jp')) countryCode = 'JP';
+  else if (lower.endsWith('.in')) countryCode = 'IN';
+  else if (lower.endsWith('.eu')) countryCode = 'EU';
   
   // Default: local news
   const parts = domain.split('.');
   if (parts.length > 2 && parts[0].length <= 3) {
-    return { displayName: parts[1].toUpperCase(), type: 'local' };
+    return { displayName: parts[1].toUpperCase(), type: 'local', countryCode };
   }
-  return { displayName: parts[0].toUpperCase(), type: 'local' };
+  return { displayName: parts[0].toUpperCase(), type: 'local', countryCode };
 }
 
 // --- Decode HTML entities ---
@@ -370,8 +412,8 @@ async function processGroundingChunks(
   chunks: any[],
   existingDomains: Set<string> = new Set(),
   syndicationPartners: string[] = []
-): Promise<Array<{ uri: string; title: string; displayName: string; sourceDomain: string; sourceType: SourceType; isSyndicated: boolean }>> {
-  const results: Array<{ uri: string; title: string; displayName: string; sourceDomain: string; sourceType: SourceType; isSyndicated: boolean }> = [];
+): Promise<Array<{ uri: string; title: string; displayName: string; sourceDomain: string; sourceType: SourceType; countryCode: string; isSyndicated: boolean }>> {
+  const results: Array<{ uri: string; title: string; displayName: string; sourceDomain: string; sourceType: SourceType; countryCode: string; isSyndicated: boolean }> = [];
   const seen = new Set<string>(existingDomains);
 
   const processChunk = async (chunk: any) => {
@@ -405,6 +447,7 @@ async function processGroundingChunks(
         displayName: sourceInfo.displayName,
         sourceDomain: domain,
         sourceType: sourceInfo.type,
+        countryCode: sourceInfo.countryCode,
         isSyndicated,
       };
     } catch {
@@ -431,11 +474,15 @@ async function processGroundingChunks(
     'archive': 1,
     'wire': 2,
     'public': 3,
-    'international': 4,
-    'national': 5,
-    'magazine': 6,
-    'local': 7,
-    'reference': 8,
+    'state': 4,
+    'international': 5,
+    'national': 6,
+    'corporate': 7,
+    'magazine': 8,
+    'specialized': 9,
+    'analysis': 10,
+    'local': 11,
+    'reference': 12,
   };
 
   results.sort((a, b) => {
@@ -479,51 +526,79 @@ async function callGemini(url: string, syndicationPartners: string[], isRetry: b
 
 const prompt = isRetry
     ? `
-**ROLE:** You are MirrorSource, a media intelligence analyst.
+You are MirrorSource, a media intelligence analyst.
 
-**TASK:**
-1. Search broadly for news outlets covering: "${url}"
-2. Find wire services (AP, Reuters), international (BBC, Guardian), and aggregators (Yahoo, MSN).
+TASK: Search broadly for news coverage of: "${url}"
+Find wire services (AP, Reuters), international (BBC, Guardian), and aggregators (Yahoo, MSN).
 ${syndicationHint}
 
-**SUMMARY (Grade 8-10):** 3-5 short sentences. Plain English. Add [1], [2] citations.
-**INTEL BRIEF (Grade 12-14):**
-- commonGround: One sentence of facts ALL sources agree on.
-- keyDifferences: One sentence of disagreements. **Bold** the conflicts.
+CRITICAL FORMATTING REQUIREMENT - YOU MUST USE **DOUBLE ASTERISKS** FOR BOLD:
+Every entity name, number, date, and key outcome MUST be wrapped in **double asterisks**.
 
-**OUTPUT (JSON only):**
+SUMMARY (3-5 sentences, Grade 8-10 reading level, NO CITATIONS):
+- Bold ALL entities: **President Trump**, **Nvidia**, **China**, **H200 chips**
+- Bold ALL numbers: **$12 billion**, **25%**, **December 8, 2025**
+- Bold ALL outcomes: **approved**, **announced**, **excluded**
+
+INTEL BRIEF:
+- commonGround: Bold the key fact everyone agrees on
+- keyDifferences: Bold source names AND their conflicting claims
+
+EXAMPLE OUTPUT:
 {
-  "summary": "Short summary with [1] [2] citations.",
-  "commonGround": "All sources confirm...",
-  "keyDifferences": "Source A reports **X**, while Source B says **Y**."
+  "summary": "**President Trump** announced a new policy permitting **Nvidia** to export its **H200 AI chips** to **China**. This deal mandates **25%** of sales revenue goes to the **U.S. government**. The announcement was made on **Monday, December 8, 2025**.",
+  "commonGround": "All sources confirm **President Trump** approved **Nvidia's H200 chip** exports to **China** with a **25% revenue share** to the U.S. government.",
+  "keyDifferences": "**CBS News** reports the deal as a **diplomatic breakthrough**, while **The Guardian** frames it as **controversial** given prior chip restrictions."
 }
+
+Return ONLY valid JSON. No markdown blocks. No citations like [1] or [2].
     `.trim()
     : `
-**ROLE:** You are MirrorSource, a media intelligence analyst. Your audience is "Alex"—a busy professional who needs facts fast.
+You are MirrorSource, a media intelligence analyst. Your audience is "Alex"—a busy professional who needs facts in 10 seconds.
 
-**TASK:**
-1. Search for news coverage of: "${url}"
+TASK: Search for news coverage of: "${url}"
 ${syndicationHint}
-2. Find 3-8 alternative sources.
+Find 3-8 alternative sources.
 
-**COMPONENT 1: SUMMARY ("Smart Brevity")**
+═══════════════════════════════════════════════════════════════
+CRITICAL: BOLD FORMATTING IS MANDATORY
+You MUST wrap key information in **double asterisks** for bold.
+═══════════════════════════════════════════════════════════════
+
+COMPONENT 1: SUMMARY
 - Reading Level: Grade 8-10. Plain English. Short sentences.
-- Tone: Like a text from a smart friend. Neutral, punchy.
 - Length: 3-5 sentences. No sentence over 20 words.
-- Citations: Add [1], [2], [3] after key facts (matching source order).
+- NO CITATIONS. Do not include [1], [2], [3] or any bracketed numbers.
 
-**COMPONENT 2: INTEL BRIEF ("The Receipts")**
+MANDATORY BOLDING in Summary (use **double asterisks**):
+✓ Entity names: **President Trump**, **Nvidia**, **China**, **U.S. farmers**
+✓ Numbers/amounts: **$12 billion**, **25%**, **H200 chips**
+✓ Dates: **December 8, 2025**, **February 2026**
+✓ Key outcomes: **approved**, **announced**, **rejected**, **excluded**
+
+✗ DO NOT bold: adjectives (massive, significant), common verbs, articles (the, a)
+
+COMPONENT 2: INTEL BRIEF
 - Reading Level: Grade 12-14 (Professional).
-- commonGround: One sentence of facts ALL sources agree on. Be specific.
-- keyDifferences: One sentence showing disagreements. **Bold** the conflicting points.
 
-**OUTPUT (JSON only, no markdown blocks):**
+commonGround: One sentence. Bold the consensus facts:
+"All sources confirm **[key entity]** did **[action]** involving **[amount/detail]**."
+
+keyDifferences: One sentence. Bold source names AND conflicting claims:
+"**[Source A]** reports **[claim X]**, while **[Source B]** says **[claim Y]**."
+
+═══════════════════════════════════════════════════════════════
+EXAMPLE OUTPUT (follow this format exactly):
+═══════════════════════════════════════════════════════════════
 {
-  "summary": "Short summary with [1] [2] citations.",
-  "commonGround": "All sources confirm [specific fact].",
-  "keyDifferences": "Source A reports **[claim]**, while Source B says **[other claim]**."
+  "summary": "**President Trump** announced a new policy allowing **Nvidia** to export **H200 AI chips** to **China**. The deal requires **25%** of sales revenue to go to the **U.S. government**. **Chinese President Xi Jinping** reportedly welcomed the decision. **Nvidia's** more advanced **Blackwell** and **Rubin** chips are **not included** in this agreement.",
+  "commonGround": "All sources confirm **President Trump** approved **Nvidia's H200 chip** sales to **China** on **December 8, 2025**, with **25%** of revenue going to the U.S. government.",
+  "keyDifferences": "**CBS News** emphasizes the **diplomatic significance**, while **The Hindu** focuses on **China's positive response** to the policy shift."
 }
+
+Return ONLY valid JSON. No markdown code blocks. NO CITATIONS [1][2][3].
     `.trim();
+
   const config: any = { tools: [{ googleSearch: {} }] };
 
   const geminiResponse: any = await genAI.models.generateContent({
@@ -544,9 +619,15 @@ ${syndicationHint}
 
   // Parse JSON
   const parsedData = extractJson(text) || {};
-  const summary = parsedData.summary || "Summary not available.";
-  const commonGround = parsedData.commonGround || "";
-  const keyDifferences = parsedData.keyDifferences || "";
+  let summary = parsedData.summary || "Summary not available.";
+  let commonGround = parsedData.commonGround || "";
+  let keyDifferences = parsedData.keyDifferences || "";
+  
+  // Post-process: Remove any citations that slipped through
+  const citationRegex = /\s*\[\d+(?:,\s*\d+)*\]/g;
+  summary = summary.replace(citationRegex, '');
+  commonGround = commonGround.replace(citationRegex, '');
+  keyDifferences = keyDifferences.replace(citationRegex, '');
 
   // Get grounding chunks
   const candidates = geminiResponse?.response?.candidates ?? geminiResponse?.candidates ?? [];
@@ -561,7 +642,7 @@ ${syndicationHint}
     console.error("Error processing grounding chunks:", e);
   }
 
-return { summary, commonGround, keyDifferences, alternatives };
+  return { summary, commonGround, keyDifferences, alternatives };
 }
 
 export async function POST(req: NextRequest) {
@@ -625,25 +706,12 @@ export async function POST(req: NextRequest) {
         
         result.alternatives = [...result.alternatives, ...newAlternatives];
         
-if (result.summary === "Summary not available." && retryResult.summary !== "Summary not available.") {
-          result.summary = retryResult.summary;
-        }
-        
-        // Also update Intel Brief if missing
-        if (!result.commonGround && retryResult.commonGround) {
-          result.commonGround = retryResult.commonGround;
-        }
-        if (!result.keyDifferences && retryResult.keyDifferences) {
-          result.keyDifferences = retryResult.keyDifferences;
-        }
-        
-        console.log(`After retry: ${result.alternatives.length} total sources`);
       } catch (retryError) {
         console.error("Retry failed, using original results:", retryError);
       }
     }
 
-// 7. Build response
+    // 7. Build response
     const response = NextResponse.json({
       summary: result.summary,
       commonGround: result.commonGround,
