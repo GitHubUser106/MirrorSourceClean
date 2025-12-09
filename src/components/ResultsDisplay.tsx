@@ -89,64 +89,67 @@ export default function ResultsDisplay({ results }: ResultsDisplayProps) {
   }
 
   return (
-    <div className="space-y-3">
-      {results.map((item, index) => {
-        const sourceDomain = item.sourceDomain || '';
-        const displayName = item.displayName || 'SOURCE';
-        const favicon = getFaviconUrl(sourceDomain);
-        const headline = getHeadline(item);
-        const sourceType = item.sourceType || 'local';
-        
-        // Safely get badge with fallback
-        const badge = sourceTypeBadge[sourceType] || sourceTypeBadge['local'];
+    <div className="space-y-4">
+      {/* Two-column grid layout */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {results.map((item, index) => {
+          const sourceDomain = item.sourceDomain || '';
+          const displayName = item.displayName || 'SOURCE';
+          const favicon = getFaviconUrl(sourceDomain);
+          const headline = getHeadline(item);
+          const sourceType = item.sourceType || 'local';
+          
+          // Safely get badge with fallback
+          const badge = sourceTypeBadge[sourceType] || sourceTypeBadge['local'];
 
-        return (
-          <article
-            key={index}
-            className="group relative bg-white rounded-lg border border-slate-200 p-4 md:p-5 transition-all hover:bg-slate-50 hover:shadow-sm hover:border-slate-300"
-          >
-            <a
-              href={item.uri}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex flex-col gap-2"
+          return (
+            <article
+              key={index}
+              className="group relative bg-white rounded-xl border border-slate-200 shadow-sm p-4 transition-all hover:bg-slate-50 hover:shadow-md hover:border-slate-300"
             >
-              {/* Source badge row */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <img 
-                  src={favicon} 
-                  alt="" 
-                  className="w-5 h-5 md:w-6 md:h-6 object-contain flex-shrink-0"
-                  onError={(e) => { 
-                    (e.target as HTMLImageElement).style.display = 'none'; 
-                  }} 
-                />
-                <span className="text-sm font-bold uppercase tracking-wide text-blue-600">
-                  {displayName}
-                </span>
-                <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${badge.className}`}>
-                  {badge.label}
-                </span>
-                {item.isSyndicated && (
-                  <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-emerald-100 text-emerald-700 border-emerald-200">
-                    ✓ Free Version
+              <a
+                href={item.uri}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-col gap-2"
+              >
+                {/* Source badge row */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <img 
+                    src={favicon} 
+                    alt="" 
+                    className="w-5 h-5 object-contain flex-shrink-0 rounded"
+                    onError={(e) => { 
+                      (e.target as HTMLImageElement).style.display = 'none'; 
+                    }} 
+                  />
+                  <span className="text-sm font-bold uppercase tracking-wide text-blue-600">
+                    {displayName}
                   </span>
-                )}
-              </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${badge.className}`}>
+                    {badge.label}
+                  </span>
+                  {item.isSyndicated && (
+                    <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-emerald-100 text-emerald-700 border-emerald-200">
+                      ✓ Free Version
+                    </span>
+                  )}
+                </div>
 
-              {/* Headline */}
-              <h3 className="text-base md:text-lg font-medium text-slate-800 leading-snug group-hover:text-blue-700 transition-colors line-clamp-2">
-                {headline}
-              </h3>
-              
-              {/* External link icon */}
-              <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400">
-                <ExternalLink size={18} />
-              </div>
-            </a>
-          </article>
-        );
-      })}
+                {/* Headline */}
+                <h3 className="text-sm font-medium text-slate-800 leading-snug group-hover:text-blue-700 transition-colors line-clamp-2">
+                  {headline}
+                </h3>
+                
+                {/* External link icon */}
+                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400">
+                  <ExternalLink size={16} />
+                </div>
+              </a>
+            </article>
+          );
+        })}
+      </div>
 
       {/* Copy all links button */}
       {results.length > 1 && (
