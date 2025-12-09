@@ -267,6 +267,26 @@ function HomeContent() {
 
   return (
     <main className="min-h-screen bg-slate-50 flex flex-col relative">
+      {/* Pop-in animation keyframes */}
+      <style jsx>{`
+        @keyframes popIn {
+          0% {
+            transform: scale(0);
+            opacity: 0;
+          }
+          70% {
+            transform: scale(1.1);
+            opacity: 1;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        .icon-pop {
+          animation: popIn 0.4s ease-out forwards;
+        }
+      `}</style>
       
       <div className="hidden md:flex fixed top-4 right-4 z-50 items-center gap-3">
         {storiesCount !== null && storiesCount > 0 && (
@@ -286,7 +306,7 @@ function HomeContent() {
         )}
       </div>
 
-      <div className={`transition-all duration-500 ease-in-out flex flex-col items-center px-4 ${isActive ? 'pt-8 pb-6' : 'justify-center min-h-[80vh]'}`}>
+      <div className={`transition-all duration-500 ease-in-out flex flex-col items-center px-4 ${isActive ? 'pt-8 pb-4' : 'justify-center min-h-[80vh]'}`}>
         
         <button 
           onClick={handleLogoClick}
@@ -346,7 +366,7 @@ function HomeContent() {
 
       {/* Loading State - Scanning Animation */}
       {loading && (
-        <div className="flex-1 flex flex-col items-center justify-center px-4 pb-20 animate-in fade-in duration-500">
+        <div className="flex flex-col items-center justify-center px-4 pt-8 pb-12 animate-in fade-in duration-500">
           <div className="flex flex-col items-center gap-4">
             {/* Rotating Scanner Icon */}
             <div className="relative">
@@ -396,12 +416,13 @@ function HomeContent() {
                       href={item.uri}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`flex flex-col items-center gap-2 group transition-all duration-300 ${
-                        isVisible 
-                          ? 'opacity-100 translate-y-0' 
-                          : 'opacity-0 translate-y-4'
+                      className={`flex flex-col items-center gap-2 group ${
+                        isVisible ? 'icon-pop' : 'opacity-0 scale-0'
                       }`}
-                      style={{ transitionDelay: `${index * 50}ms` }}
+                      style={{ 
+                        animationDelay: isVisible ? `${index * 100}ms` : '0ms',
+                        animationFillMode: 'forwards'
+                      }}
                     >
                       <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white shadow-md border border-slate-200 flex items-center justify-center group-hover:shadow-lg group-hover:border-blue-300 transition-all">
                         <img
