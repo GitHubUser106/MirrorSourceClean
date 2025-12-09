@@ -371,15 +371,39 @@ CRITICAL RULES:
   
   // Clean citations
   const citationRegex = /\s*\[\d+(?:,\s*\d+)*\]/g;
-  let summary = (parsedData.summary || 'Summary not available.').replace(citationRegex, '');
-  let commonGround = (parsedData.commonGround || '').replace(citationRegex, '');
-  let keyDifferences = (parsedData.keyDifferences || '').replace(citationRegex, '');
+  let summary = (parsedData.summary || '').replace(citationRegex, '').trim();
+  let commonGround = (parsedData.commonGround || '').replace(citationRegex, '').trim();
+  let keyDifferences = (parsedData.keyDifferences || '').replace(citationRegex, '').trim();
 
   // Get grounding chunks
   const candidates = geminiResponse?.response?.candidates ?? geminiResponse?.candidates ?? [];
   const groundingChunks = candidates[0]?.groundingMetadata?.groundingChunks ?? [];
 
   const alternatives = await processGroundingChunks(groundingChunks, syndicationPartners);
+
+  // Fallback: If we found sources but no summary, try to extract from raw text or create basic summary
+  if (!summary && alternatives.length > 0) {
+    // Try to find any useful text from Gemini's response
+    const cleanText = text.replace(/```[\s\S]*?```/g, '').replace(/\{[\s\S]*\}/g, '').trim();
+    if (cleanText && cleanText.length > 50 && cleanText.length < 1000) {
+      summary = cleanText.split('.').slice(0, 3).join('.') + '.';
+    } else {
+      // Create a basic summary from the URL
+      try {
+        const urlPath = new URL(url).pathname;
+        const words = urlPath.split(/[-_\/]/).filter(w => w.length > 2 && !/^\d+$/.test(w));
+        if (words.length > 2) {
+          const topic = words.slice(0, 5).join(' ').replace(/\b\w/g, c => c.toUpperCase());
+          summary = `Multiple sources are reporting on **${topic}**. We found **${alternatives.length} alternative sources** covering this story from different perspectives.`;
+        }
+      } catch {}
+    }
+    
+    // If still no summary, provide a generic one
+    if (!summary) {
+      summary = `We found **${alternatives.length} sources** covering this story. Click any source below to read their coverage.`;
+    }
+  }
 
   // If we have very few sources, clear keyDifferences (can't compare with 1 source)
   if (alternatives.length < 2) {
