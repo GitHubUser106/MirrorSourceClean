@@ -245,14 +245,14 @@ function HomeContent() {
 
   return (
     <main className="min-h-screen bg-slate-50 flex flex-col relative">
-      <style jsx>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes popIn {
           0% { transform: scale(0); opacity: 0; }
           70% { transform: scale(1.1); opacity: 1; }
           100% { transform: scale(1); opacity: 1; }
         }
         .icon-pop { animation: popIn 0.4s ease-out forwards; }
-      `}</style>
+      `}} />
       
       {/* Usage badges */}
       <div className="hidden md:flex fixed top-4 right-4 z-50 items-center gap-3">
