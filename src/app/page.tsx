@@ -70,7 +70,6 @@ function HomeContent() {
   const [scannerIconIndex, setScannerIconIndex] = useState(0);
   const [currentUrl, setCurrentUrl] = useState("");
   const [lastSubmittedUrl, setLastSubmittedUrl] = useState("");
-  const [storiesCount, setStoriesCount] = useState<number | null>(null);
   const [visibleIcons, setVisibleIcons] = useState(0);
 
   // Rotate loading facts
@@ -106,24 +105,6 @@ function HomeContent() {
       return () => clearInterval(timer);
     }
   }, [loading, results.length]);
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('ms_stories');
-      if (stored) setStoriesCount(parseInt(stored, 10));
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    if (summary && !loading) {
-      try {
-        const current = parseInt(localStorage.getItem('ms_stories') || '0', 10);
-        const newCount = current + 1;
-        localStorage.setItem('ms_stories', String(newCount));
-        setStoriesCount(newCount);
-      } catch {}
-    }
-  }, [summary, loading]);
 
   async function refreshUsage() {
     try {
@@ -254,21 +235,15 @@ function HomeContent() {
         .icon-pop { animation: popIn 0.4s ease-out forwards; }
       `}} />
       
-      {/* Usage badges */}
-      <div className="hidden md:flex fixed top-4 right-4 z-50 items-center gap-3">
-        {storiesCount !== null && storiesCount > 0 && (
-          <div className="flex items-center gap-2 bg-blue-600 text-white px-3 py-1.5 rounded-full shadow-md text-sm">
-            <span className="font-bold">{storiesCount}</span>
-            <span className="text-blue-100">stories</span>
-          </div>
-        )}
-        {usage && (
+      {/* Usage badge - rate limit only */}
+      {usage && (
+        <div className="hidden md:flex fixed top-4 right-4 z-50">
           <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-md text-sm">
             <span className={`w-2 h-2 rounded-full ${usage.remaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></span>
             <span className="font-medium text-slate-600">{usage.remaining}/{usage.limit} left</span>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Header */}
       <div className={`transition-all duration-500 flex flex-col items-center px-4 ${isActive ? 'pt-8 pb-4' : 'justify-center min-h-[80vh]'}`}>
@@ -286,13 +261,7 @@ function HomeContent() {
         </div>
 
         {usage && !hasContent && !loading && (
-          <div className="md:hidden mt-6 flex items-center gap-3">
-            {storiesCount !== null && storiesCount > 0 && (
-              <div className="flex items-center gap-1 bg-blue-600 text-white px-2 py-1 rounded-full text-xs">
-                <span className="font-bold">{storiesCount}</span>
-                <span className="text-blue-100">stories</span>
-              </div>
-            )}
+          <div className="md:hidden mt-6">
             <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-slate-200 text-xs text-slate-500">
               <span className={`w-1.5 h-1.5 rounded-full ${usage.remaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></span>
               {usage.remaining}/{usage.limit} left
