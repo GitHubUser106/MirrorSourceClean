@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header */}
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-4xl mx-auto px-4 py-6">
@@ -48,7 +48,7 @@ export default function AboutPage() {
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center">
               <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Search className="w-7 h-7 text-blue-600" />
+                <Search className="w-7 h-7 text-[#2563eb]" />
               </div>
               <h3 className="text-lg font-semibold text-slate-900 mb-2">1. Paste a Link</h3>
               <p className="text-slate-600">
@@ -58,7 +58,7 @@ export default function AboutPage() {
 
             <div className="text-center">
               <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <FileText className="w-7 h-7 text-blue-600" />
+                <FileText className="w-7 h-7 text-[#2563eb]" />
               </div>
               <h3 className="text-lg font-semibold text-slate-900 mb-2">2. Get a Summary</h3>
               <p className="text-slate-600">
@@ -68,7 +68,7 @@ export default function AboutPage() {
 
             <div className="text-center">
               <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <ExternalLink className="w-7 h-7 text-blue-600" />
+                <ExternalLink className="w-7 h-7 text-[#2563eb]" />
               </div>
               <h3 className="text-lg font-semibold text-slate-900 mb-2">3. Explore Sources</h3>
               <p className="text-slate-600">
@@ -132,7 +132,7 @@ export default function AboutPage() {
             <div className="flex gap-4">
               <div className="flex-shrink-0">
                 <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <Search className="w-5 h-5 text-blue-600" />
+                  <Search className="w-5 h-5 text-[#2563eb]" />
                 </div>
               </div>
               <div>
@@ -157,7 +157,7 @@ export default function AboutPage() {
           </p>
           <Link 
             href="/"
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-full transition-colors"
+            className="inline-flex items-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold py-3 px-8 rounded-full transition-colors"
           >
             Try MirrorSource
             <ExternalLink size={18} />
@@ -166,19 +166,13 @@ export default function AboutPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-6 px-4 border-t border-slate-200 bg-white">
+      <footer className="py-6 px-4 border-t border-slate-200 bg-white mt-auto">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
           <p>&copy; {new Date().getFullYear()} MirrorSource</p>
           <div className="flex items-center gap-6">
-            <Link href="/about" className="hover:text-blue-600 transition-colors">
-              About
-            </Link>
-            <Link href="/legal" className="hover:text-blue-600 transition-colors">
-              Legal
-            </Link>
-            <a href="mailto:contact@mirrorsource.app" className="hover:text-blue-600 transition-colors">
-              Contact
-            </a>
+            <Link href="/about" className="hover:text-[#2563eb] transition-colors">About</Link>
+            <Link href="/legal" className="hover:text-[#2563eb] transition-colors">Legal</Link>
+            <Link href="/contact" className="hover:text-[#2563eb] transition-colors">Contact</Link>
           </div>
         </div>
       </footer>
