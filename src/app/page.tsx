@@ -361,18 +361,18 @@ function HomeContent() {
             <div className="bg-white rounded-2xl border border-slate-200 p-6">
               <div className="h-5 w-28 bg-slate-200 rounded animate-pulse mb-4"></div>
               <div className="grid md:grid-cols-2 gap-4">
-                <div className="bg-emerald-50 rounded-xl p-4">
-                  <div className="h-3 w-20 bg-emerald-200 rounded animate-pulse mb-3"></div>
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <div className="h-3 w-20 bg-slate-200 rounded animate-pulse mb-3"></div>
                   <div className="space-y-2">
-                    <div className="h-3 bg-emerald-100 rounded animate-pulse w-full"></div>
-                    <div className="h-3 bg-emerald-100 rounded animate-pulse w-3/4"></div>
+                    <div className="h-3 bg-slate-100 rounded animate-pulse w-full"></div>
+                    <div className="h-3 bg-slate-100 rounded animate-pulse w-3/4"></div>
                   </div>
                 </div>
-                <div className="bg-amber-50 rounded-xl p-4">
-                  <div className="h-3 w-24 bg-amber-200 rounded animate-pulse mb-3"></div>
+                <div className="bg-orange-50 rounded-xl p-4">
+                  <div className="h-3 w-24 bg-orange-200 rounded animate-pulse mb-3"></div>
                   <div className="space-y-2">
-                    <div className="h-3 bg-amber-100 rounded animate-pulse w-full"></div>
-                    <div className="h-3 bg-amber-100 rounded animate-pulse w-2/3"></div>
+                    <div className="h-3 bg-orange-100 rounded animate-pulse w-full"></div>
+                    <div className="h-3 bg-orange-100 rounded animate-pulse w-2/3"></div>
                   </div>
                 </div>
               </div>
@@ -405,7 +405,7 @@ function HomeContent() {
             )}
             
             {/* Summary */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 lg:p-10">
+            <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8 lg:p-10">
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-xl md:text-2xl font-bold text-slate-900">Summary</h2>
                 {summary && (
@@ -426,28 +426,28 @@ function HomeContent() {
 
             {/* Intel Brief */}
             {(commonGround || keyDifferences) && (
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 lg:p-10">
+              <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8 lg:p-10">
                 <div className="flex items-center gap-2 mb-6">
                   <svg className="w-5 h-5 md:w-6 md:h-6 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></svg>
                   <h2 className="text-xl md:text-2xl font-bold text-slate-900">Intel Brief</h2>
                 </div>
                 <div className="grid md:grid-cols-2 gap-5">
                   {commonGround && (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5">
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
                       <div className="flex items-center gap-2 mb-3">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        <h3 className="text-sm font-semibold text-emerald-800 uppercase tracking-wide">Common Ground</h3>
+                        <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Common Ground</h3>
                       </div>
-                      <p className="text-sm md:text-base text-emerald-700 leading-relaxed">{parseMarkdownBold(commonGround, 'intel')}</p>
+                      <p className="text-sm md:text-base text-slate-600 leading-relaxed">{parseMarkdownBold(commonGround, 'intel')}</p>
                     </div>
                   )}
                   {keyDifferences && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-5">
                       <div className="flex items-center gap-2 mb-3">
-                        <Scale className="w-4 h-4 text-amber-600" />
-                        <h3 className="text-sm font-semibold text-amber-800 uppercase tracking-wide">Key Differences</h3>
+                        <Scale className="w-4 h-4 text-orange-600" />
+                        <h3 className="text-sm font-semibold text-orange-800 uppercase tracking-wide">Key Differences</h3>
                       </div>
-                      <p className="text-sm md:text-base text-amber-700 leading-relaxed">{parseMarkdownBold(keyDifferences, 'intel')}</p>
+                      <p className="text-sm md:text-base text-orange-700 leading-relaxed">{parseMarkdownBold(keyDifferences, 'intel')}</p>
                     </div>
                   )}
                 </div>
@@ -455,7 +455,7 @@ function HomeContent() {
             )}
 
             {/* Alternative Sources */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 lg:p-10">
+            <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8 lg:p-10">
               <h2 className="text-xl md:text-2xl font-bold text-slate-900 mb-5">Alternative Sources</h2>
 
               {results.length > 0 ? (
@@ -479,7 +479,7 @@ function HomeContent() {
                     </div>
                   </div>
                   
-                  <button onClick={() => handleSearchWithUrl(lastSubmittedUrl)} disabled={loading} className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-3 px-6 rounded-full transition-colors">
+                  <button onClick={() => handleSearchWithUrl(lastSubmittedUrl)} disabled={loading} className="w-full flex items-center justify-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-[#6b9aef] text-white font-medium py-3 px-6 rounded-full transition-colors">
                     <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
                     Try searching again
                   </button>
