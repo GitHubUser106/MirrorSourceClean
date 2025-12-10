@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 
-export const DAILY_LIMIT = 20;
+const DAILY_LIMIT = 50;
 
 interface UsageInfo {
   used: number;
