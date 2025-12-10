@@ -7,7 +7,7 @@ import { Copy, Check, Mail, ArrowLeft } from "lucide-react";
 
 export default function ContactPage() {
   const [copied, setCopied] = useState(false);
-  const email = "contact@mirrorsource.app";
+ const email = "mirrorsourcecontact@gmail.com";
 
   const handleCopy = async () => {
     try {
