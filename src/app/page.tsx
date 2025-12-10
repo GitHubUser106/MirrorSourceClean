@@ -496,13 +496,20 @@ function HomeContent() {
                 <h2 className="text-xl md:text-2xl font-bold text-slate-900">Alternative Sources</h2>
                 {results.length >= 2 && (
                   <Link
-                    href={`/compare?sources=${encodeURIComponent(JSON.stringify(results.slice(0, 6).map((r, i) => ({
-                      id: `source-${i}`,
-                      name: r.title?.split(' - ')[0] || new URL(r.uri).hostname.replace('www.', ''),
-                      type: getSourceType(r.uri),
-                      url: r.uri,
-                      domain: new URL(r.uri).hostname.replace('www.', ''),
-                    }))))}`}
+                    href={`/compare?sources=${encodeURIComponent(JSON.stringify(
+                      // De-duplicate by domain and pass all sources
+                      results
+                        .map((r, i) => ({
+                          id: `source-${i}`,
+                          name: r.title?.split(' - ')[0] || new URL(r.uri).hostname.replace('www.', ''),
+                          type: getSourceType(r.uri),
+                          url: r.uri,
+                          domain: new URL(r.uri).hostname.replace('www.', ''),
+                        }))
+                        .filter((source, index, self) => 
+                          index === self.findIndex(s => s.domain === source.domain)
+                        )
+                    ))}`}
                     className="text-sm text-[#2563eb] hover:underline flex items-center gap-1"
                   >
                     <Scale size={16} />
