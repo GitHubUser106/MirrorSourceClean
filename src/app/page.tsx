@@ -496,7 +496,7 @@ function HomeContent() {
           <div className="flex items-center gap-6">
             <Link href="/about" className="hover:text-blue-600 transition-colors">About</Link>
             <Link href="/legal" className="hover:text-blue-600 transition-colors">Legal</Link>
-            <a href="mailto:contact@mirrorsource.app" className="hover:text-blue-600 transition-colors">Contact</a>
+            <Link href="/contact" className="hover:text-blue-600 transition-colors">Contact</Link>
           </div>
         </div>
       </footer>

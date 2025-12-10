@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MirrorSource</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup">
+    
+    <!-- Header -->
+    <div class="header">
+      <img src="icons/icon48.png" alt="" class="logo">
+      <div>
+        <h1>MirrorSource</h1>
+        <p>See the whole story</p>
+      </div>
+    </div>
+
+    <!-- Stats Summary -->
+    <div class="stats-row">
+      <div class="stat">
+        <span class="stat-num" id="stories">0</span>
+        <span class="stat-label">stories</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" id="outlets">0</span>
+        <span class="stat-label">outlets</span>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <a href="https://mirrorsource.app" target="_blank" class="btn-primary">
+      Open MirrorSource
+    </a>
+
+    <!-- Footer -->
+    <div class="footer">
+      <button id="share-btn">Share stats</button>
+      <span>·</span>
+      <button id="reset-btn">Reset</button>
+    </div>
+
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
