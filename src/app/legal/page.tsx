@@ -217,12 +217,12 @@ export default function LegalPage() {
           {/* OFFICIAL CONTACT FOOTER */}
           <div className="mt-12 pt-8 border-t border-slate-200 text-center">
             <p className="text-slate-900 font-medium">For all legal, privacy, and support inquiries:</p>
-            <a 
-              href="mailto:mirrorsourcecontact@gmail.com" 
+            <Link 
+              href="/contact"
               className="text-[#2563eb] font-semibold text-lg hover:underline mt-2 block"
             >
-              mirrorsourcecontact@gmail.com
-            </a>
+              Contact Us →
+            </Link>
           </div>
 
         </div>
