@@ -60,6 +60,42 @@ function getFaviconUrl(domain: string): string {
   return `https://www.google.com/s2/favicons?domain=${domain.replace(/^www\./, '')}&sz=64`;
 }
 
+function getSourceType(url: string): 'Wire' | 'Corporate' | 'Public' | 'International' | 'Local' | 'Syndicated' {
+  const domain = new URL(url).hostname.toLowerCase();
+  
+  // Wire services
+  if (domain.includes('apnews') || domain.includes('reuters') || domain.includes('afp')) {
+    return 'Wire';
+  }
+  
+  // Public media
+  if (domain.includes('pbs.org') || domain.includes('npr.org') || domain.includes('bbc.com') || domain.includes('bbc.co.uk')) {
+    return 'Public';
+  }
+  
+  // International
+  if (domain.includes('theguardian') || domain.includes('aljazeera') || domain.includes('dw.com') || 
+      domain.includes('france24') || domain.includes('scmp.com') || domain.includes('abc.net.au') ||
+      domain.includes('cbc.ca') || domain.includes('euronews')) {
+    return 'International';
+  }
+  
+  // Syndicated
+  if (domain.includes('yahoo') || domain.includes('msn.com') || domain.includes('aol.com')) {
+    return 'Syndicated';
+  }
+  
+  // Local (regional papers)
+  if (domain.includes('tribune') || domain.includes('times') || domain.includes('post') || 
+      domain.includes('herald') || domain.includes('gazette') || domain.includes('journal') ||
+      domain.includes('chronicle') || domain.includes('sentinel') || domain.includes('daily')) {
+    return 'Local';
+  }
+  
+  // Default to Corporate
+  return 'Corporate';
+}
+
 function HomeContent() {
   const searchParams = useSearchParams();
   const [loading, setIsLoading] = useState(false);
@@ -456,7 +492,24 @@ function HomeContent() {
 
             {/* Alternative Sources */}
             <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8 lg:p-10">
-              <h2 className="text-xl md:text-2xl font-bold text-slate-900 mb-5">Alternative Sources</h2>
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl md:text-2xl font-bold text-slate-900">Alternative Sources</h2>
+                {results.length >= 2 && (
+                  <Link
+                    href={`/compare?sources=${encodeURIComponent(JSON.stringify(results.slice(0, 6).map((r, i) => ({
+                      id: `source-${i}`,
+                      name: r.title?.split(' - ')[0] || new URL(r.uri).hostname.replace('www.', ''),
+                      type: getSourceType(r.uri),
+                      url: r.uri,
+                      domain: new URL(r.uri).hostname.replace('www.', ''),
+                    }))))}`}
+                    className="text-sm text-[#2563eb] hover:underline flex items-center gap-1"
+                  >
+                    <Scale size={16} />
+                    <span className="hidden sm:inline">Compare coverage</span>
+                  </Link>
+                )}
+              </div>
 
               {results.length > 0 ? (
                 <>

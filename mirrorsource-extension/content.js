@@ -88,14 +88,14 @@
 
     .ms-fab-icon {
       flex-shrink: 0;
-      width: 20px;
-      height: 20px;
+      width: 32px;
+      height: 32px;
       background: white;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 2px;
+      padding: 4px;
     }
 
     .ms-fab-icon img {
@@ -141,7 +141,7 @@
 
     /* Minimized state - icon only */
     .ms-fab-button.minimized {
-      padding: 14px !important;
+      padding: 16px !important;
       border-radius: 50% !important;
       box-shadow: 0 4px 24px rgba(37, 99, 235, 0.5) !important;
     }
@@ -151,13 +151,13 @@
     }
     
     .ms-fab-button.minimized .ms-fab-icon {
-      width: 24px;
-      height: 24px;
+      width: 34px;
+      height: 34px;
     }
 
     @media (max-width: 480px) {
       .ms-fab-button {
-        padding: 14px !important;
+        padding: 16px !important;
         border-radius: 50% !important;
       }
       
@@ -166,8 +166,8 @@
       }
       
       .ms-fab-icon {
-        width: 24px;
-        height: 24px;
+        width: 34px;
+        height: 34px;
       }
     }
   `;
