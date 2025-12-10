@@ -334,6 +334,7 @@ function HomeContent() {
                 <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full animate-progress"></div>
               </div>
               <p className="text-xs text-slate-400 text-center mt-2">Usually takes 10-15 seconds</p>
+              <p className="text-xs text-slate-400 text-center mt-1">Results vary — tap "Try Again" if needed</p>
             </div>
           </div>
 
