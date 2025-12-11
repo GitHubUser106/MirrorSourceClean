@@ -341,16 +341,18 @@ Search these outlets: AP, Reuters, BBC, Guardian, CBS, NBC, ABC, CNN, NPR, PBS, 
 
 RESPONSE FORMAT (JSON only):
 {
-  "summary": "3-4 sentences. Grade 6-8 reading level. Short sentences. Use **bold** for names, numbers, dates. No jargon.",
-  "commonGround": "1-2 sentences only. What do sources agree on? Bold key facts.",
-  "keyDifferences": "1-2 sentences only. Pick the ONE biggest contrast. Example: **CNN** emphasizes X, while **Fox** focuses on Y."
+  "summary": "3-4 sentences. Grade 6-8 reading level. Short sentences. Bold only the KEY TAKEAWAY of each sentence (not every noun/number). Max 4 bold phrases total. Reader should understand the story by reading ONLY the bold text.",
+  "commonGround": "1-2 sentences. What do sources CONCLUDE or AGREE ON? Bold the findings/conclusions, NOT topic words or source names.",
+  "keyDifferences": "1-2 sentences. The ONE biggest contrast. Bold the CONTRASTING INTERPRETATIONS, not source names. Example: Reuters sees this as **a sign of economic strength**, while Bloomberg warns it **may be temporary due to gold exports**."
 }
 
 CRITICAL RULES:
+- BOLDING: If someone reads ONLY the bold text, they should understand the main point
+- DON'T bold: source names, generic topic words, every number
+- DO bold: conclusions, interpretations, what changed, why it matters
 - commonGround: MAX 2 sentences
-- keyDifferences: MAX 2 sentences, only mention 2 sources
+- keyDifferences: MAX 2 sentences
 - Use simple words a 12-year-old would understand
-- No long lists of sources
   `.trim();
 
   const geminiResponse: any = await genAI.models.generateContent({
@@ -425,16 +427,18 @@ Find the most recent news articles about this topic.
 
 RESPONSE FORMAT (JSON only):
 {
-  "summary": "3-4 sentences summarizing what the news is about. Grade 6-8 reading level. Short sentences. Use **bold** for names, numbers, dates. No jargon.",
-  "commonGround": "1-2 sentences only. What do sources agree on? Bold key facts.",
-  "keyDifferences": "1-2 sentences only. Pick the ONE biggest contrast. Example: **CNN** emphasizes X, while **Fox** focuses on Y."
+  "summary": "3-4 sentences. Grade 6-8 reading level. Short sentences. Bold only the KEY TAKEAWAY of each sentence (not every noun/number). Max 4 bold phrases total. Reader should understand the story by reading ONLY the bold text.",
+  "commonGround": "1-2 sentences. What do sources CONCLUDE or AGREE ON? Bold the findings/conclusions, NOT topic words or source names.",
+  "keyDifferences": "1-2 sentences. The ONE biggest contrast. Bold the CONTRASTING INTERPRETATIONS, not source names. Example: Reuters sees this as **a sign of economic strength**, while Bloomberg warns it **may be temporary due to gold exports**."
 }
 
 CRITICAL RULES:
+- BOLDING: If someone reads ONLY the bold text, they should understand the main point
+- DON'T bold: source names, generic topic words, every number
+- DO bold: conclusions, interpretations, what changed, why it matters
 - commonGround: MAX 2 sentences
-- keyDifferences: MAX 2 sentences, only mention 2 sources
+- keyDifferences: MAX 2 sentences
 - Use simple words a 12-year-old would understand
-- No long lists of sources
   `.trim();
 
   const geminiResponse: any = await genAI.models.generateContent({
