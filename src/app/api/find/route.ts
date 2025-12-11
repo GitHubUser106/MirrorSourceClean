@@ -19,7 +19,7 @@ export async function OPTIONS() {
 }
 
 // --- Error Types ---
-type ErrorType = 'INVALID_URL' | 'NETWORK_ERROR' | 'TIMEOUT' | 'RATE_LIMITED' | 'API_ERROR';
+type ErrorType = 'INVALID_URL' | 'INVALID_KEYWORDS' | 'NETWORK_ERROR' | 'TIMEOUT' | 'RATE_LIMITED' | 'API_ERROR';
 
 interface AppError {
   type: ErrorType;
@@ -32,6 +32,11 @@ function createError(type: ErrorType, details?: string): AppError {
   const errors: Record<ErrorType, Omit<AppError, 'type'>> = {
     INVALID_URL: {
       userMessage: 'Please enter a valid news article URL (must start with http:// or https://)',
+      statusCode: 400,
+      retryable: false,
+    },
+    INVALID_KEYWORDS: {
+      userMessage: 'Please enter some keywords to search for.',
       statusCode: 400,
       retryable: false,
     },
@@ -205,7 +210,6 @@ function extractJson(text: string): any {
 
 // --- URL Resolution ---
 async function resolveUrl(redirectUrl: string): Promise<string | null> {
-  // Skip Google's redirect URLs
   if (!redirectUrl.includes('vertexaisearch.cloud.google.com')) {
     return redirectUrl;
   }
@@ -274,7 +278,6 @@ async function processGroundingChunks(
     } catch { return null; }
   };
 
-  // Process up to 15 chunks in parallel for maximum source coverage
   const settled = await Promise.allSettled(chunks.slice(0, 15).map(processChunk));
 
   for (const result of settled) {
@@ -287,7 +290,6 @@ async function processGroundingChunks(
     }
   }
 
-  // Sort: syndicated first, then by type priority
   const typePriority: Record<SourceType, number> = {
     'syndication': 0, 'wire': 1, 'public': 2, 'state': 3,
     'international': 4, 'national': 5, 'corporate': 6, 'magazine': 7,
@@ -318,7 +320,7 @@ function validateUrl(url: string): { valid: boolean; error?: AppError } {
   }
 }
 
-// --- Gemini Call (Optimized for Maximum Sources) ---
+// --- Gemini Call (URL-based) ---
 async function callGemini(url: string, syndicationPartners: string[]): Promise<{
   summary: string;
   commonGround: string;
@@ -329,7 +331,6 @@ async function callGemini(url: string, syndicationPartners: string[]): Promise<{
     ? `PRIORITY: Search for syndicated versions on ${syndicationPartners.join(', ')}.`
     : '';
 
-  // Optimized prompt for finding multiple sources
   const prompt = `
 You are a news research assistant. Find alternative news sources covering this story.
 
@@ -369,26 +370,21 @@ CRITICAL RULES:
 
   const parsedData = extractJson(text) || {};
   
-  // Clean citations
   const citationRegex = /\s*\[\d+(?:,\s*\d+)*\]/g;
   let summary = (parsedData.summary || '').replace(citationRegex, '').trim();
   let commonGround = (parsedData.commonGround || '').replace(citationRegex, '').trim();
   let keyDifferences = (parsedData.keyDifferences || '').replace(citationRegex, '').trim();
 
-  // Get grounding chunks
   const candidates = geminiResponse?.response?.candidates ?? geminiResponse?.candidates ?? [];
   const groundingChunks = candidates[0]?.groundingMetadata?.groundingChunks ?? [];
 
   const alternatives = await processGroundingChunks(groundingChunks, syndicationPartners);
 
-  // Fallback: If we found sources but no summary, try to extract from raw text or create basic summary
   if (!summary && alternatives.length > 0) {
-    // Try to find any useful text from Gemini's response
     const cleanText = text.replace(/```[\s\S]*?```/g, '').replace(/\{[\s\S]*\}/g, '').trim();
     if (cleanText && cleanText.length > 50 && cleanText.length < 1000) {
       summary = cleanText.split('.').slice(0, 3).join('.') + '.';
     } else {
-      // Create a basic summary from the URL
       try {
         const urlPath = new URL(url).pathname;
         const words = urlPath.split(/[-_\/]/).filter(w => w.length > 2 && !/^\d+$/.test(w));
@@ -399,13 +395,79 @@ CRITICAL RULES:
       } catch {}
     }
     
-    // If still no summary, provide a generic one
     if (!summary) {
       summary = `We found **${alternatives.length} sources** covering this story. Click any source below to read their coverage.`;
     }
   }
 
-  // If we have very few sources, clear keyDifferences (can't compare with 1 source)
+  if (alternatives.length < 2) {
+    keyDifferences = '';
+  }
+
+  return { summary, commonGround, keyDifferences, alternatives };
+}
+
+// --- Gemini Call (Keyword-based) ---
+async function callGeminiWithKeywords(keywords: string): Promise<{
+  summary: string;
+  commonGround: string;
+  keyDifferences: string;
+  alternatives: any[];
+}> {
+  const prompt = `
+You are a news research assistant. Find news sources covering this topic.
+
+SEARCH KEYWORDS: ${keywords}
+
+Search these outlets: AP, Reuters, BBC, Guardian, CBS, NBC, ABC, CNN, NPR, PBS, Yahoo News, MSN, Al Jazeera, The Hill, Politico, Axios, Fox News.
+
+Find the most recent news articles about this topic.
+
+RESPONSE FORMAT (JSON only):
+{
+  "summary": "3-4 sentences summarizing what the news is about. Grade 6-8 reading level. Short sentences. Use **bold** for names, numbers, dates. No jargon.",
+  "commonGround": "1-2 sentences only. What do sources agree on? Bold key facts.",
+  "keyDifferences": "1-2 sentences only. Pick the ONE biggest contrast. Example: **CNN** emphasizes X, while **Fox** focuses on Y."
+}
+
+CRITICAL RULES:
+- commonGround: MAX 2 sentences
+- keyDifferences: MAX 2 sentences, only mention 2 sources
+- Use simple words a 12-year-old would understand
+- No long lists of sources
+  `.trim();
+
+  const geminiResponse: any = await genAI.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    config: { tools: [{ googleSearch: {} }] },
+  });
+
+  let text: string | undefined;
+  if (geminiResponse?.response && typeof geminiResponse.response.text === 'function') {
+    text = geminiResponse.response.text();
+  } else if (Array.isArray(geminiResponse?.candidates)) {
+    text = geminiResponse.candidates[0]?.content?.parts?.[0]?.text;
+  }
+
+  if (!text) throw new Error('No response from model');
+
+  const parsedData = extractJson(text) || {};
+  
+  const citationRegex = /\s*\[\d+(?:,\s*\d+)*\]/g;
+  let summary = (parsedData.summary || '').replace(citationRegex, '').trim();
+  let commonGround = (parsedData.commonGround || '').replace(citationRegex, '').trim();
+  let keyDifferences = (parsedData.keyDifferences || '').replace(citationRegex, '').trim();
+
+  const candidates = geminiResponse?.response?.candidates ?? geminiResponse?.candidates ?? [];
+  const groundingChunks = candidates[0]?.groundingMetadata?.groundingChunks ?? [];
+
+  const alternatives = await processGroundingChunks(groundingChunks, []);
+
+  if (!summary && alternatives.length > 0) {
+    summary = `We found **${alternatives.length} sources** covering "${keywords}". Click any source below to read their coverage.`;
+  }
+
   if (alternatives.length < 2) {
     keyDifferences = '';
   }
@@ -438,28 +500,55 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Validate URL
-    const validation = validateUrl(body.url);
-    if (!validation.valid && validation.error) {
+    // 3. Check if this is a keyword search or URL search
+    const hasKeywords = body.keywords && typeof body.keywords === 'string' && body.keywords.trim();
+    const hasUrl = body.url && typeof body.url === 'string' && body.url.trim();
+
+    if (!hasKeywords && !hasUrl) {
+      const error = createError('INVALID_URL');
       return NextResponse.json(
-        { error: validation.error.userMessage, errorType: validation.error.type, retryable: validation.error.retryable },
-        { status: validation.error.statusCode, headers: corsHeaders }
+        { error: error.userMessage, errorType: error.type, retryable: error.retryable },
+        { status: error.statusCode, headers: corsHeaders }
       );
     }
 
-    const url = body.url.trim();
-    
     // 4. Increment Usage
     const { info: usageInfo, cookieValue } = await incrementUsage(req);
-    
-    // 5. Get Source Info
-    const isPaywalled = isPaywalledSource(url);
-    const syndicationPartners = getSyndicationPartners(url);
 
-    // 6. Call Gemini
-    const result = await callGemini(url, syndicationPartners);
+    let result;
+    let isPaywalled = false;
 
-    // 7. Build Response
+    if (hasKeywords) {
+      // Keyword-based search
+      const keywords = body.keywords.trim();
+      
+      if (keywords.length < 3) {
+        const error = createError('INVALID_KEYWORDS');
+        return NextResponse.json(
+          { error: 'Please enter at least a few keywords to search.', errorType: error.type, retryable: false },
+          { status: error.statusCode, headers: corsHeaders }
+        );
+      }
+
+      result = await callGeminiWithKeywords(keywords);
+    } else {
+      // URL-based search
+      const validation = validateUrl(body.url);
+      if (!validation.valid && validation.error) {
+        return NextResponse.json(
+          { error: validation.error.userMessage, errorType: validation.error.type, retryable: validation.error.retryable },
+          { status: validation.error.statusCode, headers: corsHeaders }
+        );
+      }
+
+      const url = body.url.trim();
+      isPaywalled = isPaywalledSource(url);
+      const syndicationPartners = getSyndicationPartners(url);
+
+      result = await callGemini(url, syndicationPartners);
+    }
+
+    // 5. Build Response
     const response = NextResponse.json({
       summary: result.summary,
       commonGround: result.commonGround,
@@ -475,7 +564,6 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('Error in /api/find:', error?.message || error);
     
-    // Determine error type
     let appError: AppError;
     
     if (error.message?.includes('fetch failed') || error.message?.includes('ENOTFOUND') || error.message?.includes('network')) {
