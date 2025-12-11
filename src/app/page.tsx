@@ -445,15 +445,21 @@ function HomeContent() {
           </div>
         )}
 
-        {/* Opaque URL detected - proactive keyword prompt (no error) */}
+        {/* Opaque URL detected - proactive headline prompt (no error) */}
         {showKeywordFallback && !error && (
-          <div className="mt-6 w-full max-w-2xl lg:max-w-3xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+          <div className="mt-6 w-full max-w-2xl lg:max-w-3xl bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-200 rounded-xl p-6">
             <div className="text-center mb-4">
+              <div className="inline-flex items-center gap-2 text-slate-500 text-xs font-medium mb-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                PREMIUM LINK DETECTED
+              </div>
               <p className="text-lg font-semibold text-slate-800 mb-1">
-                We need a hint! 🔍
+                Identify the story
               </p>
               <p className="text-slate-600 text-sm">
-                This {getSourceName(lastSubmittedUrl)} link doesn't give us much to go on. Tell us what the story's about and we'll track it down.
+                This {getSourceName(lastSubmittedUrl)} link is protected. Enter the headline or main topic to lock on.
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
@@ -462,15 +468,15 @@ function HomeContent() {
                 value={keywords}
                 onChange={(e) => setKeywords(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleKeywordSearch()}
-                placeholder="e.g., Mexico tariffs Chinese goods 50%"
-                className="flex-1 px-4 py-3 rounded-full border border-blue-200 bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                placeholder="e.g., US trade deficit drops to lowest since 2020"
+                className="flex-1 px-4 py-3 rounded-full border border-slate-300 bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               />
               <button
                 onClick={handleKeywordSearch}
                 disabled={loading || !keywords.trim()}
                 className="inline-flex items-center justify-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-slate-300 text-white font-medium py-3 px-6 rounded-full transition-colors text-sm whitespace-nowrap"
               >
-                Find sources
+                Lock on
               </button>
             </div>
           </div>
@@ -484,7 +490,7 @@ function HomeContent() {
             {showKeywordFallback ? (
               <div className="mt-4">
                 <p className="text-amber-700 text-sm mb-3 text-center">
-                  Help us find this {getSourceName(lastSubmittedUrl)} story. What's it about?
+                  Enter the headline to help us find this {getSourceName(lastSubmittedUrl)} story.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <input
@@ -492,7 +498,7 @@ function HomeContent() {
                     value={keywords}
                     onChange={(e) => setKeywords(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleKeywordSearch()}
-                    placeholder="e.g., oil tanker seized venezuela trump"
+                    placeholder="e.g., Oracle shares sink on data center spending"
                     className="flex-1 px-4 py-3 rounded-full border border-amber-300 bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"
                   />
                   <button
@@ -500,7 +506,7 @@ function HomeContent() {
                     disabled={loading || !keywords.trim()}
                     className="inline-flex items-center justify-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-slate-300 text-white font-medium py-3 px-6 rounded-full transition-colors text-sm whitespace-nowrap"
                   >
-                    Search
+                    Lock on
                   </button>
                 </div>
               </div>

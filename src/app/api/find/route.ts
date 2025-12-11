@@ -330,14 +330,23 @@ async function callGemini(url: string, syndicationPartners: string[]): Promise<{
   const syndicationHint = syndicationPartners.length > 0 
     ? `PRIORITY: Search for syndicated versions on ${syndicationPartners.join(', ')}.`
     : '';
+  
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
   const prompt = `
 You are a news research assistant. Find alternative news sources covering this story.
 
+TODAY'S DATE: ${today}
 ARTICLE URL: ${url}
 ${syndicationHint}
 
-Search these outlets: AP, Reuters, BBC, Guardian, CBS, NBC, ABC, CNN, NPR, PBS, Yahoo News, MSN, Al Jazeera, The Hill, Politico, Axios, Fox News.
+SOURCE HIERARCHY (search in this order):
+1. WIRE SERVICES: AP, Reuters, AFP
+2. BROADCAST: BBC, NPR, PBS, CBS News, NBC News, ABC News, CNN
+3. QUALITY NEWSPAPERS: Guardian, Washington Post, NY Times, Financial Times
+4. SYNDICATION: Yahoo News, MSN, AOL News
+5. ANALYSIS: Politico, The Hill, Axios
+AVOID: Reddit, Twitter, forums, blogs, YouTube comments
 
 RESPONSE FORMAT (JSON only):
 {
@@ -416,23 +425,33 @@ async function callGeminiWithKeywords(keywords: string): Promise<{
   keyDifferences: string;
   alternatives: any[];
 }> {
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
   const prompt = `
-You are a news research assistant. Find news sources covering this topic.
+You are a news research assistant. The user has provided a headline or story identifier. Find news sources covering THIS SPECIFIC STORY.
 
-SEARCH KEYWORDS: ${keywords}
+TODAY'S DATE: ${today}
+STORY HEADLINE/IDENTIFIER: ${keywords}
 
-Search these outlets: AP, Reuters, BBC, Guardian, CBS, NBC, ABC, CNN, NPR, PBS, Yahoo News, MSN, Al Jazeera, The Hill, Politico, Axios, Fox News.
+IMPORTANT: The user is looking for coverage of ONE SPECIFIC news event, not a broad topic. Find articles about this exact story.
 
-Find the most recent news articles about this topic.
+SOURCE HIERARCHY (search in this order):
+1. WIRE SERVICES: AP, Reuters, AFP
+2. BROADCAST: BBC, NPR, PBS, CBS News, NBC News, ABC News, CNN
+3. QUALITY NEWSPAPERS: Guardian, Washington Post, NY Times, Financial Times, Bloomberg
+4. SYNDICATION: Yahoo News, MSN, AOL News
+5. ANALYSIS: Politico, The Hill, Axios
+AVOID: Reddit, Twitter, forums, blogs, YouTube comments
 
 RESPONSE FORMAT (JSON only):
 {
-  "summary": "3-4 sentences. Grade 6-8 reading level. Short sentences. Bold only the KEY TAKEAWAY of each sentence (not every noun/number). Max 4 bold phrases total. Reader should understand the story by reading ONLY the bold text.",
-  "commonGround": "1-2 sentences. What do sources CONCLUDE or AGREE ON? Bold the findings/conclusions, NOT topic words or source names.",
-  "keyDifferences": "1-2 sentences. The ONE biggest contrast. Bold the CONTRASTING INTERPRETATIONS, not source names. Example: Reuters sees this as **a sign of economic strength**, while Bloomberg warns it **may be temporary due to gold exports**."
+  "summary": "3-4 sentences about THIS SPECIFIC story. Grade 6-8 reading level. Short sentences. Bold only the KEY TAKEAWAY of each sentence (not every noun/number). Max 4 bold phrases total. Reader should understand the story by reading ONLY the bold text.",
+  "commonGround": "1-2 sentences. What do sources CONCLUDE or AGREE ON about this story? Bold the findings/conclusions, NOT topic words or source names.",
+  "keyDifferences": "1-2 sentences. The ONE biggest contrast in how sources cover this story. Bold the CONTRASTING INTERPRETATIONS, not source names."
 }
 
 CRITICAL RULES:
+- Find articles about the EXACT story/headline provided, not tangentially related topics
 - BOLDING: If someone reads ONLY the bold text, they should understand the main point
 - DON'T bold: source names, generic topic words, every number
 - DO bold: conclusions, interpretations, what changed, why it matters
