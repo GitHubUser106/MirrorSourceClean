@@ -115,6 +115,19 @@ function HomeContent() {
   const [currentUrl, setCurrentUrl] = useState("");
   const [lastSubmittedUrl, setLastSubmittedUrl] = useState("");
   const [visibleIcons, setVisibleIcons] = useState(0);
+  const [showKeywordFallback, setShowKeywordFallback] = useState(false);
+  const [keywords, setKeywords] = useState("");
+
+  // Helper to extract source name from URL
+  function getSourceName(url: string): string {
+    try {
+      const hostname = new URL(url).hostname.replace('www.', '');
+      const name = hostname.split('.')[0];
+      return name.charAt(0).toUpperCase() + name.slice(1);
+    } catch {
+      return "this source";
+    }
+  }
 
   // Rotate loading facts
   useEffect(() => {
@@ -157,12 +170,42 @@ function HomeContent() {
     } catch {}
   }
 
+  // Helper to detect URLs with no readable keywords (UUIDs, numbers only)
+  function isOpaqueUrl(url: string): boolean {
+    try {
+      const urlObj = new URL(url);
+      const path = urlObj.pathname;
+      
+      // Extract words from path (split on /, -, _, and filter)
+      const words = path
+        .split(/[\/\-_]/)
+        .filter(segment => segment.length > 2)
+        .filter(segment => !/^[0-9a-f\-]{8,}$/i.test(segment)) // Remove UUIDs
+        .filter(segment => !/^\d+$/.test(segment)) // Remove pure numbers
+        .filter(segment => !/^(content|article|story|news|post|p|a|id)$/i.test(segment)); // Remove generic slugs
+      
+      // If less than 2 readable words, it's opaque
+      return words.length < 2;
+    } catch {
+      return false;
+    }
+  }
+
   async function handleSearchWithUrl(url: string) {
     if (!url.trim()) return;
     setLastSubmittedUrl(url);
     setLoadingFactIndex(0);
     setScannerIconIndex(0);
     setVisibleIcons(0);
+    setShowKeywordFallback(false);
+    setKeywords("");
+    
+    // Check for opaque URLs (FT, Bloomberg, etc. with UUIDs)
+    if (isOpaqueUrl(url)) {
+      setError(null);
+      setShowKeywordFallback(true);
+      return;
+    }
     
     try {
       setIsLoading(true);
@@ -182,6 +225,66 @@ function HomeContent() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        const errorMsg = data?.error || "Something went wrong. Please try again.";
+        setError(errorMsg);
+        setErrorRetryable(data?.retryable !== false);
+        
+        // Check if error indicates article couldn't be read
+        if (errorMsg.toLowerCase().includes("cannot access") || 
+            errorMsg.toLowerCase().includes("unable to find") ||
+            errorMsg.toLowerCase().includes("couldn't read") ||
+            errorMsg.toLowerCase().includes("need to know what")) {
+          setShowKeywordFallback(true);
+        }
+        
+        if (res.status === 429) {
+          await refreshUsage();
+        }
+        return;
+      }
+
+      const data = await res.json();
+      setSummary(data.summary ?? null);
+      setCommonGround(data.commonGround ?? null);
+      setKeyDifferences(data.keyDifferences ?? null);
+      setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
+      setIsPaywalled(data.isPaywalled ?? false);
+    } catch (e: unknown) {
+      // Network error - browser couldn't reach the server
+      setError("Unable to connect. Please check your internet connection and try again.");
+      setErrorRetryable(true);
+    } finally {
+      setIsLoading(false);
+      refreshUsage();
+    }
+  }
+
+  async function handleKeywordSearch() {
+    if (!keywords.trim()) return;
+    
+    setLoadingFactIndex(0);
+    setScannerIconIndex(0);
+    setVisibleIcons(0);
+    setShowKeywordFallback(false);
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      setErrorRetryable(true);
+      setSummary(null);
+      setCommonGround(null);
+      setKeyDifferences(null);
+      setResults([]);
+      setIsPaywalled(false);
+
+      const res = await fetch("/api/find", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keywords: keywords.trim() }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
         setError(data?.error || "Something went wrong. Please try again.");
         setErrorRetryable(data?.retryable !== false);
         if (res.status === 429) {
@@ -197,7 +300,6 @@ function HomeContent() {
       setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
       setIsPaywalled(data.isPaywalled ?? false);
     } catch (e: unknown) {
-      // Network error - browser couldn't reach the server
       setError("Unable to connect. Please check your internet connection and try again.");
       setErrorRetryable(true);
     } finally {
@@ -261,6 +363,8 @@ function HomeContent() {
     setLastSubmittedUrl("");
     setHasAutoSearched(true);
     setVisibleIcons(0);
+    setShowKeywordFallback(false);
+    setKeywords("");
     window.history.pushState({}, '', '/');
   }
 
@@ -326,21 +430,79 @@ function HomeContent() {
           </div>
         )}
 
+        {/* Opaque URL detected - proactive keyword prompt (no error) */}
+        {showKeywordFallback && !error && (
+          <div className="mt-6 w-full max-w-2xl lg:max-w-3xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+            <div className="text-center mb-4">
+              <p className="text-lg font-semibold text-slate-800 mb-1">
+                We need a hint! 🔍
+              </p>
+              <p className="text-slate-600 text-sm">
+                This {getSourceName(lastSubmittedUrl)} link doesn't give us much to go on. Tell us what the story's about and we'll track it down.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                value={keywords}
+                onChange={(e) => setKeywords(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleKeywordSearch()}
+                placeholder="e.g., Mexico tariffs Chinese goods 50%"
+                className="flex-1 px-4 py-3 rounded-full border border-blue-200 bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              />
+              <button
+                onClick={handleKeywordSearch}
+                disabled={loading || !keywords.trim()}
+                className="inline-flex items-center justify-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-slate-300 text-white font-medium py-3 px-6 rounded-full transition-colors text-sm whitespace-nowrap"
+              >
+                Find sources
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* API error with optional keyword fallback */}
         {error && (
-          <div className="mt-6 w-full max-w-2xl lg:max-w-3xl bg-amber-50 border border-amber-200 rounded-xl p-5 text-center">
-            <p className="text-amber-800 font-medium mb-2">{error}</p>
-            {errorRetryable && (
-              <>
-                <p className="text-amber-600 text-sm mb-4">Search results vary each time. Give it another shot!</p>
-                <button
-                  onClick={() => handleSearchWithUrl(currentUrl)}
-                  disabled={loading || !currentUrl}
-                  className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white font-medium py-2 px-5 rounded-full transition-colors text-sm"
-                >
-                  <RefreshCw size={16} />
-                  Try Again
-                </button>
-              </>
+          <div className="mt-6 w-full max-w-2xl lg:max-w-3xl bg-amber-50 border border-amber-200 rounded-xl p-5">
+            <p className="text-amber-800 font-medium mb-2 text-center">{error}</p>
+            
+            {showKeywordFallback ? (
+              <div className="mt-4">
+                <p className="text-amber-700 text-sm mb-3 text-center">
+                  Help us find this {getSourceName(lastSubmittedUrl)} story. What's it about?
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <input
+                    type="text"
+                    value={keywords}
+                    onChange={(e) => setKeywords(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleKeywordSearch()}
+                    placeholder="e.g., oil tanker seized venezuela trump"
+                    className="flex-1 px-4 py-3 rounded-full border border-amber-300 bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"
+                  />
+                  <button
+                    onClick={handleKeywordSearch}
+                    disabled={loading || !keywords.trim()}
+                    className="inline-flex items-center justify-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-slate-300 text-white font-medium py-3 px-6 rounded-full transition-colors text-sm whitespace-nowrap"
+                  >
+                    Search
+                  </button>
+                </div>
+              </div>
+            ) : (
+              errorRetryable && (
+                <div className="text-center">
+                  <p className="text-amber-600 text-sm mb-4">Search results vary each time. Give it another shot!</p>
+                  <button
+                    onClick={() => handleSearchWithUrl(currentUrl)}
+                    disabled={loading || !currentUrl}
+                    className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white font-medium py-2 px-5 rounded-full transition-colors text-sm"
+                  >
+                    <RefreshCw size={16} />
+                    Try Again
+                  </button>
+                </div>
+              )
             )}
           </div>
         )}
