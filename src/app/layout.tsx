@@ -1,11 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import InstallPromptWrapper from "@/components/InstallPromptWrapper";
+import { Analytics } from '@vercel/analytics/react';
 
 export const metadata: Metadata = {
   title: "MirrorSource | See the Whole Story",
   description: "Paste any news link to get a neutral AI summary and find free, public coverage of the same story from multiple sources.",
-keywords: ["news", "summary", "alternative sources", "media bias", "free news", "news comparison"],  authors: [{ name: "MirrorSource" }],
+  keywords: ["news", "summary", "alternative sources", "media bias", "free news", "news comparison"],
+  authors: [{ name: "MirrorSource" }],
   creator: "MirrorSource", 
   publisher: "MirrorSource",
   metadataBase: new URL("https://mirrorsource.app"),
@@ -64,6 +66,7 @@ export default function RootLayout({
       <body className="antialiased">
         {children}
         <InstallPromptWrapper />
+        <Analytics />
       </body>
     </html>
   );
