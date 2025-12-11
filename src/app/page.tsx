@@ -174,17 +174,32 @@ function HomeContent() {
   function isOpaqueUrl(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      const path = urlObj.pathname;
+      const hostname = urlObj.hostname.toLowerCase();
+      const path = urlObj.pathname.toLowerCase();
       
-      // Extract words from path (split on /, -, _, and filter)
+      // Known sites that typically use UUID/opaque URLs
+      const opaqueUrlDomains = ['ft.com', 'bloomberg.com', 'economist.com'];
+      const isKnownOpaqueSite = opaqueUrlDomains.some(domain => hostname.includes(domain));
+      
+      // For FT, Bloomberg, Economist: check if URL ends with UUID pattern
+      if (isKnownOpaqueSite) {
+        // UUID pattern: 8-4-4-4-12 hex chars, or just long hex string
+        const uuidPattern = /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i;
+        const longHexPattern = /\/[a-f0-9\-]{20,}$/i;
+        if (uuidPattern.test(path) || longHexPattern.test(path)) {
+          return true;
+        }
+      }
+      
+      // For all sites: Extract words from path and check if readable
       const words = path
-        .split(/[\/\-_]/)
-        .filter(segment => segment.length > 2)
-        .filter(segment => !/^[0-9a-f\-]{8,}$/i.test(segment)) // Remove UUIDs
+        .split(/[\/\-_.]/)
+        .filter(segment => segment.length > 3) // Need at least 4 chars
+        .filter(segment => !/^[0-9a-f]+$/i.test(segment)) // Remove pure hex
         .filter(segment => !/^\d+$/.test(segment)) // Remove pure numbers
-        .filter(segment => !/^(content|article|story|news|post|p|a|id)$/i.test(segment)); // Remove generic slugs
+        .filter(segment => /[g-z]/i.test(segment)) // Must have non-hex letter
+        .filter(segment => !/^(content|article|story|news|post|index|html|htm|php|aspx|world|us|uk|business|tech|opinion|markets)$/i.test(segment));
       
-      // If less than 2 readable words, it's opaque
       return words.length < 2;
     } catch {
       return false;
