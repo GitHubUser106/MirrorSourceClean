@@ -14,7 +14,8 @@ type SourceType =
   | 'specialized'
   | 'reference' 
   | 'syndication' 
-  | 'archive';
+  | 'archive'
+  | 'platform';
 
 interface SourceResult {
   uri: string;
@@ -44,6 +45,7 @@ const countryFlags: Record<string, { flag: string; label: string }> = {
   JP: { flag: '🇯🇵', label: 'JP' },
   IN: { flag: '🇮🇳', label: 'IN' },
   CN: { flag: '🇨🇳', label: 'CN' },
+  HK: { flag: '🇭🇰', label: 'HK' },
   BR: { flag: '🇧🇷', label: 'BR' },
   MX: { flag: '🇲🇽', label: 'MX' },
   KR: { flag: '🇰🇷', label: 'KR' },
@@ -52,12 +54,15 @@ const countryFlags: Record<string, { flag: string; label: string }> = {
   NL: { flag: '🇳🇱', label: 'NL' },
   CH: { flag: '🇨🇭', label: 'CH' },
   SE: { flag: '🇸🇪', label: 'SE' },
+  NO: { flag: '🇳🇴', label: 'NO' },
   NZ: { flag: '🇳🇿', label: 'NZ' },
   IE: { flag: '🇮🇪', label: 'IE' },
   IL: { flag: '🇮🇱', label: 'IL' },
   AE: { flag: '🇦🇪', label: 'AE' },
+  SA: { flag: '🇸🇦', label: 'SA' },
   SG: { flag: '🇸🇬', label: 'SG' },
   QA: { flag: '🇶🇦', label: 'QA' },
+  RU: { flag: '🇷🇺', label: 'RU' },
   INT: { flag: '🌐', label: 'Intl' },
 };
 
@@ -114,6 +119,10 @@ const sourceTypeBadge: Record<SourceType, { label: string; className: string }> 
   archive: { 
     label: 'Archive', 
     className: 'bg-orange-50 text-orange-700 border-orange-200'
+  },
+  platform: { 
+    label: 'Platform', 
+    className: 'bg-rose-50 text-rose-700 border-rose-200'
   },
 };
 

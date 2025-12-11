@@ -60,7 +60,7 @@ function getFaviconUrl(domain: string): string {
   return `https://www.google.com/s2/favicons?domain=${domain.replace(/^www\./, '')}&sz=64`;
 }
 
-function getSourceType(url: string): 'Wire' | 'Corporate' | 'Public' | 'International' | 'Local' | 'Syndicated' {
+function getSourceType(url: string): 'Wire' | 'Corporate' | 'Public' | 'International' | 'Local' | 'Syndicated' | 'Magazine' | 'Specialized' | 'Analysis' | 'Platform' | 'National' {
   const domain = new URL(url).hostname.toLowerCase();
   
   // Wire services
@@ -69,14 +69,15 @@ function getSourceType(url: string): 'Wire' | 'Corporate' | 'Public' | 'Internat
   }
   
   // Public media
-  if (domain.includes('pbs.org') || domain.includes('npr.org') || domain.includes('bbc.com') || domain.includes('bbc.co.uk')) {
+  if (domain.includes('pbs.org') || domain.includes('npr.org') || domain.includes('bbc.com') || domain.includes('bbc.co.uk') || domain.includes('cbc.ca') || domain.includes('abc.net.au')) {
     return 'Public';
   }
   
   // International
   if (domain.includes('theguardian') || domain.includes('aljazeera') || domain.includes('dw.com') || 
-      domain.includes('france24') || domain.includes('scmp.com') || domain.includes('abc.net.au') ||
-      domain.includes('cbc.ca') || domain.includes('euronews')) {
+      domain.includes('france24') || domain.includes('scmp.com') || domain.includes('euronews') ||
+      domain.includes('timesofisrael') || domain.includes('jpost.com') || domain.includes('ynetnews') ||
+      domain.includes('haaretz') || domain.includes('thehindu') || domain.includes('arabnews')) {
     return 'International';
   }
   
@@ -85,8 +86,40 @@ function getSourceType(url: string): 'Wire' | 'Corporate' | 'Public' | 'Internat
     return 'Syndicated';
   }
   
+  // Analysis / Think tanks
+  if (domain.includes('politico') || domain.includes('thehill') || domain.includes('foreignpolicy') ||
+      domain.includes('foreignaffairs') || domain.includes('cfr.org') || domain.includes('brookings') ||
+      domain.includes('cato.org') || domain.includes('heritage.org') || domain.includes('carnegie') ||
+      domain.includes('rand.org') || domain.includes('responsiblestatecraft') || domain.includes('diplomaticopinion') ||
+      domain.includes('harvardpoliticalreview')) {
+    return 'Analysis';
+  }
+  
+  // Magazines
+  if (domain.includes('time.com') || domain.includes('newsweek') || domain.includes('forbes') ||
+      domain.includes('theatlantic') || domain.includes('newyorker') || domain.includes('economist')) {
+    return 'Magazine';
+  }
+  
+  // Specialized / Business
+  if (domain.includes('bloomberg') || domain.includes('cnbc') || domain.includes('ft.com') ||
+      domain.includes('wsj.com') || domain.includes('wired') || domain.includes('techcrunch') ||
+      domain.includes('theverge') || domain.includes('livemint') || domain.includes('business-standard')) {
+    return 'Specialized';
+  }
+  
+  // Platforms
+  if (domain.includes('youtube') || domain.includes('reddit') || domain.includes('medium') || domain.includes('substack')) {
+    return 'Platform';
+  }
+  
+  // National
+  if (domain.includes('usatoday') || domain.includes('axios')) {
+    return 'National';
+  }
+  
   // Local (regional papers)
-  if (domain.includes('tribune') || domain.includes('times') || domain.includes('post') || 
+  if (domain.includes('tribune') || domain.includes('post') || 
       domain.includes('herald') || domain.includes('gazette') || domain.includes('journal') ||
       domain.includes('chronicle') || domain.includes('sentinel') || domain.includes('daily')) {
     return 'Local';

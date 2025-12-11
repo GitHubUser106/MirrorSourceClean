@@ -9,7 +9,7 @@ import { ArrowLeft, ExternalLink, Check, X, Minus, ChevronDown, ChevronUp } from
 interface SourceData {
   id: string;
   name: string;
-  type: 'Wire' | 'Corporate' | 'Public' | 'International' | 'Local' | 'Syndicated';
+  type: 'Wire' | 'Corporate' | 'Public' | 'International' | 'Local' | 'Syndicated' | 'Magazine' | 'Specialized' | 'Analysis' | 'Platform' | 'National';
   url: string;
   domain: string;
   headline?: string;
@@ -26,6 +26,11 @@ const typeColors: Record<string, string> = {
   International: 'bg-purple-100 text-purple-700 border-purple-200',
   Local: 'bg-teal-100 text-teal-700 border-teal-200',
   Syndicated: 'bg-gray-100 text-gray-600 border-gray-200',
+  Magazine: 'bg-rose-100 text-rose-700 border-rose-200',
+  Specialized: 'bg-amber-100 text-amber-700 border-amber-200',
+  Analysis: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+  Platform: 'bg-orange-100 text-orange-700 border-orange-200',
+  National: 'bg-cyan-100 text-cyan-700 border-cyan-200',
 };
 
 const typeDescriptions: Record<string, string> = {
@@ -35,6 +40,11 @@ const typeDescriptions: Record<string, string> = {
   International: 'Non-US outlets offering global perspective',
   Local: 'Regional newspapers and stations',
   Syndicated: 'Content republished from other sources',
+  Magazine: 'Long-form journalism and in-depth analysis',
+  Specialized: 'Industry-focused or financial news outlets',
+  Analysis: 'Think tanks, policy experts, and academic review',
+  Platform: 'User-generated content platforms',
+  National: 'Major national newspapers and outlets',
 };
 
 function getFaviconUrl(domain: string): string {
@@ -55,9 +65,13 @@ function CompareContent() {
     if (sourcesParam) {
       try {
         const parsed = JSON.parse(decodeURIComponent(sourcesParam));
-        setSources(parsed);
+        // De-duplicate by domain just in case
+        const uniqueSources = parsed.filter((source: SourceData, index: number, self: SourceData[]) => 
+          index === self.findIndex(s => s.domain === source.domain)
+        );
+        setSources(uniqueSources);
         // Auto-select first 2-3 sources
-        setSelectedIds(parsed.slice(0, Math.min(3, parsed.length)).map((s: SourceData) => s.id));
+        setSelectedIds(uniqueSources.slice(0, Math.min(3, uniqueSources.length)).map((s: SourceData) => s.id));
       } catch (e) {
         console.error('Failed to parse sources:', e);
       }
@@ -71,7 +85,7 @@ function CompareContent() {
   const toggleSource = (id: string) => {
     if (selectedIds.includes(id)) {
       setSelectedIds(prev => prev.filter(s => s !== id));
-    } else if (selectedIds.length < 3) {
+    } else if (selectedIds.length < 4) {
       setSelectedIds(prev => [...prev, id]);
     }
   };
@@ -153,7 +167,7 @@ function CompareContent() {
                 <X size={14} className="text-slate-400 hover:text-slate-600" />
               </button>
             ))}
-            {availableSources.length > 0 && selectedIds.length < 3 && (
+            {availableSources.length > 0 && selectedIds.length < 4 && (
               <select
                 className="bg-white border border-slate-200 rounded-full px-3 py-1.5 text-sm text-slate-600 cursor-pointer hover:border-slate-300"
                 onChange={(e) => {
@@ -171,8 +185,8 @@ function CompareContent() {
               </select>
             )}
           </div>
-          {selectedIds.length >= 3 && (
-            <p className="text-xs text-slate-500 mt-2">Maximum 3 sources for comparison</p>
+          {selectedIds.length >= 4 && (
+            <p className="text-xs text-slate-500 mt-2">Maximum 4 sources for comparison</p>
           )}
         </div>
 
@@ -181,7 +195,8 @@ function CompareContent() {
           <div className={`grid gap-4 mb-8 ${
             selectedSources.length === 1 ? 'md:grid-cols-1 max-w-xl' : 
             selectedSources.length === 2 ? 'md:grid-cols-2' : 
-            'md:grid-cols-3'
+            selectedSources.length === 3 ? 'md:grid-cols-3' :
+            'md:grid-cols-2 lg:grid-cols-4'
           }`}>
             {selectedSources.map(source => (
               <div key={source.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">

@@ -97,7 +97,7 @@ function getSyndicationPartners(url: string): string[] {
 }
 
 // --- Source classification ---
-type SourceType = 'wire' | 'public' | 'corporate' | 'state' | 'analysis' | 'local' | 'national' | 'international' | 'magazine' | 'specialized' | 'reference' | 'syndication';
+type SourceType = 'wire' | 'public' | 'corporate' | 'state' | 'analysis' | 'local' | 'national' | 'international' | 'magazine' | 'specialized' | 'reference' | 'syndication' | 'platform';
 
 function getSourceInfo(domain: string): { displayName: string; type: SourceType; countryCode: string } {
   if (!domain) return { displayName: 'SOURCE', type: 'local', countryCode: 'US' };
@@ -127,7 +127,17 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
     'thehindu.com': { displayName: 'THE HINDU', type: 'international', countryCode: 'IN' },
     'dw.com': { displayName: 'DW', type: 'international', countryCode: 'DE' },
     'france24.com': { displayName: 'FRANCE 24', type: 'international', countryCode: 'FR' },
-    'scmp.com': { displayName: 'SCMP', type: 'international', countryCode: 'CN' },
+    'scmp.com': { displayName: 'SCMP', type: 'international', countryCode: 'HK' },
+    // Israeli outlets
+    'timesofisrael.com': { displayName: 'TIMES OF ISRAEL', type: 'international', countryCode: 'IL' },
+    'jpost.com': { displayName: 'JERUSALEM POST', type: 'international', countryCode: 'IL' },
+    'ynetnews.com': { displayName: 'YNET NEWS', type: 'international', countryCode: 'IL' },
+    'haaretz.com': { displayName: 'HAARETZ', type: 'international', countryCode: 'IL' },
+    'i24news.tv': { displayName: 'I24 NEWS', type: 'international', countryCode: 'IL' },
+    // Middle East
+    'thearabdailynews.com': { displayName: 'ARAB DAILY NEWS', type: 'international', countryCode: 'US' },
+    'arabnews.com': { displayName: 'ARAB NEWS', type: 'international', countryCode: 'SA' },
+    'middleeasteye.net': { displayName: 'MIDDLE EAST EYE', type: 'international', countryCode: 'UK' },
     // US Corporate
     'cnn.com': { displayName: 'CNN', type: 'corporate', countryCode: 'US' },
     'foxnews.com': { displayName: 'FOX NEWS', type: 'corporate', countryCode: 'US' },
@@ -138,20 +148,46 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
     // National
     'usatoday.com': { displayName: 'USA TODAY', type: 'national', countryCode: 'US' },
     'axios.com': { displayName: 'AXIOS', type: 'national', countryCode: 'US' },
+    // Analysis / Think Tanks
     'thehill.com': { displayName: 'THE HILL', type: 'analysis', countryCode: 'US' },
     'politico.com': { displayName: 'POLITICO', type: 'analysis', countryCode: 'US' },
+    'responsiblestatecraft.org': { displayName: 'RESPONSIBLE STATECRAFT', type: 'analysis', countryCode: 'US' },
+    'foreignpolicy.com': { displayName: 'FOREIGN POLICY', type: 'analysis', countryCode: 'US' },
+    'foreignaffairs.com': { displayName: 'FOREIGN AFFAIRS', type: 'analysis', countryCode: 'US' },
+    'cfr.org': { displayName: 'CFR', type: 'analysis', countryCode: 'US' },
+    'brookings.edu': { displayName: 'BROOKINGS', type: 'analysis', countryCode: 'US' },
+    'cato.org': { displayName: 'CATO INSTITUTE', type: 'analysis', countryCode: 'US' },
+    'heritage.org': { displayName: 'HERITAGE', type: 'analysis', countryCode: 'US' },
+    'carnegieendowment.org': { displayName: 'CARNEGIE', type: 'analysis', countryCode: 'US' },
+    'rand.org': { displayName: 'RAND', type: 'analysis', countryCode: 'US' },
+    'diplomaticopinion.com': { displayName: 'DIPLOMATIC OPINION', type: 'analysis', countryCode: 'US' },
+    'theharvardpoliticalreview.com': { displayName: 'HARVARD POLITICAL REVIEW', type: 'analysis', countryCode: 'US' },
+    'harvardpoliticalreview.com': { displayName: 'HARVARD POLITICAL REVIEW', type: 'analysis', countryCode: 'US' },
+    'leaders-mena.com': { displayName: 'LEADERS MENA', type: 'analysis', countryCode: 'AE' },
     // Magazines
     'forbes.com': { displayName: 'FORBES', type: 'magazine', countryCode: 'US' },
     'time.com': { displayName: 'TIME', type: 'magazine', countryCode: 'US' },
     'newsweek.com': { displayName: 'NEWSWEEK', type: 'magazine', countryCode: 'US' },
     'economist.com': { displayName: 'THE ECONOMIST', type: 'magazine', countryCode: 'UK' },
-    // Specialized
+    'theatlantic.com': { displayName: 'THE ATLANTIC', type: 'magazine', countryCode: 'US' },
+    'newyorker.com': { displayName: 'THE NEW YORKER', type: 'magazine', countryCode: 'US' },
+    // Specialized / Business
     'wired.com': { displayName: 'WIRED', type: 'specialized', countryCode: 'US' },
     'techcrunch.com': { displayName: 'TECHCRUNCH', type: 'specialized', countryCode: 'US' },
     'theverge.com': { displayName: 'THE VERGE', type: 'specialized', countryCode: 'US' },
     'producer.com': { displayName: 'PRODUCER', type: 'specialized', countryCode: 'US' },
     'successfulfarming.com': { displayName: 'SUCCESSFUL FARMING', type: 'specialized', countryCode: 'US' },
     'livemint.com': { displayName: 'MINT', type: 'specialized', countryCode: 'IN' },
+    'bloomberg.com': { displayName: 'BLOOMBERG', type: 'specialized', countryCode: 'US' },
+    'cnbc.com': { displayName: 'CNBC', type: 'specialized', countryCode: 'US' },
+    'ft.com': { displayName: 'FINANCIAL TIMES', type: 'specialized', countryCode: 'UK' },
+    'wsj.com': { displayName: 'WSJ', type: 'specialized', countryCode: 'US' },
+    'business-standard.com': { displayName: 'BUSINESS STANDARD', type: 'specialized', countryCode: 'IN' },
+    // Platforms (not news outlets)
+    'youtube.com': { displayName: 'YOUTUBE', type: 'platform', countryCode: 'US' },
+    'reddit.com': { displayName: 'REDDIT', type: 'platform', countryCode: 'US' },
+    'medium.com': { displayName: 'MEDIUM', type: 'platform', countryCode: 'US' },
+    'substack.com': { displayName: 'SUBSTACK', type: 'platform', countryCode: 'US' },
   };
   
   for (const [key, info] of Object.entries(sources)) {
@@ -168,6 +204,20 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
   else if (lower.endsWith('.nz')) countryCode = 'NZ';
   else if (lower.endsWith('.ie')) countryCode = 'IE';
   else if (lower.endsWith('.fr')) countryCode = 'FR';
+  else if (lower.endsWith('.il')) countryCode = 'IL';
+  else if (lower.endsWith('.jp')) countryCode = 'JP';
+  else if (lower.endsWith('.kr')) countryCode = 'KR';
+  else if (lower.endsWith('.cn')) countryCode = 'CN';
+  else if (lower.endsWith('.ru')) countryCode = 'RU';
+  else if (lower.endsWith('.br')) countryCode = 'BR';
+  else if (lower.endsWith('.mx')) countryCode = 'MX';
+  else if (lower.endsWith('.es')) countryCode = 'ES';
+  else if (lower.endsWith('.it')) countryCode = 'IT';
+  else if (lower.endsWith('.nl')) countryCode = 'NL';
+  else if (lower.endsWith('.se')) countryCode = 'SE';
+  else if (lower.endsWith('.no')) countryCode = 'NO';
+  else if (lower.endsWith('.ae')) countryCode = 'AE';
+  else if (lower.endsWith('.sa')) countryCode = 'SA';
   
   const parts = domain.split('.');
   return { displayName: parts[0].toUpperCase(), type: 'local', countryCode };
@@ -293,7 +343,7 @@ async function processGroundingChunks(
   const typePriority: Record<SourceType, number> = {
     'syndication': 0, 'wire': 1, 'public': 2, 'state': 3,
     'international': 4, 'national': 5, 'corporate': 6, 'magazine': 7,
-    'specialized': 8, 'analysis': 9, 'local': 10, 'reference': 11,
+    'specialized': 8, 'analysis': 9, 'local': 10, 'reference': 11, 'platform': 12,
   };
 
   results.sort((a, b) => {
