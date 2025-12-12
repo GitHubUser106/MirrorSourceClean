@@ -171,7 +171,7 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
     'economist.com': { displayName: 'THE ECONOMIST', type: 'magazine', countryCode: 'UK' },
     'theatlantic.com': { displayName: 'THE ATLANTIC', type: 'magazine', countryCode: 'US' },
     'newyorker.com': { displayName: 'THE NEW YORKER', type: 'magazine', countryCode: 'US' },
-    // Specialized / Business
+    // Specialized / Business / Financial
     'wired.com': { displayName: 'WIRED', type: 'specialized', countryCode: 'US' },
     'techcrunch.com': { displayName: 'TECHCRUNCH', type: 'specialized', countryCode: 'US' },
     'theverge.com': { displayName: 'THE VERGE', type: 'specialized', countryCode: 'US' },
@@ -183,6 +183,63 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
     'ft.com': { displayName: 'FINANCIAL TIMES', type: 'specialized', countryCode: 'UK' },
     'wsj.com': { displayName: 'WSJ', type: 'specialized', countryCode: 'US' },
     'business-standard.com': { displayName: 'BUSINESS STANDARD', type: 'specialized', countryCode: 'IN' },
+    'financialpost.com': { displayName: 'FINANCIAL POST', type: 'specialized', countryCode: 'CA' },
+    'bnnbloomberg.ca': { displayName: 'BNN BLOOMBERG', type: 'specialized', countryCode: 'CA' },
+    'tradingview.com': { displayName: 'TRADINGVIEW', type: 'specialized', countryCode: 'US' },
+    'marketwatch.com': { displayName: 'MARKETWATCH', type: 'specialized', countryCode: 'US' },
+    'barrons.com': { displayName: 'BARRONS', type: 'specialized', countryCode: 'US' },
+    'investopedia.com': { displayName: 'INVESTOPEDIA', type: 'specialized', countryCode: 'US' },
+    'seekingalpha.com': { displayName: 'SEEKING ALPHA', type: 'specialized', countryCode: 'US' },
+    // Canadian National
+    'nationalpost.com': { displayName: 'NATIONAL POST', type: 'national', countryCode: 'CA' },
+    'theglobeandmail.com': { displayName: 'GLOBE AND MAIL', type: 'national', countryCode: 'CA' },
+    'globeandmail.com': { displayName: 'GLOBE AND MAIL', type: 'national', countryCode: 'CA' },
+    'torontostar.com': { displayName: 'TORONTO STAR', type: 'national', countryCode: 'CA' },
+    'thestar.com': { displayName: 'TORONTO STAR', type: 'national', countryCode: 'CA' },
+    // Canadian Corporate
+    'globalnews.ca': { displayName: 'GLOBAL NEWS', type: 'corporate', countryCode: 'CA' },
+    'ctvnews.ca': { displayName: 'CTV NEWS', type: 'corporate', countryCode: 'CA' },
+    'citynews.ca': { displayName: 'CITY NEWS', type: 'corporate', countryCode: 'CA' },
+    // Canadian Local (Postmedia chain)
+    'leaderpost.com': { displayName: 'REGINA LEADER-POST', type: 'local', countryCode: 'CA' },
+    'calgaryherald.com': { displayName: 'CALGARY HERALD', type: 'local', countryCode: 'CA' },
+    'edmontonjournal.com': { displayName: 'EDMONTON JOURNAL', type: 'local', countryCode: 'CA' },
+    'vancouversun.com': { displayName: 'VANCOUVER SUN', type: 'local', countryCode: 'CA' },
+    'ottawacitizen.com': { displayName: 'OTTAWA CITIZEN', type: 'local', countryCode: 'CA' },
+    'montrealgazette.com': { displayName: 'MONTREAL GAZETTE', type: 'local', countryCode: 'CA' },
+    'winnipegfreepress.com': { displayName: 'WINNIPEG FREE PRESS', type: 'local', countryCode: 'CA' },
+    'theprovince.com': { displayName: 'THE PROVINCE', type: 'local', countryCode: 'CA' },
+    'windsorstar.com': { displayName: 'WINDSOR STAR', type: 'local', countryCode: 'CA' },
+    'thechronicleherald.ca': { displayName: 'CHRONICLE HERALD', type: 'local', countryCode: 'CA' },
+    // Australian National
+    'theaustralian.com.au': { displayName: 'THE AUSTRALIAN', type: 'national', countryCode: 'AU' },
+    'smh.com.au': { displayName: 'SYDNEY MORNING HERALD', type: 'national', countryCode: 'AU' },
+    'theage.com.au': { displayName: 'THE AGE', type: 'national', countryCode: 'AU' },
+    'news.com.au': { displayName: 'NEWS.COM.AU', type: 'corporate', countryCode: 'AU' },
+    '9news.com.au': { displayName: '9 NEWS', type: 'corporate', countryCode: 'AU' },
+    '7news.com.au': { displayName: '7 NEWS', type: 'corporate', countryCode: 'AU' },
+    'sbs.com.au': { displayName: 'SBS', type: 'public', countryCode: 'AU' },
+    'afr.com': { displayName: 'AFR', type: 'specialized', countryCode: 'AU' },
+    // UK National
+    'telegraph.co.uk': { displayName: 'THE TELEGRAPH', type: 'national', countryCode: 'UK' },
+    'independent.co.uk': { displayName: 'THE INDEPENDENT', type: 'national', countryCode: 'UK' },
+    'thetimes.co.uk': { displayName: 'THE TIMES', type: 'national', countryCode: 'UK' },
+    'dailymail.co.uk': { displayName: 'DAILY MAIL', type: 'national', countryCode: 'UK' },
+    'mirror.co.uk': { displayName: 'THE MIRROR', type: 'national', countryCode: 'UK' },
+    'thesun.co.uk': { displayName: 'THE SUN', type: 'national', countryCode: 'UK' },
+    'express.co.uk': { displayName: 'EXPRESS', type: 'national', countryCode: 'UK' },
+    'sky.com': { displayName: 'SKY NEWS', type: 'corporate', countryCode: 'UK' },
+    'news.sky.com': { displayName: 'SKY NEWS', type: 'corporate', countryCode: 'UK' },
+    'itv.com': { displayName: 'ITV NEWS', type: 'corporate', countryCode: 'UK' },
+    'channel4.com': { displayName: 'CHANNEL 4', type: 'public', countryCode: 'UK' },
+    // New Zealand
+    'nzherald.co.nz': { displayName: 'NZ HERALD', type: 'national', countryCode: 'NZ' },
+    'stuff.co.nz': { displayName: 'STUFF', type: 'national', countryCode: 'NZ' },
+    'rnz.co.nz': { displayName: 'RNZ', type: 'public', countryCode: 'NZ' },
+    // Ireland
+    'irishtimes.com': { displayName: 'IRISH TIMES', type: 'national', countryCode: 'IE' },
+    'independent.ie': { displayName: 'IRISH INDEPENDENT', type: 'national', countryCode: 'IE' },
+    'rte.ie': { displayName: 'RTE', type: 'public', countryCode: 'IE' },
     // Platforms (not news outlets)
     'youtube.com': { displayName: 'YOUTUBE', type: 'platform', countryCode: 'US' },
     'reddit.com': { displayName: 'REDDIT', type: 'platform', countryCode: 'US' },
@@ -194,23 +251,23 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
     if (lower.includes(key)) return info;
   }
   
-  // Country from TLD
+  // Country from TLD - check BEFORE falling back to US default
   let countryCode = 'US';
   if (lower.endsWith('.uk') || lower.endsWith('.co.uk')) countryCode = 'UK';
   else if (lower.endsWith('.ca')) countryCode = 'CA';
-  else if (lower.endsWith('.au')) countryCode = 'AU';
+  else if (lower.endsWith('.au') || lower.endsWith('.com.au')) countryCode = 'AU';
   else if (lower.endsWith('.de')) countryCode = 'DE';
-  else if (lower.endsWith('.in')) countryCode = 'IN';
-  else if (lower.endsWith('.nz')) countryCode = 'NZ';
+  else if (lower.endsWith('.in') || lower.endsWith('.co.in')) countryCode = 'IN';
+  else if (lower.endsWith('.nz') || lower.endsWith('.co.nz')) countryCode = 'NZ';
   else if (lower.endsWith('.ie')) countryCode = 'IE';
   else if (lower.endsWith('.fr')) countryCode = 'FR';
-  else if (lower.endsWith('.il')) countryCode = 'IL';
-  else if (lower.endsWith('.jp')) countryCode = 'JP';
-  else if (lower.endsWith('.kr')) countryCode = 'KR';
-  else if (lower.endsWith('.cn')) countryCode = 'CN';
+  else if (lower.endsWith('.il') || lower.endsWith('.co.il')) countryCode = 'IL';
+  else if (lower.endsWith('.jp') || lower.endsWith('.co.jp')) countryCode = 'JP';
+  else if (lower.endsWith('.kr') || lower.endsWith('.co.kr')) countryCode = 'KR';
+  else if (lower.endsWith('.cn') || lower.endsWith('.com.cn')) countryCode = 'CN';
   else if (lower.endsWith('.ru')) countryCode = 'RU';
-  else if (lower.endsWith('.br')) countryCode = 'BR';
-  else if (lower.endsWith('.mx')) countryCode = 'MX';
+  else if (lower.endsWith('.br') || lower.endsWith('.com.br')) countryCode = 'BR';
+  else if (lower.endsWith('.mx') || lower.endsWith('.com.mx')) countryCode = 'MX';
   else if (lower.endsWith('.es')) countryCode = 'ES';
   else if (lower.endsWith('.it')) countryCode = 'IT';
   else if (lower.endsWith('.nl')) countryCode = 'NL';
@@ -218,9 +275,23 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
   else if (lower.endsWith('.no')) countryCode = 'NO';
   else if (lower.endsWith('.ae')) countryCode = 'AE';
   else if (lower.endsWith('.sa')) countryCode = 'SA';
+  else if (lower.endsWith('.za')) countryCode = 'ZA';
+  else if (lower.endsWith('.sg')) countryCode = 'SG';
+  else if (lower.endsWith('.hk') || lower.endsWith('.com.hk')) countryCode = 'HK';
+  
+  // Smart fallback: detect type from domain name patterns
+  let type: SourceType = 'local';
+  
+  // Financial/business domains should be 'specialized', never 'local'
+  if (lower.includes('financial') || lower.includes('finance') || 
+      lower.includes('business') || lower.includes('market') ||
+      lower.includes('trading') || lower.includes('invest') ||
+      lower.includes('economic') || lower.includes('money')) {
+    type = 'specialized';
+  }
   
   const parts = domain.split('.');
-  return { displayName: parts[0].toUpperCase(), type: 'local', countryCode };
+  return { displayName: parts[0].toUpperCase(), type, countryCode };
 }
 
 // --- Helpers ---
