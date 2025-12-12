@@ -436,9 +436,19 @@ async function processGroundingChunks(
   }
 
   const typePriority: Record<SourceType, number> = {
-    'syndication': 0, 'wire': 1, 'public': 2, 'state': 3,
-    'international': 4, 'national': 5, 'corporate': 6, 'magazine': 7,
-    'specialized': 8, 'analysis': 9, 'local': 10, 'reference': 11, 'platform': 12,
+    'wire': 0,          // Raw facts (AP/Reuters) - highest value
+    'specialized': 1,   // Financial intel (FT/Bloomberg/Financial Post)
+    'national': 2,      // Papers of record (NYT/Globe & Mail)
+    'international': 3, // Global perspective (Al Jazeera/Guardian)
+    'public': 4,        // Neutral public broadcasting (BBC/PBS/CBC)
+    'analysis': 5,      // Think tanks (Foreign Policy/Brookings)
+    'corporate': 6,     // TV networks (CNN/Fox/CTV)
+    'syndication': 7,   // Yahoo/MSN - useful paywall bypass, not primary
+    'magazine': 8,      // Long-form (Atlantic/New Yorker)
+    'local': 9,         // Regional papers
+    'state': 10,        // State-affiliated media
+    'reference': 11,    // Wikipedia etc.
+    'platform': 12,     // User-generated (YouTube/Medium)
   };
 
   results.sort((a, b) => {
