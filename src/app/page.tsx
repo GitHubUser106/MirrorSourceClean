@@ -721,6 +721,7 @@ function HomeContent() {
                           type: getSourceType(r.uri),
                           url: r.uri,
                           domain: new URL(r.uri).hostname.replace('www.', ''),
+                          countryCode: r.countryCode || 'US',
                         }))
                         .filter((source, index, self) => 
                           index === self.findIndex(s => s.domain === source.domain)

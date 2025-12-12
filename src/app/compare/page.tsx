@@ -12,12 +12,22 @@ interface SourceData {
   type: 'Wire' | 'Corporate' | 'Public' | 'International' | 'Local' | 'Syndicated' | 'Magazine' | 'Specialized' | 'Analysis' | 'Platform' | 'National';
   url: string;
   domain: string;
+  countryCode?: string;
   headline?: string;
   keyPoints?: string[];
   tone?: string;
   focus?: string;
   missing?: string;
 }
+
+// Country flag emoji mapping
+const countryFlags: Record<string, string> = {
+  US: '🇺🇸', UK: '🇬🇧', GB: '🇬🇧', CA: '🇨🇦', AU: '🇦🇺', DE: '🇩🇪', FR: '🇫🇷',
+  JP: '🇯🇵', IN: '🇮🇳', CN: '🇨🇳', HK: '🇭🇰', BR: '🇧🇷', MX: '🇲🇽', KR: '🇰🇷',
+  IT: '🇮🇹', ES: '🇪🇸', NL: '🇳🇱', CH: '🇨🇭', SE: '🇸🇪', NO: '🇳🇴', NZ: '🇳🇿',
+  IE: '🇮🇪', IL: '🇮🇱', AE: '🇦🇪', SA: '🇸🇦', SG: '🇸🇬', QA: '🇶🇦', RU: '🇷🇺',
+  KE: '🇰🇪', ZA: '🇿🇦', NG: '🇳🇬', EG: '🇪🇬', PL: '🇵🇱', TR: '🇹🇷', TH: '🇹🇭',
+};
 
 const typeColors: Record<string, string> = {
   Wire: 'bg-blue-100 text-blue-700 border-blue-200',
@@ -164,6 +174,9 @@ function CompareContent() {
               >
                 <img src={getFaviconUrl(source.domain)} alt="" className="w-4 h-4 rounded" />
                 <span className="font-medium text-slate-700">{source.name}</span>
+                {source.countryCode && countryFlags[source.countryCode] && (
+                  <span className="text-sm">{countryFlags[source.countryCode]}</span>
+                )}
                 <X size={14} className="text-slate-400 hover:text-slate-600" />
               </button>
             ))}
@@ -206,6 +219,9 @@ function CompareContent() {
                     <div className="flex items-center gap-2">
                       <img src={getFaviconUrl(source.domain)} alt="" className="w-6 h-6 rounded" />
                       <span className="font-semibold text-slate-900">{source.name}</span>
+                      {source.countryCode && countryFlags[source.countryCode] && (
+                        <span className="text-base" title={source.countryCode}>{countryFlags[source.countryCode]}</span>
+                      )}
                     </div>
                     <button
                       onClick={() => setShowTypeInfo(showTypeInfo === source.type ? null : source.type)}
