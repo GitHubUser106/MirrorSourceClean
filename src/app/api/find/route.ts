@@ -5,8 +5,12 @@ import { checkRateLimit, incrementUsage, COOKIE_OPTIONS } from "@/lib/rate-limit
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-const apiKey = process.env.GEMINI_API_KEY;
-const genAI = new GoogleGenAI({ apiKey: apiKey || "" });
+// API Keys
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GOOGLE_CSE_API_KEY = process.env.GOOGLE_CSE_API_KEY;
+const GOOGLE_CSE_ID = process.env.GOOGLE_CSE_ID;
+
+const genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY || "" });
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,7 +23,7 @@ export async function OPTIONS() {
 }
 
 // --- Error Types ---
-type ErrorType = 'INVALID_URL' | 'INVALID_KEYWORDS' | 'NETWORK_ERROR' | 'TIMEOUT' | 'RATE_LIMITED' | 'API_ERROR';
+type ErrorType = 'INVALID_URL' | 'INVALID_KEYWORDS' | 'NETWORK_ERROR' | 'TIMEOUT' | 'RATE_LIMITED' | 'API_ERROR' | 'NO_RESULTS';
 
 interface AppError {
   type: ErrorType;
@@ -46,7 +50,7 @@ function createError(type: ErrorType, details?: string): AppError {
       retryable: true,
     },
     TIMEOUT: {
-      userMessage: 'The search took too long. Please try again - results vary each time.',
+      userMessage: 'The search took too long. Please try again.',
       statusCode: 504,
       retryable: true,
     },
@@ -56,8 +60,13 @@ function createError(type: ErrorType, details?: string): AppError {
       retryable: false,
     },
     API_ERROR: {
-      userMessage: 'Search failed. Please try again - results vary each time.',
+      userMessage: 'Search failed. Please try again.',
       statusCode: 500,
+      retryable: true,
+    },
+    NO_RESULTS: {
+      userMessage: 'No coverage found on trusted news sources. Try different keywords.',
+      statusCode: 200,
       retryable: true,
     },
   };
@@ -65,18 +74,11 @@ function createError(type: ErrorType, details?: string): AppError {
   return { type, ...errors[type] };
 }
 
-// --- Syndication ---
-const SYNDICATION_PARTNERS: Record<string, string[]> = {
-  'wsj.com': ['finance.yahoo.com', 'msn.com'],
-  'bloomberg.com': ['finance.yahoo.com', 'msn.com'],
-  'nytimes.com': ['msn.com'],
-  'washingtonpost.com': ['msn.com'],
-  'ft.com': ['finance.yahoo.com', 'msn.com'],
-};
-
+// --- Paywall Detection ---
 const PAYWALLED_DOMAINS = new Set([
   'wsj.com', 'nytimes.com', 'washingtonpost.com', 'ft.com', 
   'economist.com', 'bloomberg.com', 'theatlantic.com', 'newyorker.com',
+  'barrons.com', 'thetimes.co.uk',
 ]);
 
 function isPaywalledSource(url: string): boolean {
@@ -86,17 +88,7 @@ function isPaywalledSource(url: string): boolean {
   } catch { return false; }
 }
 
-function getSyndicationPartners(url: string): string[] {
-  try {
-    const hostname = new URL(url).hostname.toLowerCase().replace('www.', '');
-    for (const [domain, partners] of Object.entries(SYNDICATION_PARTNERS)) {
-      if (hostname.includes(domain)) return partners;
-    }
-  } catch {}
-  return [];
-}
-
-// --- Source classification ---
+// --- Source Classification (The Badge Logic) ---
 type SourceType = 'wire' | 'public' | 'corporate' | 'state' | 'analysis' | 'local' | 'national' | 'international' | 'magazine' | 'specialized' | 'reference' | 'syndication' | 'platform';
 
 function getSourceInfo(domain: string): { displayName: string; type: SourceType; countryCode: string } {
@@ -121,6 +113,10 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
     'bbc.co.uk': { displayName: 'BBC', type: 'public', countryCode: 'UK' },
     'cbc.ca': { displayName: 'CBC', type: 'public', countryCode: 'CA' },
     'abc.net.au': { displayName: 'ABC AUSTRALIA', type: 'public', countryCode: 'AU' },
+    'sbs.com.au': { displayName: 'SBS', type: 'public', countryCode: 'AU' },
+    'channel4.com': { displayName: 'CHANNEL 4', type: 'public', countryCode: 'UK' },
+    'rnz.co.nz': { displayName: 'RNZ', type: 'public', countryCode: 'NZ' },
+    'rte.ie': { displayName: 'RTE', type: 'public', countryCode: 'IE' },
     // International
     'aljazeera.com': { displayName: 'AL JAZEERA', type: 'international', countryCode: 'QA' },
     'theguardian.com': { displayName: 'THE GUARDIAN', type: 'international', countryCode: 'UK' },
@@ -152,9 +148,56 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
     'cbsnews.com': { displayName: 'CBS NEWS', type: 'corporate', countryCode: 'US' },
     'abcnews.go.com': { displayName: 'ABC NEWS', type: 'corporate', countryCode: 'US' },
     'msnbc.com': { displayName: 'MSNBC', type: 'corporate', countryCode: 'US' },
-    // National
+    // UK Corporate
+    'sky.com': { displayName: 'SKY NEWS', type: 'corporate', countryCode: 'UK' },
+    'news.sky.com': { displayName: 'SKY NEWS', type: 'corporate', countryCode: 'UK' },
+    'itv.com': { displayName: 'ITV NEWS', type: 'corporate', countryCode: 'UK' },
+    // Canadian Corporate
+    'globalnews.ca': { displayName: 'GLOBAL NEWS', type: 'corporate', countryCode: 'CA' },
+    'ctvnews.ca': { displayName: 'CTV NEWS', type: 'corporate', countryCode: 'CA' },
+    'citynews.ca': { displayName: 'CITY NEWS', type: 'corporate', countryCode: 'CA' },
+    // Australian Corporate
+    'news.com.au': { displayName: 'NEWS.COM.AU', type: 'corporate', countryCode: 'AU' },
+    '9news.com.au': { displayName: '9 NEWS', type: 'corporate', countryCode: 'AU' },
+    '7news.com.au': { displayName: '7 NEWS', type: 'corporate', countryCode: 'AU' },
+    // US National
     'usatoday.com': { displayName: 'USA TODAY', type: 'national', countryCode: 'US' },
     'axios.com': { displayName: 'AXIOS', type: 'national', countryCode: 'US' },
+    // Canadian National
+    'nationalpost.com': { displayName: 'NATIONAL POST', type: 'national', countryCode: 'CA' },
+    'theglobeandmail.com': { displayName: 'GLOBE AND MAIL', type: 'national', countryCode: 'CA' },
+    'globeandmail.com': { displayName: 'GLOBE AND MAIL', type: 'national', countryCode: 'CA' },
+    'torontostar.com': { displayName: 'TORONTO STAR', type: 'national', countryCode: 'CA' },
+    'thestar.com': { displayName: 'TORONTO STAR', type: 'national', countryCode: 'CA' },
+    // Australian National
+    'theaustralian.com.au': { displayName: 'THE AUSTRALIAN', type: 'national', countryCode: 'AU' },
+    'smh.com.au': { displayName: 'SYDNEY MORNING HERALD', type: 'national', countryCode: 'AU' },
+    'theage.com.au': { displayName: 'THE AGE', type: 'national', countryCode: 'AU' },
+    // UK National
+    'telegraph.co.uk': { displayName: 'THE TELEGRAPH', type: 'national', countryCode: 'UK' },
+    'independent.co.uk': { displayName: 'THE INDEPENDENT', type: 'national', countryCode: 'UK' },
+    'thetimes.co.uk': { displayName: 'THE TIMES', type: 'national', countryCode: 'UK' },
+    'dailymail.co.uk': { displayName: 'DAILY MAIL', type: 'national', countryCode: 'UK' },
+    'mirror.co.uk': { displayName: 'THE MIRROR', type: 'national', countryCode: 'UK' },
+    'thesun.co.uk': { displayName: 'THE SUN', type: 'national', countryCode: 'UK' },
+    'express.co.uk': { displayName: 'EXPRESS', type: 'national', countryCode: 'UK' },
+    // New Zealand National
+    'nzherald.co.nz': { displayName: 'NZ HERALD', type: 'national', countryCode: 'NZ' },
+    'stuff.co.nz': { displayName: 'STUFF', type: 'national', countryCode: 'NZ' },
+    // Ireland National
+    'irishtimes.com': { displayName: 'IRISH TIMES', type: 'national', countryCode: 'IE' },
+    'independent.ie': { displayName: 'IRISH INDEPENDENT', type: 'national', countryCode: 'IE' },
+    // Canadian Local (Postmedia chain)
+    'leaderpost.com': { displayName: 'REGINA LEADER-POST', type: 'local', countryCode: 'CA' },
+    'calgaryherald.com': { displayName: 'CALGARY HERALD', type: 'local', countryCode: 'CA' },
+    'edmontonjournal.com': { displayName: 'EDMONTON JOURNAL', type: 'local', countryCode: 'CA' },
+    'vancouversun.com': { displayName: 'VANCOUVER SUN', type: 'local', countryCode: 'CA' },
+    'ottawacitizen.com': { displayName: 'OTTAWA CITIZEN', type: 'local', countryCode: 'CA' },
+    'montrealgazette.com': { displayName: 'MONTREAL GAZETTE', type: 'local', countryCode: 'CA' },
+    'winnipegfreepress.com': { displayName: 'WINNIPEG FREE PRESS', type: 'local', countryCode: 'CA' },
+    'theprovince.com': { displayName: 'THE PROVINCE', type: 'local', countryCode: 'CA' },
+    'windsorstar.com': { displayName: 'WINDSOR STAR', type: 'local', countryCode: 'CA' },
+    'thechronicleherald.ca': { displayName: 'CHRONICLE HERALD', type: 'local', countryCode: 'CA' },
     // Analysis / Think Tanks
     'thehill.com': { displayName: 'THE HILL', type: 'analysis', countryCode: 'US' },
     'politico.com': { displayName: 'POLITICO', type: 'analysis', countryCode: 'US' },
@@ -168,8 +211,8 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
     'carnegieendowment.org': { displayName: 'CARNEGIE', type: 'analysis', countryCode: 'US' },
     'rand.org': { displayName: 'RAND', type: 'analysis', countryCode: 'US' },
     'diplomaticopinion.com': { displayName: 'DIPLOMATIC OPINION', type: 'analysis', countryCode: 'US' },
-    'theharvardpoliticalreview.com': { displayName: 'HARVARD POLITICAL REVIEW', type: 'analysis', countryCode: 'US' },
     'harvardpoliticalreview.com': { displayName: 'HARVARD POLITICAL REVIEW', type: 'analysis', countryCode: 'US' },
+    'theharvardpoliticalreview.com': { displayName: 'HARVARD POLITICAL REVIEW', type: 'analysis', countryCode: 'US' },
     'leaders-mena.com': { displayName: 'LEADERS MENA', type: 'analysis', countryCode: 'AE' },
     // Magazines
     'forbes.com': { displayName: 'FORBES', type: 'magazine', countryCode: 'US' },
@@ -208,68 +251,14 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
     'benzinga.com': { displayName: 'BENZINGA', type: 'specialized', countryCode: 'US' },
     'biv.com': { displayName: 'BIV', type: 'specialized', countryCode: 'CA' },
     'virginiabusiness.com': { displayName: 'VIRGINIA BUSINESS', type: 'specialized', countryCode: 'US' },
-    // Canadian National
-    'nationalpost.com': { displayName: 'NATIONAL POST', type: 'national', countryCode: 'CA' },
-    'theglobeandmail.com': { displayName: 'GLOBE AND MAIL', type: 'national', countryCode: 'CA' },
-    'globeandmail.com': { displayName: 'GLOBE AND MAIL', type: 'national', countryCode: 'CA' },
-    'torontostar.com': { displayName: 'TORONTO STAR', type: 'national', countryCode: 'CA' },
-    'thestar.com': { displayName: 'TORONTO STAR', type: 'national', countryCode: 'CA' },
-    // Canadian Corporate
-    'globalnews.ca': { displayName: 'GLOBAL NEWS', type: 'corporate', countryCode: 'CA' },
-    'ctvnews.ca': { displayName: 'CTV NEWS', type: 'corporate', countryCode: 'CA' },
-    'citynews.ca': { displayName: 'CITY NEWS', type: 'corporate', countryCode: 'CA' },
-    // Canadian Local (Postmedia chain)
-    'leaderpost.com': { displayName: 'REGINA LEADER-POST', type: 'local', countryCode: 'CA' },
-    'calgaryherald.com': { displayName: 'CALGARY HERALD', type: 'local', countryCode: 'CA' },
-    'edmontonjournal.com': { displayName: 'EDMONTON JOURNAL', type: 'local', countryCode: 'CA' },
-    'vancouversun.com': { displayName: 'VANCOUVER SUN', type: 'local', countryCode: 'CA' },
-    'ottawacitizen.com': { displayName: 'OTTAWA CITIZEN', type: 'local', countryCode: 'CA' },
-    'montrealgazette.com': { displayName: 'MONTREAL GAZETTE', type: 'local', countryCode: 'CA' },
-    'winnipegfreepress.com': { displayName: 'WINNIPEG FREE PRESS', type: 'local', countryCode: 'CA' },
-    'theprovince.com': { displayName: 'THE PROVINCE', type: 'local', countryCode: 'CA' },
-    'windsorstar.com': { displayName: 'WINDSOR STAR', type: 'local', countryCode: 'CA' },
-    'thechronicleherald.ca': { displayName: 'CHRONICLE HERALD', type: 'local', countryCode: 'CA' },
-    // Australian National
-    'theaustralian.com.au': { displayName: 'THE AUSTRALIAN', type: 'national', countryCode: 'AU' },
-    'smh.com.au': { displayName: 'SYDNEY MORNING HERALD', type: 'national', countryCode: 'AU' },
-    'theage.com.au': { displayName: 'THE AGE', type: 'national', countryCode: 'AU' },
-    'news.com.au': { displayName: 'NEWS.COM.AU', type: 'corporate', countryCode: 'AU' },
-    '9news.com.au': { displayName: '9 NEWS', type: 'corporate', countryCode: 'AU' },
-    '7news.com.au': { displayName: '7 NEWS', type: 'corporate', countryCode: 'AU' },
-    'sbs.com.au': { displayName: 'SBS', type: 'public', countryCode: 'AU' },
     'afr.com': { displayName: 'AFR', type: 'specialized', countryCode: 'AU' },
-    // UK National
-    'telegraph.co.uk': { displayName: 'THE TELEGRAPH', type: 'national', countryCode: 'UK' },
-    'independent.co.uk': { displayName: 'THE INDEPENDENT', type: 'national', countryCode: 'UK' },
-    'thetimes.co.uk': { displayName: 'THE TIMES', type: 'national', countryCode: 'UK' },
-    'dailymail.co.uk': { displayName: 'DAILY MAIL', type: 'national', countryCode: 'UK' },
-    'mirror.co.uk': { displayName: 'THE MIRROR', type: 'national', countryCode: 'UK' },
-    'thesun.co.uk': { displayName: 'THE SUN', type: 'national', countryCode: 'UK' },
-    'express.co.uk': { displayName: 'EXPRESS', type: 'national', countryCode: 'UK' },
-    'sky.com': { displayName: 'SKY NEWS', type: 'corporate', countryCode: 'UK' },
-    'news.sky.com': { displayName: 'SKY NEWS', type: 'corporate', countryCode: 'UK' },
-    'itv.com': { displayName: 'ITV NEWS', type: 'corporate', countryCode: 'UK' },
-    'channel4.com': { displayName: 'CHANNEL 4', type: 'public', countryCode: 'UK' },
-    // New Zealand
-    'nzherald.co.nz': { displayName: 'NZ HERALD', type: 'national', countryCode: 'NZ' },
-    'stuff.co.nz': { displayName: 'STUFF', type: 'national', countryCode: 'NZ' },
-    'rnz.co.nz': { displayName: 'RNZ', type: 'public', countryCode: 'NZ' },
-    // Ireland
-    'irishtimes.com': { displayName: 'IRISH TIMES', type: 'national', countryCode: 'IE' },
-    'independent.ie': { displayName: 'IRISH INDEPENDENT', type: 'national', countryCode: 'IE' },
-    'rte.ie': { displayName: 'RTE', type: 'public', countryCode: 'IE' },
-    // Platforms (not news outlets)
-    'youtube.com': { displayName: 'YOUTUBE', type: 'platform', countryCode: 'US' },
-    'reddit.com': { displayName: 'REDDIT', type: 'platform', countryCode: 'US' },
-    'medium.com': { displayName: 'MEDIUM', type: 'platform', countryCode: 'US' },
-    'substack.com': { displayName: 'SUBSTACK', type: 'platform', countryCode: 'US' },
   };
   
   for (const [key, info] of Object.entries(sources)) {
     if (lower.includes(key)) return info;
   }
   
-  // Country from TLD - check BEFORE falling back to US default
+  // Country from TLD
   let countryCode = 'US';
   if (lower.endsWith('.uk') || lower.endsWith('.co.uk')) countryCode = 'UK';
   else if (lower.endsWith('.ca')) countryCode = 'CA';
@@ -315,6 +304,32 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
   return { displayName: parts[0].toUpperCase(), type, countryCode };
 }
 
+// --- URL to Keywords Extraction ---
+function extractKeywordsFromUrl(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    const path = urlObj.pathname.toLowerCase();
+    
+    // Extract meaningful words from the URL path
+    const words = path
+      .split(/[\/\-_.]/)
+      .filter(segment => segment.length > 2) // At least 3 chars
+      .filter(segment => !/^[0-9a-f]+$/i.test(segment)) // Remove pure hex/IDs
+      .filter(segment => !/^\d+$/.test(segment)) // Remove pure numbers
+      .filter(segment => /[a-z]/i.test(segment)) // Must have letters
+      .filter(segment => !/^(content|article|story|news|post|index|html|htm|php|aspx|world|us|uk|business|tech|opinion|markets|amp|www|com|org|net)$/i.test(segment));
+    
+    if (words.length < 2) {
+      return null; // Opaque URL - need user keywords
+    }
+    
+    // Take up to 8 meaningful words
+    return words.slice(0, 8).join(' ');
+  } catch {
+    return null;
+  }
+}
+
 // --- Helpers ---
 function decodeHtmlEntities(text: string): string {
   if (!text) return text;
@@ -323,19 +338,6 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
     .replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>').replace(/&apos;/g, "'").replace(/&nbsp;/g, ' ');
-}
-
-function isEnglishContent(text: string): boolean {
-  if (!text) return false;
-  const latinChars = (text.match(/[a-zA-Z]/g) || []).length;
-  const nonLatinChars = (text.match(/[\u0400-\u04FF\u4E00-\u9FFF\u3040-\u30FF\uAC00-\uD7AF\u0600-\u06FF]/g) || []).length;
-  return latinChars > nonLatinChars * 0.7;
-}
-
-function isErrorTitle(title: string): boolean {
-  if (!title) return true;
-  const lower = title.toLowerCase();
-  return ['access denied', 'page not found', '404', '403', 'forbidden', 'error', 'blocked', 'captcha', 'just a moment', 'subscribe', 'sign in'].some(p => lower.includes(p));
 }
 
 function extractJson(text: string): any {
@@ -348,136 +350,6 @@ function extractJson(text: string): any {
     try { return JSON.parse(cleaned.substring(firstBrace, lastBrace + 1)); } catch {}
   }
   return null;
-}
-
-// --- URL Resolution ---
-async function resolveUrl(redirectUrl: string): Promise<string | null> {
-  if (!redirectUrl.includes('vertexaisearch.cloud.google.com')) {
-    return redirectUrl;
-  }
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-    const response = await fetch(redirectUrl, {
-      method: 'GET',
-      redirect: 'follow',
-      signal: controller.signal,
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)' },
-    });
-
-    clearTimeout(timeoutId);
-    const finalUrl = response.url;
-    
-    if (!finalUrl.includes('vertexaisearch.cloud.google.com')) {
-      return finalUrl;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-// --- Process Grounding Chunks ---
-// Domains to always filter out - not acceptable as news sources
-const BLOCKED_DOMAINS = new Set([
-  'reddit.com',
-  'twitter.com',
-  'x.com',
-  'facebook.com',
-  'tiktok.com',
-  'instagram.com',
-  'quora.com',
-  'stackexchange.com',
-  'stackoverflow.com',
-  'pinterest.com',
-  'tumblr.com',
-  'linkedin.com',
-]);
-
-function isBlockedDomain(domain: string): boolean {
-  const lower = domain.toLowerCase();
-  return Array.from(BLOCKED_DOMAINS).some(blocked => lower.includes(blocked));
-}
-
-async function processGroundingChunks(
-  chunks: any[],
-  syndicationPartners: string[] = []
-): Promise<Array<{ uri: string; title: string; displayName: string; sourceDomain: string; sourceType: SourceType; countryCode: string; isSyndicated: boolean }>> {
-  const results: Array<{ uri: string; title: string; displayName: string; sourceDomain: string; sourceType: SourceType; countryCode: string; isSyndicated: boolean }> = [];
-  const seen = new Set<string>();
-
-  const processChunk = async (chunk: any) => {
-    try {
-      const web = chunk?.web;
-      if (!web?.uri) return null;
-      
-      const title = web.title || '';
-      if (title.toLowerCase().includes('google')) return null;
-
-      const resolvedUrl = await resolveUrl(web.uri);
-      if (!resolvedUrl) return null;
-
-      const urlObj = new URL(resolvedUrl);
-      const domain = urlObj.hostname.replace(/^www\./, '');
-
-      // Hard filter: Block Reddit and other non-news sources
-      if (isBlockedDomain(domain)) return null;
-
-      let articleTitle = decodeHtmlEntities(title || domain);
-      if (isErrorTitle(articleTitle)) return null;
-      if (!isEnglishContent(articleTitle)) return null;
-
-      const sourceInfo = getSourceInfo(domain);
-      const isSyndicated = syndicationPartners.some(partner => domain.includes(partner));
-
-      return { 
-        uri: resolvedUrl, 
-        title: articleTitle, 
-        displayName: sourceInfo.displayName, 
-        sourceDomain: domain, 
-        sourceType: sourceInfo.type, 
-        countryCode: sourceInfo.countryCode, 
-        isSyndicated 
-      };
-    } catch { return null; }
-  };
-
-  const settled = await Promise.allSettled(chunks.slice(0, 15).map(processChunk));
-
-  for (const result of settled) {
-    if (result.status === 'fulfilled' && result.value) {
-      const item = result.value;
-      if (!seen.has(item.sourceDomain)) {
-        seen.add(item.sourceDomain);
-        results.push(item);
-      }
-    }
-  }
-
-  const typePriority: Record<SourceType, number> = {
-    'wire': 0,          // Raw facts (AP/Reuters) - highest value
-    'specialized': 1,   // Financial intel (FT/Bloomberg/Financial Post)
-    'national': 2,      // Papers of record (NYT/Globe & Mail)
-    'international': 3, // Global perspective (Al Jazeera/Guardian)
-    'public': 4,        // Neutral public broadcasting (BBC/PBS/CBC)
-    'analysis': 5,      // Think tanks (Foreign Policy/Brookings)
-    'corporate': 6,     // TV networks (CNN/Fox/CTV)
-    'syndication': 7,   // Yahoo/MSN - useful paywall bypass, not primary
-    'magazine': 8,      // Long-form (Atlantic/New Yorker)
-    'local': 9,         // Regional papers
-    'state': 10,        // State-affiliated media
-    'reference': 11,    // Wikipedia etc.
-    'platform': 12,     // User-generated (YouTube/Medium)
-  };
-
-  results.sort((a, b) => {
-    if (a.isSyndicated !== b.isSyndicated) return a.isSyndicated ? -1 : 1;
-    return typePriority[a.sourceType] - typePriority[b.sourceType];
-  });
-
-  return results;
 }
 
 // --- URL Validation ---
@@ -496,189 +368,220 @@ function validateUrl(url: string): { valid: boolean; error?: AppError } {
   }
 }
 
-// --- Gemini Call (URL-based) ---
-async function callGemini(url: string, syndicationPartners: string[]): Promise<{
-  summary: string;
-  commonGround: string;
-  keyDifferences: string;
-  alternatives: any[];
-}> {
-  const syndicationHint = syndicationPartners.length > 0 
-    ? `PRIORITY: Search for syndicated versions on ${syndicationPartners.join(', ')}.`
-    : '';
-  
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-
-  const prompt = `
-You are a news research assistant. Find alternative news sources covering this story.
-
-TODAY'S DATE: ${today}
-ARTICLE URL: ${url}
-${syndicationHint}
-
-SOURCE HIERARCHY (search in this order):
-1. WIRE SERVICES: AP, Reuters, AFP
-2. BROADCAST: BBC, NPR, PBS, CBS News, NBC News, ABC News, CNN
-3. QUALITY NEWSPAPERS: Guardian, Washington Post, NY Times, Financial Times
-4. SYNDICATION: Yahoo News, MSN, AOL News
-5. ANALYSIS: Politico, The Hill, Axios
-AVOID: Reddit, Twitter, forums, blogs, YouTube comments
-
-RESPONSE FORMAT (JSON only):
-{
-  "summary": "3-4 sentences. Grade 6-8 reading level. Short sentences. Bold only the KEY TAKEAWAY of each sentence (not every noun/number). Max 4 bold phrases total. Reader should understand the story by reading ONLY the bold text.",
-  "commonGround": "1-2 sentences. What do sources CONCLUDE or AGREE ON? Bold the findings/conclusions, NOT topic words or source names.",
-  "keyDifferences": "1-2 sentences. The ONE biggest contrast. Bold the CONTRASTING INTERPRETATIONS, not source names. Example: Reuters sees this as **a sign of economic strength**, while Bloomberg warns it **may be temporary due to gold exports**."
+// =============================================================================
+// STEP 1: THE EYES - Google Custom Search
+// =============================================================================
+interface CSEResult {
+  url: string;
+  title: string;
+  snippet: string;
+  domain: string;
 }
 
-CRITICAL RULES:
-- BOLDING: If someone reads ONLY the bold text, they should understand the main point
-- DON'T bold: source names, generic topic words, every number
-- DO bold: conclusions, interpretations, what changed, why it matters
-- commonGround: MAX 2 sentences
-- keyDifferences: MAX 2 sentences
-- Use simple words a 12-year-old would understand
-  `.trim();
-
-  const geminiResponse: any = await genAI.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    config: { tools: [{ googleSearch: {} }] },
-  });
-
-  let text: string | undefined;
-  if (geminiResponse?.response && typeof geminiResponse.response.text === 'function') {
-    text = geminiResponse.response.text();
-  } else if (Array.isArray(geminiResponse?.candidates)) {
-    text = geminiResponse.candidates[0]?.content?.parts?.[0]?.text;
+async function searchWithCSE(query: string): Promise<CSEResult[]> {
+  if (!GOOGLE_CSE_API_KEY || !GOOGLE_CSE_ID) {
+    console.error('Missing CSE credentials');
+    throw new Error('Search configuration error');
   }
 
-  if (!text) throw new Error('No response from model');
-
-  const parsedData = extractJson(text) || {};
+  const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_CSE_API_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&num=10`;
   
-  const citationRegex = /\s*\[\d+(?:,\s*\d+)*\]/g;
-  let summary = (parsedData.summary || '').replace(citationRegex, '').trim();
-  let commonGround = (parsedData.commonGround || '').replace(citationRegex, '').trim();
-  let keyDifferences = (parsedData.keyDifferences || '').replace(citationRegex, '').trim();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout for CSE
 
-  const candidates = geminiResponse?.response?.candidates ?? geminiResponse?.candidates ?? [];
-  const groundingChunks = candidates[0]?.groundingMetadata?.groundingChunks ?? [];
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
 
-  const alternatives = await processGroundingChunks(groundingChunks, syndicationPartners);
-
-  if (!summary && alternatives.length > 0) {
-    const cleanText = text.replace(/```[\s\S]*?```/g, '').replace(/\{[\s\S]*\}/g, '').trim();
-    if (cleanText && cleanText.length > 50 && cleanText.length < 1000) {
-      summary = cleanText.split('.').slice(0, 3).join('.') + '.';
-    } else {
-      try {
-        const urlPath = new URL(url).pathname;
-        const words = urlPath.split(/[-_\/]/).filter(w => w.length > 2 && !/^\d+$/.test(w));
-        if (words.length > 2) {
-          const topic = words.slice(0, 5).join(' ').replace(/\b\w/g, c => c.toUpperCase());
-          summary = `Multiple sources are reporting on **${topic}**. We found **${alternatives.length} alternative sources** covering this story from different perspectives.`;
-        }
-      } catch {}
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('CSE API error:', response.status, errorData);
+      throw new Error(`CSE API error: ${response.status}`);
     }
+
+    const data = await response.json();
     
-    if (!summary) {
-      summary = `We found **${alternatives.length} sources** covering this story. Click any source below to read their coverage.`;
+    if (!data.items || data.items.length === 0) {
+      return [];
     }
-  }
 
-  if (alternatives.length < 2) {
-    keyDifferences = '';
+    return data.items.map((item: any) => {
+      let domain = '';
+      try {
+        domain = new URL(item.link).hostname.replace(/^www\./, '');
+      } catch {}
+      
+      return {
+        url: item.link,
+        title: decodeHtmlEntities(item.title || ''),
+        snippet: decodeHtmlEntities(item.snippet || ''),
+        domain,
+      };
+    });
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Search timeout');
+    }
+    throw error;
   }
-
-  return { summary, commonGround, keyDifferences, alternatives };
 }
 
-// --- Gemini Call (Keyword-based) ---
-async function callGeminiWithKeywords(keywords: string): Promise<{
+// =============================================================================
+// STEP 2: THE BRAIN - Gemini Synthesis (NO Grounding)
+// =============================================================================
+interface IntelBrief {
   summary: string;
   commonGround: string;
   keyDifferences: string;
-  alternatives: any[];
-}> {
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+}
+
+async function synthesizeWithGemini(
+  searchResults: CSEResult[],
+  originalQuery: string
+): Promise<IntelBrief> {
+  // Build context from search results
+  const context = searchResults.map((r, i) => 
+    `[Source ${i + 1}: ${r.domain}]\nTitle: ${r.title}\nSnippet: ${r.snippet}`
+  ).join('\n\n');
 
   const prompt = `
-You are a premium news intelligence assistant. Find professional news coverage of this SPECIFIC story.
+You are a news intelligence analyst. Based ONLY on the sources provided below, write a brief analysis.
 
-TODAY'S DATE: ${today}
-STORY TO FIND: "${keywords}"
+STORY: "${originalQuery}"
 
-MANDATORY: Search these outlets FIRST (in order):
-1. Reuters, AP News, AFP (wire services)
-2. BBC, NPR, PBS NewsHour, Al Jazeera
-3. The Guardian, Washington Post, New York Times
-4. CNN, CBS News, NBC News, ABC News
-5. Times of Israel, Haaretz, Jerusalem Post (for Middle East stories)
-6. Politico, The Hill, Axios
+SOURCES:
+${context}
 
-DO NOT INCLUDE - These are NOT acceptable sources:
-❌ Reddit (reddit.com)
-❌ Twitter/X posts
-❌ YouTube comments
-❌ Personal blogs
-❌ Forums or discussion boards
-
-If you cannot find this exact story from professional news outlets, say so clearly. Do not substitute Reddit or forum discussions.
-
-RESPONSE FORMAT (JSON only):
+RESPOND IN JSON FORMAT:
 {
-  "summary": "3-4 sentences about THIS SPECIFIC story. Grade 6-8 reading level. Short sentences. Bold only the KEY TAKEAWAY (max 4 bold phrases). Reader should understand the story by reading ONLY the bold text.",
-  "commonGround": "1-2 sentences. What do sources CONCLUDE or AGREE ON? Bold the findings/conclusions, NOT topic words.",
-  "keyDifferences": "1-2 sentences. The ONE biggest contrast in coverage. Bold the CONTRASTING INTERPRETATIONS."
+  "summary": "3-4 sentences summarizing the story. Grade 6-8 reading level. Bold only the KEY TAKEAWAY of each sentence using **bold** syntax. Max 4 bold phrases. Reader should understand the story by reading ONLY the bold text.",
+  "commonGround": "1-2 sentences. What do the sources AGREE ON? Bold the conclusions/findings, not topic words.",
+  "keyDifferences": "1-2 sentences. The ONE biggest contrast in how sources cover this. Bold the CONTRASTING INTERPRETATIONS. If all sources agree, say 'Sources present a consistent narrative with no major differences.'"
 }
 
-CRITICAL:
-- This is a SPECIFIC news event, not a broad topic search
-- Find the SAME story from different professional outlets
-- NEVER include Reddit, forums, or social media as sources
-- If only low-quality sources exist, return fewer results rather than including Reddit
-  `.trim();
+RULES:
+- ONLY use information from the sources above - do not add outside knowledge
+- Bold key conclusions, not source names or generic words
+- Use simple language a 12-year-old would understand
+- If sources have limited information, acknowledge that
+- MAX 2 sentences each for commonGround and keyDifferences
+`.trim();
 
-  const geminiResponse: any = await genAI.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    config: { tools: [{ googleSearch: {} }] },
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout for Gemini
 
-  let text: string | undefined;
-  if (geminiResponse?.response && typeof geminiResponse.response.text === 'function') {
-    text = geminiResponse.response.text();
-  } else if (Array.isArray(geminiResponse?.candidates)) {
-    text = geminiResponse.candidates[0]?.content?.parts?.[0]?.text;
+  try {
+    const geminiResponse: any = await genAI.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      // NO tools/grounding - pure synthesis from provided context
+    });
+
+    clearTimeout(timeoutId);
+
+    let text: string | undefined;
+    if (geminiResponse?.response && typeof geminiResponse.response.text === 'function') {
+      text = geminiResponse.response.text();
+    } else if (Array.isArray(geminiResponse?.candidates)) {
+      text = geminiResponse.candidates[0]?.content?.parts?.[0]?.text;
+    }
+
+    if (!text) {
+      return {
+        summary: `We found **${searchResults.length} sources** covering this story. Click any source below to read their coverage.`,
+        commonGround: '',
+        keyDifferences: '',
+      };
+    }
+
+    const parsed = extractJson(text);
+    
+    if (!parsed) {
+      return {
+        summary: `We found **${searchResults.length} sources** covering this story. Click any source below to read their coverage.`,
+        commonGround: '',
+        keyDifferences: '',
+      };
+    }
+
+    return {
+      summary: (parsed.summary || '').trim(),
+      commonGround: (parsed.commonGround || '').trim(),
+      keyDifferences: (parsed.keyDifferences || '').trim(),
+    };
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    console.error('Gemini synthesis error:', error?.message);
+    
+    // Return basic summary if Gemini fails
+    return {
+      summary: `We found **${searchResults.length} sources** covering this story. Click any source below to read their coverage.`,
+      commonGround: '',
+      keyDifferences: '',
+    };
   }
-
-  if (!text) throw new Error('No response from model');
-
-  const parsedData = extractJson(text) || {};
-  
-  const citationRegex = /\s*\[\d+(?:,\s*\d+)*\]/g;
-  let summary = (parsedData.summary || '').replace(citationRegex, '').trim();
-  let commonGround = (parsedData.commonGround || '').replace(citationRegex, '').trim();
-  let keyDifferences = (parsedData.keyDifferences || '').replace(citationRegex, '').trim();
-
-  const candidates = geminiResponse?.response?.candidates ?? geminiResponse?.candidates ?? [];
-  const groundingChunks = candidates[0]?.groundingMetadata?.groundingChunks ?? [];
-
-  const alternatives = await processGroundingChunks(groundingChunks, []);
-
-  if (!summary && alternatives.length > 0) {
-    summary = `We found **${alternatives.length} sources** covering "${keywords}". Click any source below to read their coverage.`;
-  }
-
-  if (alternatives.length < 2) {
-    keyDifferences = '';
-  }
-
-  return { summary, commonGround, keyDifferences, alternatives };
 }
 
-// --- Main Handler ---
+// =============================================================================
+// STEP 3: PROCESS RESULTS - Apply badges and sort
+// =============================================================================
+interface ProcessedSource {
+  uri: string;
+  title: string;
+  displayName: string;
+  sourceDomain: string;
+  sourceType: SourceType;
+  countryCode: string;
+  isSyndicated: boolean;
+}
+
+function processSearchResults(cseResults: CSEResult[]): ProcessedSource[] {
+  const seen = new Set<string>();
+  const processed: ProcessedSource[] = [];
+
+  for (const result of cseResults) {
+    if (!result.domain || seen.has(result.domain)) continue;
+    seen.add(result.domain);
+
+    const sourceInfo = getSourceInfo(result.domain);
+    
+    processed.push({
+      uri: result.url,
+      title: result.title,
+      displayName: sourceInfo.displayName,
+      sourceDomain: result.domain,
+      sourceType: sourceInfo.type,
+      countryCode: sourceInfo.countryCode,
+      isSyndicated: false, // CSE doesn't track syndication
+    });
+  }
+
+  // Sort by source type priority (intelligence hierarchy)
+  const typePriority: Record<SourceType, number> = {
+    'wire': 0,          // Raw facts (AP/Reuters) - highest value
+    'specialized': 1,   // Financial intel (FT/Bloomberg/Financial Post)
+    'national': 2,      // Papers of record (NYT/Globe & Mail)
+    'international': 3, // Global perspective (Al Jazeera/Guardian)
+    'public': 4,        // Neutral public broadcasting (BBC/PBS/CBC)
+    'analysis': 5,      // Think tanks (Foreign Policy/Brookings)
+    'corporate': 6,     // TV networks (CNN/Fox/CTV)
+    'syndication': 7,   // Yahoo/MSN - useful paywall bypass, not primary
+    'magazine': 8,      // Long-form (Atlantic/New Yorker)
+    'local': 9,         // Regional papers
+    'state': 10,        // State-affiliated media
+    'reference': 11,    // Wikipedia etc.
+    'platform': 12,     // User-generated (YouTube/Medium)
+  };
+
+  processed.sort((a, b) => typePriority[a.sourceType] - typePriority[b.sourceType]);
+
+  return processed;
+}
+
+// =============================================================================
+// MAIN HANDLER
+// =============================================================================
 export async function POST(req: NextRequest) {
   try {
     // 1. Rate Limit Check
@@ -703,7 +606,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Check if this is a keyword search or URL search
+    // 3. Determine search query
     const hasKeywords = body.keywords && typeof body.keywords === 'string' && body.keywords.trim();
     const hasUrl = body.url && typeof body.url === 'string' && body.url.trim();
 
@@ -715,27 +618,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Increment Usage
-    const { info: usageInfo, cookieValue } = await incrementUsage(req);
-
-    let result;
+    let searchQuery: string;
     let isPaywalled = false;
 
     if (hasKeywords) {
-      // Keyword-based search
-      const keywords = body.keywords.trim();
+      // User provided keywords directly
+      searchQuery = body.keywords.trim();
       
-      if (keywords.length < 3) {
+      if (searchQuery.length < 3) {
         const error = createError('INVALID_KEYWORDS');
         return NextResponse.json(
           { error: 'Please enter at least a few keywords to search.', errorType: error.type, retryable: false },
           { status: error.statusCode, headers: corsHeaders }
         );
       }
-
-      result = await callGeminiWithKeywords(keywords);
     } else {
-      // URL-based search
+      // User provided URL - extract keywords
       const validation = validateUrl(body.url);
       if (!validation.valid && validation.error) {
         return NextResponse.json(
@@ -746,17 +644,62 @@ export async function POST(req: NextRequest) {
 
       const url = body.url.trim();
       isPaywalled = isPaywalledSource(url);
-      const syndicationPartners = getSyndicationPartners(url);
-
-      result = await callGemini(url, syndicationPartners);
+      
+      const extractedKeywords = extractKeywordsFromUrl(url);
+      
+      if (!extractedKeywords) {
+        // Opaque URL - need user to provide keywords
+        return NextResponse.json({
+          summary: null,
+          commonGround: null,
+          keyDifferences: null,
+          alternatives: [],
+          isPaywalled,
+          needsKeywords: true,
+          error: 'This link doesn\'t contain readable keywords. Please enter 3-5 key words from the story.',
+          errorType: 'NEEDS_KEYWORDS',
+          retryable: false,
+        }, { headers: corsHeaders });
+      }
+      
+      searchQuery = extractedKeywords;
     }
 
-    // 5. Build Response
+    // 4. Increment Usage
+    const { info: usageInfo, cookieValue } = await incrementUsage(req);
+
+    // 5. STEP 1: THE EYES - Search with CSE
+    console.log(`[CSE] Searching for: "${searchQuery}"`);
+    const cseResults = await searchWithCSE(searchQuery);
+    console.log(`[CSE] Found ${cseResults.length} results`);
+
+    if (cseResults.length === 0) {
+      const response = NextResponse.json({
+        summary: 'No coverage found on trusted news sources for this story. Try different keywords.',
+        commonGround: null,
+        keyDifferences: null,
+        alternatives: [],
+        isPaywalled,
+        usage: usageInfo,
+      }, { headers: corsHeaders });
+      response.cookies.set(COOKIE_OPTIONS.name, cookieValue, COOKIE_OPTIONS);
+      return response;
+    }
+
+    // 6. STEP 2: THE BRAIN - Synthesize with Gemini
+    console.log(`[Gemini] Synthesizing ${cseResults.length} sources...`);
+    const intelBrief = await synthesizeWithGemini(cseResults, searchQuery);
+    console.log(`[Gemini] Synthesis complete`);
+
+    // 7. STEP 3: Process results with badges
+    const alternatives = processSearchResults(cseResults);
+
+    // 8. Build Response
     const response = NextResponse.json({
-      summary: result.summary,
-      commonGround: result.commonGround,
-      keyDifferences: result.keyDifferences,
-      alternatives: result.alternatives,
+      summary: intelBrief.summary,
+      commonGround: intelBrief.commonGround || null,
+      keyDifferences: intelBrief.keyDifferences || null,
+      alternatives,
       isPaywalled,
       usage: usageInfo,
     }, { headers: corsHeaders });
@@ -771,8 +714,10 @@ export async function POST(req: NextRequest) {
     
     if (error.message?.includes('fetch failed') || error.message?.includes('ENOTFOUND') || error.message?.includes('network')) {
       appError = createError('NETWORK_ERROR');
-    } else if (error.message?.includes('timeout') || error.message?.includes('aborted') || error.name === 'AbortError' || error.message?.includes('DEADLINE_EXCEEDED')) {
+    } else if (error.message?.includes('timeout') || error.message?.includes('aborted') || error.name === 'AbortError') {
       appError = createError('TIMEOUT');
+    } else if (error.message?.includes('CSE API error')) {
+      appError = createError('API_ERROR');
     } else {
       appError = createError('API_ERROR');
     }
