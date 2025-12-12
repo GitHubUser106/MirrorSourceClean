@@ -492,7 +492,7 @@ function HomeContent() {
                 Identify the story
               </p>
               <p className="text-slate-600 text-sm">
-                This {getSourceName(lastSubmittedUrl)} link is protected. Enter the headline or main topic to lock on.
+                Enter 3-5 key words from the story (shorter works better).
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
@@ -501,7 +501,7 @@ function HomeContent() {
                 value={keywords}
                 onChange={(e) => setKeywords(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleKeywordSearch()}
-                placeholder="e.g., US trade deficit drops to lowest since 2020"
+                placeholder="e.g., Israel Gaza Yellow Line"
                 className="flex-1 px-4 py-3 rounded-full border border-slate-300 bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               />
               <button
@@ -523,7 +523,7 @@ function HomeContent() {
             {showKeywordFallback ? (
               <div className="mt-4">
                 <p className="text-amber-700 text-sm mb-3 text-center">
-                  Enter the headline to help us find this {getSourceName(lastSubmittedUrl)} story.
+                  Try 3-5 key words from the story (shorter works better).
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <input
@@ -531,7 +531,7 @@ function HomeContent() {
                     value={keywords}
                     onChange={(e) => setKeywords(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleKeywordSearch()}
-                    placeholder="e.g., Oracle shares sink on data center spending"
+                    placeholder="e.g., Oracle data center spending"
                     className="flex-1 px-4 py-3 rounded-full border border-amber-300 bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"
                   />
                   <button
