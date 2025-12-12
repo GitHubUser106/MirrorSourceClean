@@ -288,6 +288,27 @@ async function resolveUrl(redirectUrl: string): Promise<string | null> {
 }
 
 // --- Process Grounding Chunks ---
+// Domains to always filter out - not acceptable as news sources
+const BLOCKED_DOMAINS = new Set([
+  'reddit.com',
+  'twitter.com',
+  'x.com',
+  'facebook.com',
+  'tiktok.com',
+  'instagram.com',
+  'quora.com',
+  'stackexchange.com',
+  'stackoverflow.com',
+  'pinterest.com',
+  'tumblr.com',
+  'linkedin.com',
+]);
+
+function isBlockedDomain(domain: string): boolean {
+  const lower = domain.toLowerCase();
+  return Array.from(BLOCKED_DOMAINS).some(blocked => lower.includes(blocked));
+}
+
 async function processGroundingChunks(
   chunks: any[],
   syndicationPartners: string[] = []
@@ -308,6 +329,9 @@ async function processGroundingChunks(
 
       const urlObj = new URL(resolvedUrl);
       const domain = urlObj.hostname.replace(/^www\./, '');
+
+      // Hard filter: Block Reddit and other non-news sources
+      if (isBlockedDomain(domain)) return null;
 
       let articleTitle = decodeHtmlEntities(title || domain);
       if (isErrorTitle(articleTitle)) return null;
@@ -478,36 +502,40 @@ async function callGeminiWithKeywords(keywords: string): Promise<{
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
   const prompt = `
-You are a news research assistant. The user has provided a headline or story identifier. Find news sources covering THIS SPECIFIC STORY.
+You are a premium news intelligence assistant. Find professional news coverage of this SPECIFIC story.
 
 TODAY'S DATE: ${today}
-STORY HEADLINE/IDENTIFIER: ${keywords}
+STORY TO FIND: "${keywords}"
 
-IMPORTANT: The user is looking for coverage of ONE SPECIFIC news event, not a broad topic. Find articles about this exact story.
+MANDATORY: Search these outlets FIRST (in order):
+1. Reuters, AP News, AFP (wire services)
+2. BBC, NPR, PBS NewsHour, Al Jazeera
+3. The Guardian, Washington Post, New York Times
+4. CNN, CBS News, NBC News, ABC News
+5. Times of Israel, Haaretz, Jerusalem Post (for Middle East stories)
+6. Politico, The Hill, Axios
 
-SOURCE HIERARCHY (search in this order):
-1. WIRE SERVICES: AP, Reuters, AFP
-2. BROADCAST: BBC, NPR, PBS, CBS News, NBC News, ABC News, CNN
-3. QUALITY NEWSPAPERS: Guardian, Washington Post, NY Times, Financial Times, Bloomberg
-4. SYNDICATION: Yahoo News, MSN, AOL News
-5. ANALYSIS: Politico, The Hill, Axios
-AVOID: Reddit, Twitter, forums, blogs, YouTube comments
+DO NOT INCLUDE - These are NOT acceptable sources:
+❌ Reddit (reddit.com)
+❌ Twitter/X posts
+❌ YouTube comments
+❌ Personal blogs
+❌ Forums or discussion boards
+
+If you cannot find this exact story from professional news outlets, say so clearly. Do not substitute Reddit or forum discussions.
 
 RESPONSE FORMAT (JSON only):
 {
-  "summary": "3-4 sentences about THIS SPECIFIC story. Grade 6-8 reading level. Short sentences. Bold only the KEY TAKEAWAY of each sentence (not every noun/number). Max 4 bold phrases total. Reader should understand the story by reading ONLY the bold text.",
-  "commonGround": "1-2 sentences. What do sources CONCLUDE or AGREE ON about this story? Bold the findings/conclusions, NOT topic words or source names.",
-  "keyDifferences": "1-2 sentences. The ONE biggest contrast in how sources cover this story. Bold the CONTRASTING INTERPRETATIONS, not source names."
+  "summary": "3-4 sentences about THIS SPECIFIC story. Grade 6-8 reading level. Short sentences. Bold only the KEY TAKEAWAY (max 4 bold phrases). Reader should understand the story by reading ONLY the bold text.",
+  "commonGround": "1-2 sentences. What do sources CONCLUDE or AGREE ON? Bold the findings/conclusions, NOT topic words.",
+  "keyDifferences": "1-2 sentences. The ONE biggest contrast in coverage. Bold the CONTRASTING INTERPRETATIONS."
 }
 
-CRITICAL RULES:
-- Find articles about the EXACT story/headline provided, not tangentially related topics
-- BOLDING: If someone reads ONLY the bold text, they should understand the main point
-- DON'T bold: source names, generic topic words, every number
-- DO bold: conclusions, interpretations, what changed, why it matters
-- commonGround: MAX 2 sentences
-- keyDifferences: MAX 2 sentences
-- Use simple words a 12-year-old would understand
+CRITICAL:
+- This is a SPECIFIC news event, not a broad topic search
+- Find the SAME story from different professional outlets
+- NEVER include Reddit, forums, or social media as sources
+- If only low-quality sources exist, return fewer results rather than including Reddit
   `.trim();
 
   const geminiResponse: any = await genAI.models.generateContent({
