@@ -1,4 +1,4 @@
-export type SourceType = 'wire' | 'national' | 'international' | 'local' | 'public' | 'magazine' | 'reference' | 'syndication' | 'archive';
+export type SourceType = 'wire' | 'national' | 'international' | 'local' | 'public' | 'corporate' | 'state' | 'magazine' | 'specialized' | 'analysis' | 'reference' | 'syndication' | 'archive' | 'platform';
 
 export interface GroundingSource {
   uri: string;
@@ -6,6 +6,7 @@ export interface GroundingSource {
   displayName?: string;
   sourceDomain?: string;
   sourceType?: SourceType;
+  countryCode?: string;  // <-- ADD THIS
   isSyndicated?: boolean;
 }
 
