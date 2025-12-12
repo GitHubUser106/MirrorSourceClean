@@ -60,75 +60,6 @@ function getFaviconUrl(domain: string): string {
   return `https://www.google.com/s2/favicons?domain=${domain.replace(/^www\./, '')}&sz=64`;
 }
 
-function getSourceType(url: string): 'Wire' | 'Corporate' | 'Public' | 'International' | 'Local' | 'Syndicated' | 'Magazine' | 'Specialized' | 'Analysis' | 'Platform' | 'National' {
-  const domain = new URL(url).hostname.toLowerCase();
-  
-  // Wire services
-  if (domain.includes('apnews') || domain.includes('reuters') || domain.includes('afp')) {
-    return 'Wire';
-  }
-  
-  // Public media
-  if (domain.includes('pbs.org') || domain.includes('npr.org') || domain.includes('bbc.com') || domain.includes('bbc.co.uk') || domain.includes('cbc.ca') || domain.includes('abc.net.au')) {
-    return 'Public';
-  }
-  
-  // International
-  if (domain.includes('theguardian') || domain.includes('aljazeera') || domain.includes('dw.com') || 
-      domain.includes('france24') || domain.includes('scmp.com') || domain.includes('euronews') ||
-      domain.includes('timesofisrael') || domain.includes('jpost.com') || domain.includes('ynetnews') ||
-      domain.includes('haaretz') || domain.includes('thehindu') || domain.includes('arabnews')) {
-    return 'International';
-  }
-  
-  // Syndicated
-  if (domain.includes('yahoo') || domain.includes('msn.com') || domain.includes('aol.com')) {
-    return 'Syndicated';
-  }
-  
-  // Analysis / Think tanks
-  if (domain.includes('politico') || domain.includes('thehill') || domain.includes('foreignpolicy') ||
-      domain.includes('foreignaffairs') || domain.includes('cfr.org') || domain.includes('brookings') ||
-      domain.includes('cato.org') || domain.includes('heritage.org') || domain.includes('carnegie') ||
-      domain.includes('rand.org') || domain.includes('responsiblestatecraft') || domain.includes('diplomaticopinion') ||
-      domain.includes('harvardpoliticalreview')) {
-    return 'Analysis';
-  }
-  
-  // Magazines
-  if (domain.includes('time.com') || domain.includes('newsweek') || domain.includes('forbes') ||
-      domain.includes('theatlantic') || domain.includes('newyorker') || domain.includes('economist')) {
-    return 'Magazine';
-  }
-  
-  // Specialized / Business
-  if (domain.includes('bloomberg') || domain.includes('cnbc') || domain.includes('ft.com') ||
-      domain.includes('wsj.com') || domain.includes('wired') || domain.includes('techcrunch') ||
-      domain.includes('theverge') || domain.includes('livemint') || domain.includes('business-standard')) {
-    return 'Specialized';
-  }
-  
-  // Platforms
-  if (domain.includes('youtube') || domain.includes('reddit') || domain.includes('medium') || domain.includes('substack')) {
-    return 'Platform';
-  }
-  
-  // National
-  if (domain.includes('usatoday') || domain.includes('axios')) {
-    return 'National';
-  }
-  
-  // Local (regional papers)
-  if (domain.includes('tribune') || domain.includes('post') || 
-      domain.includes('herald') || domain.includes('gazette') || domain.includes('journal') ||
-      domain.includes('chronicle') || domain.includes('sentinel') || domain.includes('daily')) {
-    return 'Local';
-  }
-  
-  // Default to Corporate
-  return 'Corporate';
-}
-
 function HomeContent() {
   const searchParams = useSearchParams();
   const [loading, setIsLoading] = useState(false);
@@ -713,15 +644,15 @@ function HomeContent() {
                 {results.length >= 2 && (
                   <Link
                     href={`/compare?sources=${encodeURIComponent(JSON.stringify(
-                      // De-duplicate by domain and pass all sources
+                      // De-duplicate by domain and use API data (not local function)
                       results
                         .map((r, i) => ({
                           id: `source-${i}`,
-                          name: r.title?.split(' - ')[0] || new URL(r.uri).hostname.replace('www.', ''),
-                          type: getSourceType(r.uri),
+                          name: r.displayName || r.title?.split(' - ')[0] || new URL(r.uri).hostname.replace('www.', ''),
+                          type: r.sourceType || 'Corporate',  // Use API data
                           url: r.uri,
-                          domain: new URL(r.uri).hostname.replace('www.', ''),
-                          countryCode: r.countryCode || 'US',
+                          domain: r.sourceDomain || new URL(r.uri).hostname.replace('www.', ''),
+                          countryCode: r.countryCode || 'US',  // Use API data
                         }))
                         .filter((source, index, self) => 
                           index === self.findIndex(s => s.domain === source.domain)
