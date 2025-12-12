@@ -138,6 +138,13 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
     'thearabdailynews.com': { displayName: 'ARAB DAILY NEWS', type: 'international', countryCode: 'US' },
     'arabnews.com': { displayName: 'ARAB NEWS', type: 'international', countryCode: 'SA' },
     'middleeasteye.net': { displayName: 'MIDDLE EAST EYE', type: 'international', countryCode: 'UK' },
+    // Asia Pacific
+    'straitstimes.com': { displayName: 'STRAITS TIMES', type: 'international', countryCode: 'SG' },
+    'channelnewsasia.com': { displayName: 'CNA', type: 'international', countryCode: 'SG' },
+    'japantimes.co.jp': { displayName: 'JAPAN TIMES', type: 'international', countryCode: 'JP' },
+    'koreaherald.com': { displayName: 'KOREA HERALD', type: 'international', countryCode: 'KR' },
+    'koreatimes.co.kr': { displayName: 'KOREA TIMES', type: 'international', countryCode: 'KR' },
+    'bangkokpost.com': { displayName: 'BANGKOK POST', type: 'international', countryCode: 'TH' },
     // US Corporate
     'cnn.com': { displayName: 'CNN', type: 'corporate', countryCode: 'US' },
     'foxnews.com': { displayName: 'FOX NEWS', type: 'corporate', countryCode: 'US' },
@@ -190,6 +197,17 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
     'barrons.com': { displayName: 'BARRONS', type: 'specialized', countryCode: 'US' },
     'investopedia.com': { displayName: 'INVESTOPEDIA', type: 'specialized', countryCode: 'US' },
     'seekingalpha.com': { displayName: 'SEEKING ALPHA', type: 'specialized', countryCode: 'US' },
+    'fool.com': { displayName: 'MOTLEY FOOL', type: 'specialized', countryCode: 'US' },
+    'zacks.com': { displayName: 'ZACKS', type: 'specialized', countryCode: 'US' },
+    '247wallst.com': { displayName: '24/7 WALL ST', type: 'specialized', countryCode: 'US' },
+    'investing.com': { displayName: 'INVESTING.COM', type: 'specialized', countryCode: 'US' },
+    'marketscreener.com': { displayName: 'MARKETSCREENER', type: 'specialized', countryCode: 'FR' },
+    'thestreet.com': { displayName: 'THE STREET', type: 'specialized', countryCode: 'US' },
+    'kiplinger.com': { displayName: 'KIPLINGER', type: 'specialized', countryCode: 'US' },
+    'morningstar.com': { displayName: 'MORNINGSTAR', type: 'specialized', countryCode: 'US' },
+    'benzinga.com': { displayName: 'BENZINGA', type: 'specialized', countryCode: 'US' },
+    'biv.com': { displayName: 'BIV', type: 'specialized', countryCode: 'CA' },
+    'virginiabusiness.com': { displayName: 'VIRGINIA BUSINESS', type: 'specialized', countryCode: 'US' },
     // Canadian National
     'nationalpost.com': { displayName: 'NATIONAL POST', type: 'national', countryCode: 'CA' },
     'theglobeandmail.com': { displayName: 'GLOBE AND MAIL', type: 'national', countryCode: 'CA' },
@@ -278,6 +296,9 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
   else if (lower.endsWith('.za')) countryCode = 'ZA';
   else if (lower.endsWith('.sg')) countryCode = 'SG';
   else if (lower.endsWith('.hk') || lower.endsWith('.com.hk')) countryCode = 'HK';
+  else if (lower.endsWith('.th') || lower.endsWith('.co.th')) countryCode = 'TH';
+  else if (lower.endsWith('.ph') || lower.endsWith('.com.ph')) countryCode = 'PH';
+  else if (lower.endsWith('.my') || lower.endsWith('.com.my')) countryCode = 'MY';
   
   // Smart fallback: detect type from domain name patterns
   let type: SourceType = 'local';
