@@ -88,177 +88,1062 @@ function isPaywalledSource(url: string): boolean {
   } catch { return false; }
 }
 
-// --- Source Classification (The Badge Logic) ---
+// =============================================================================
+// SOURCE CLASSIFICATION WITH TRANSPARENCY DATA
+// =============================================================================
+
 type SourceType = 'wire' | 'public' | 'corporate' | 'state' | 'analysis' | 'local' | 'national' | 'international' | 'magazine' | 'specialized' | 'reference' | 'syndication' | 'platform';
 
-function getSourceInfo(domain: string): { displayName: string; type: SourceType; countryCode: string } {
+type OwnershipType = 'private' | 'public_traded' | 'nonprofit' | 'public_media' | 'state_owned' | 'cooperative' | 'trust';
+
+interface OwnershipInfo {
+  owner: string;
+  parent?: string;
+  type: OwnershipType;
+  note?: string;
+}
+
+interface FundingInfo {
+  model: string;
+  note?: string;
+}
+
+interface SourceInfo {
+  displayName: string;
+  type: SourceType;
+  countryCode: string;
+  ownership?: OwnershipInfo;
+  funding?: FundingInfo;
+}
+
+// Complete source database with transparency data
+const sources: Record<string, SourceInfo> = {
+  // ===========================================================================
+  // SYNDICATION
+  // ===========================================================================
+  'finance.yahoo.com': {
+    displayName: 'YAHOO FINANCE',
+    type: 'syndication',
+    countryCode: 'US',
+    ownership: { owner: 'Yahoo', parent: 'Apollo Global Management', type: 'private', note: 'Apollo acquired Yahoo from Verizon for $5B in 2021' },
+    funding: { model: 'Advertising & Yahoo Finance Plus subscriptions' },
+  },
+  'news.yahoo.com': {
+    displayName: 'YAHOO NEWS',
+    type: 'syndication',
+    countryCode: 'US',
+    ownership: { owner: 'Yahoo', parent: 'Apollo Global Management', type: 'private', note: 'Aggregates content from partner publications' },
+    funding: { model: 'Advertising' },
+  },
+  'yahoo.com': {
+    displayName: 'YAHOO',
+    type: 'syndication',
+    countryCode: 'US',
+    ownership: { owner: 'Yahoo', parent: 'Apollo Global Management', type: 'private', note: 'Apollo acquired Yahoo from Verizon for $5B in 2021' },
+    funding: { model: 'Advertising' },
+  },
+  'msn.com': {
+    displayName: 'MSN',
+    type: 'syndication',
+    countryCode: 'US',
+    ownership: { owner: 'Microsoft Corporation', type: 'public_traded', note: 'NASDAQ (MSFT). News aggregation portal' },
+    funding: { model: 'Advertising' },
+  },
+
+  // ===========================================================================
+  // WIRE SERVICES
+  // ===========================================================================
+  'apnews.com': {
+    displayName: 'AP NEWS',
+    type: 'wire',
+    countryCode: 'US',
+    ownership: { owner: 'Associated Press', type: 'cooperative', note: 'Non-profit cooperative owned by ~1,300 member newspapers and broadcasters' },
+    funding: { model: 'Member fees & content licensing to media outlets worldwide' },
+  },
+  'reuters.com': {
+    displayName: 'REUTERS',
+    type: 'wire',
+    countryCode: 'UK',
+    ownership: { owner: 'Thomson Reuters Corporation', type: 'public_traded', note: 'NYSE (TRI) and TSX. Thomson family holds ~65% voting control' },
+    funding: { model: 'Financial data terminals, news licensing & professional services' },
+  },
+  'afp.com': {
+    displayName: 'AFP',
+    type: 'wire',
+    countryCode: 'FR',
+    ownership: { owner: 'Agence France-Presse', type: 'public_media', note: 'French state provides ~40% funding; editorial independence legally protected since 1957' },
+    funding: { model: 'French government contracts, news licensing & subscriptions' },
+  },
+
+  // ===========================================================================
+  // PUBLIC BROADCASTING
+  // ===========================================================================
+  'npr.org': {
+    displayName: 'NPR',
+    type: 'public',
+    countryCode: 'US',
+    ownership: { owner: 'National Public Radio, Inc.', type: 'nonprofit', note: '501(c)(3) non-profit media organization founded 1970' },
+    funding: { model: 'Member station fees, corporate sponsors, foundations & individual donors', note: 'Federal funding via CPB is <1% of total budget' },
+  },
+  'pbs.org': {
+    displayName: 'PBS',
+    type: 'public',
+    countryCode: 'US',
+    ownership: { owner: 'Public Broadcasting Service', type: 'nonprofit', note: 'Non-profit public broadcaster; member organization of 350+ local stations' },
+    funding: { model: 'Member stations, corporate underwriting, foundations & viewer donations' },
+  },
+  'opb.org': {
+    displayName: 'OPB',
+    type: 'public',
+    countryCode: 'US',
+    ownership: { owner: 'Oregon Public Broadcasting', type: 'nonprofit', note: 'Regional public media organization serving Oregon and SW Washington' },
+    funding: { model: 'Member donations, corporate sponsors & CPB grants' },
+  },
+  'bbc.com': {
+    displayName: 'BBC',
+    type: 'public',
+    countryCode: 'UK',
+    ownership: { owner: 'British Broadcasting Corporation', type: 'public_media', note: 'UK public corporation established by Royal Charter; governed by BBC Board' },
+    funding: { model: 'UK TV license fee (£159/year) & BBC Studios commercial revenue' },
+  },
+  'bbc.co.uk': {
+    displayName: 'BBC',
+    type: 'public',
+    countryCode: 'UK',
+    ownership: { owner: 'British Broadcasting Corporation', type: 'public_media', note: 'UK public corporation established by Royal Charter' },
+    funding: { model: 'UK TV license fee (£159/year) & BBC Studios commercial revenue' },
+  },
+  'cbc.ca': {
+    displayName: 'CBC',
+    type: 'public',
+    countryCode: 'CA',
+    ownership: { owner: 'Canadian Broadcasting Corporation', type: 'public_media', note: 'Canadian Crown corporation established 1936; reports to Parliament' },
+    funding: { model: 'Canadian federal government appropriation (~$1.2B/year) & advertising' },
+  },
+  'abc.net.au': {
+    displayName: 'ABC AUSTRALIA',
+    type: 'public',
+    countryCode: 'AU',
+    ownership: { owner: 'Australian Broadcasting Corporation', type: 'public_media', note: 'Australian federal government statutory authority; independent board' },
+    funding: { model: 'Australian federal government funding (no advertising on domestic services)' },
+  },
+  'sbs.com.au': {
+    displayName: 'SBS',
+    type: 'public',
+    countryCode: 'AU',
+    ownership: { owner: 'Special Broadcasting Service', type: 'public_media', note: 'Australian multicultural public broadcaster established 1978' },
+    funding: { model: 'Australian government funding & limited advertising' },
+  },
+  'channel4.com': {
+    displayName: 'CHANNEL 4',
+    type: 'public',
+    countryCode: 'UK',
+    ownership: { owner: 'Channel Four Television Corporation', type: 'public_media', note: 'UK publicly-owned but commercially-funded; cannot be sold for profit' },
+    funding: { model: 'Advertising revenue (self-funded, no license fee)' },
+  },
+  'rnz.co.nz': {
+    displayName: 'RNZ',
+    type: 'public',
+    countryCode: 'NZ',
+    ownership: { owner: 'Radio New Zealand', type: 'public_media', note: 'New Zealand public broadcaster; Crown entity since 1995' },
+    funding: { model: 'New Zealand government funding (no advertising)' },
+  },
+  'rte.ie': {
+    displayName: 'RTE',
+    type: 'public',
+    countryCode: 'IE',
+    ownership: { owner: 'Raidió Teilifís Éireann', type: 'public_media', note: 'Ireland\'s national public broadcaster; statutory corporation' },
+    funding: { model: 'TV license fee & commercial advertising' },
+  },
+
+  // ===========================================================================
+  // INTERNATIONAL
+  // ===========================================================================
+  'aljazeera.com': {
+    displayName: 'AL JAZEERA',
+    type: 'international',
+    countryCode: 'QA',
+    ownership: { owner: 'Al Jazeera Media Network', type: 'state_owned', note: 'Funded by the government of Qatar; headquartered in Doha' },
+    funding: { model: 'Qatar government funding (estimated $500M+ annually)' },
+  },
+  'theguardian.com': {
+    displayName: 'THE GUARDIAN',
+    type: 'international',
+    countryCode: 'UK',
+    ownership: { owner: 'Guardian Media Group', parent: 'Scott Trust Limited', type: 'trust', note: 'Trust structure (since 1936) ensures editorial independence in perpetuity' },
+    funding: { model: 'Reader contributions, advertising, events & Guardian Foundation grants', note: 'No paywall; relies on voluntary reader support (~1M+ paying supporters)' },
+  },
+  'thehindu.com': {
+    displayName: 'THE HINDU',
+    type: 'international',
+    countryCode: 'IN',
+    ownership: { owner: 'The Hindu Group', parent: 'Kasturi & Sons Ltd.', type: 'private', note: 'Family-owned since 1878; based in Chennai' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'dw.com': {
+    displayName: 'DW',
+    type: 'international',
+    countryCode: 'DE',
+    ownership: { owner: 'Deutsche Welle', type: 'public_media', note: 'German public international broadcaster; legally independent from government' },
+    funding: { model: 'German federal tax revenue (100% publicly funded)' },
+  },
+  'france24.com': {
+    displayName: 'FRANCE 24',
+    type: 'international',
+    countryCode: 'FR',
+    ownership: { owner: 'France Médias Monde', type: 'public_media', note: 'French international public broadcaster; editorial independence guaranteed by law' },
+    funding: { model: 'French government funding via license fee revenue' },
+  },
+  'scmp.com': {
+    displayName: 'SCMP',
+    type: 'international',
+    countryCode: 'HK',
+    ownership: { owner: 'Alibaba Group', type: 'public_traded', note: 'Acquired by Alibaba (Jack Ma) in 2016; Alibaba trades on NYSE (BABA)' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'timesofisrael.com': {
+    displayName: 'TIMES OF ISRAEL',
+    type: 'international',
+    countryCode: 'IL',
+    ownership: { owner: 'Times of Israel Ltd.', type: 'private', note: 'Founded 2012 by David Horovitz; backed by Seth Klarman (Baupost Group)' },
+    funding: { model: 'Advertising, memberships & sponsored content' },
+  },
+  'jpost.com': {
+    displayName: 'JERUSALEM POST',
+    type: 'international',
+    countryCode: 'IL',
+    ownership: { owner: 'Jerusalem Post Group', parent: 'Eli Azur (controlling stake)', type: 'private', note: 'Israeli media entrepreneur Eli Azur acquired majority stake in 2019' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'ynetnews.com': {
+    displayName: 'YNET NEWS',
+    type: 'international',
+    countryCode: 'IL',
+    ownership: { owner: 'Yedioth Ahronoth Group', type: 'private', note: 'Owned by Moses family; largest newspaper group in Israel' },
+    funding: { model: 'Advertising (free access model)' },
+  },
+  'haaretz.com': {
+    displayName: 'HAARETZ',
+    type: 'international',
+    countryCode: 'IL',
+    ownership: { owner: 'Haaretz Group', type: 'private', note: 'Schocken family holds majority; M. DuMont Schauberg (Germany) owns 25%' },
+    funding: { model: 'Subscriptions & advertising' },
+  },
+  'i24news.tv': {
+    displayName: 'I24 NEWS',
+    type: 'international',
+    countryCode: 'IL',
+    ownership: { owner: 'i24NEWS', parent: 'Altice Group (Patrick Drahi)', type: 'private', note: 'Founded 2013; owned by telecom billionaire Patrick Drahi' },
+    funding: { model: 'Parent company funding & advertising' },
+  },
+  'thearabdailynews.com': {
+    displayName: 'ARAB DAILY NEWS',
+    type: 'international',
+    countryCode: 'US',
+    ownership: { owner: 'Arab Daily News LLC', type: 'private', note: 'US-based Arab American news outlet' },
+    funding: { model: 'Advertising & sponsorships' },
+  },
+  'arabnews.com': {
+    displayName: 'ARAB NEWS',
+    type: 'international',
+    countryCode: 'SA',
+    ownership: { owner: 'Saudi Research and Media Group (SRMG)', type: 'private', note: 'SRMG is closely aligned with Saudi government interests' },
+    funding: { model: 'Parent company funding & advertising' },
+  },
+  'middleeasteye.net': {
+    displayName: 'MIDDLE EAST EYE',
+    type: 'international',
+    countryCode: 'UK',
+    ownership: { owner: 'Middle East Eye Ltd.', type: 'private', note: 'UK-registered; founded 2014. Funding sources not fully disclosed; Qatar links alleged' },
+    funding: { model: 'Not publicly disclosed', note: 'Non-profit structure; funding transparency limited' },
+  },
+  'straitstimes.com': {
+    displayName: 'STRAITS TIMES',
+    type: 'international',
+    countryCode: 'SG',
+    ownership: { owner: 'Singapore Press Holdings', parent: 'SPH Media Trust', type: 'nonprofit', note: 'Restructured 2022; media arm now held by non-profit trust' },
+    funding: { model: 'Government funding, subscriptions & advertising' },
+  },
+  'channelnewsasia.com': {
+    displayName: 'CNA',
+    type: 'international',
+    countryCode: 'SG',
+    ownership: { owner: 'Mediacorp', type: 'state_owned', note: 'Mediacorp is wholly owned by Temasek Holdings (Singapore sovereign wealth fund)' },
+    funding: { model: 'Singapore government funding & advertising' },
+  },
+  'japantimes.co.jp': {
+    displayName: 'JAPAN TIMES',
+    type: 'international',
+    countryCode: 'JP',
+    ownership: { owner: 'The Japan Times, Ltd.', parent: 'News2u Holdings (Ogasawara family)', type: 'private', note: 'Oldest English-language newspaper in Japan (founded 1897)' },
+    funding: { model: 'Subscriptions & advertising' },
+  },
+  'koreaherald.com': {
+    displayName: 'KOREA HERALD',
+    type: 'international',
+    countryCode: 'KR',
+    ownership: { owner: 'Herald Corporation', type: 'private', note: 'Part of Herald Media Group; South Korea\'s largest English daily' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'koreatimes.co.kr': {
+    displayName: 'KOREA TIMES',
+    type: 'international',
+    countryCode: 'KR',
+    ownership: { owner: 'Hankook Ilbo', type: 'private', note: 'Owned by Hankook Ilbo media group' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'bangkokpost.com': {
+    displayName: 'BANGKOK POST',
+    type: 'international',
+    countryCode: 'TH',
+    ownership: { owner: 'The Post Publishing PCL', type: 'public_traded', note: 'Traded on Stock Exchange of Thailand; established 1946' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+
+  // ===========================================================================
+  // US CORPORATE BROADCAST
+  // ===========================================================================
+  'cnn.com': {
+    displayName: 'CNN',
+    type: 'corporate',
+    countryCode: 'US',
+    ownership: { owner: 'Warner Bros. Discovery', type: 'public_traded', note: 'WBD trades on NASDAQ (WBD). Created from WarnerMedia-Discovery merger 2022' },
+    funding: { model: 'Advertising, cable carriage fees & CNN+ subscriptions' },
+  },
+  'foxnews.com': {
+    displayName: 'FOX NEWS',
+    type: 'corporate',
+    countryCode: 'US',
+    ownership: { owner: 'Fox Corporation', type: 'public_traded', note: 'NASDAQ (FOXA/FOX). Murdoch family controls ~40% voting power via Family Trust' },
+    funding: { model: 'Advertising & cable carriage fees (most profitable cable news network)' },
+  },
+  'nbcnews.com': {
+    displayName: 'NBC NEWS',
+    type: 'corporate',
+    countryCode: 'US',
+    ownership: { owner: 'NBCUniversal News Group', parent: 'Comcast Corporation', type: 'public_traded', note: 'Comcast trades on NASDAQ (CMCSA). Largest cable company in US' },
+    funding: { model: 'Advertising, cable fees & Peacock streaming' },
+  },
+  'cbsnews.com': {
+    displayName: 'CBS NEWS',
+    type: 'corporate',
+    countryCode: 'US',
+    ownership: { owner: 'CBS News and Stations', parent: 'Paramount Global', type: 'public_traded', note: 'Paramount trades NASDAQ (PARA). Shari Redstone controls via National Amusements' },
+    funding: { model: 'Advertising, affiliate fees & Paramount+ streaming' },
+  },
+  'abcnews.go.com': {
+    displayName: 'ABC NEWS',
+    type: 'corporate',
+    countryCode: 'US',
+    ownership: { owner: 'ABC News', parent: 'The Walt Disney Company', type: 'public_traded', note: 'Disney trades on NYSE (DIS). ABC acquired by Disney in 1996' },
+    funding: { model: 'Advertising, affiliate fees & Disney+ streaming' },
+  },
+  'msnbc.com': {
+    displayName: 'MSNBC',
+    type: 'corporate',
+    countryCode: 'US',
+    ownership: { owner: 'NBCUniversal News Group', parent: 'Comcast Corporation', type: 'public_traded', note: 'Comcast trades NASDAQ (CMCSA). Originally NBC-Microsoft joint venture (1996)' },
+    funding: { model: 'Advertising & cable carriage fees' },
+  },
+
+  // ===========================================================================
+  // UK CORPORATE BROADCAST
+  // ===========================================================================
+  'sky.com': {
+    displayName: 'SKY NEWS',
+    type: 'corporate',
+    countryCode: 'UK',
+    ownership: { owner: 'Sky Group', parent: 'Comcast Corporation', type: 'public_traded', note: 'Comcast acquired Sky in 2018 for £30B. Previously Murdoch-controlled' },
+    funding: { model: 'Sky subscriptions, advertising & Comcast parent funding' },
+  },
+  'news.sky.com': {
+    displayName: 'SKY NEWS',
+    type: 'corporate',
+    countryCode: 'UK',
+    ownership: { owner: 'Sky Group', parent: 'Comcast Corporation', type: 'public_traded', note: 'Comcast acquired Sky in 2018 for £30B' },
+    funding: { model: 'Sky subscriptions, advertising & Comcast parent funding' },
+  },
+  'itv.com': {
+    displayName: 'ITV NEWS',
+    type: 'corporate',
+    countryCode: 'UK',
+    ownership: { owner: 'ITV plc', type: 'public_traded', note: 'Traded on London Stock Exchange (ITV). UK\'s largest commercial broadcaster' },
+    funding: { model: 'Advertising revenue (primary) & ITVX streaming' },
+  },
+
+  // ===========================================================================
+  // CANADIAN CORPORATE BROADCAST
+  // ===========================================================================
+  'globalnews.ca': {
+    displayName: 'GLOBAL NEWS',
+    type: 'corporate',
+    countryCode: 'CA',
+    ownership: { owner: 'Corus Entertainment', type: 'public_traded', note: 'Traded on TSX (CJR.B). Shaw family controls voting shares' },
+    funding: { model: 'Advertising & cable carriage fees' },
+  },
+  'ctvnews.ca': {
+    displayName: 'CTV NEWS',
+    type: 'corporate',
+    countryCode: 'CA',
+    ownership: { owner: 'CTV', parent: 'Bell Media (BCE Inc.)', type: 'public_traded', note: 'BCE trades on TSX and NYSE (BCE). Canada\'s largest telecom company' },
+    funding: { model: 'Advertising & cable carriage fees' },
+  },
+  'citynews.ca': {
+    displayName: 'CITY NEWS',
+    type: 'corporate',
+    countryCode: 'CA',
+    ownership: { owner: 'Citytv', parent: 'Rogers Communications', type: 'public_traded', note: 'Rogers trades on TSX (RCI.B). Rogers family controls voting shares' },
+    funding: { model: 'Advertising & cable carriage fees' },
+  },
+
+  // ===========================================================================
+  // AUSTRALIAN CORPORATE
+  // ===========================================================================
+  'news.com.au': {
+    displayName: 'NEWS.COM.AU',
+    type: 'corporate',
+    countryCode: 'AU',
+    ownership: { owner: 'News Corp Australia', parent: 'News Corp (Murdoch family)', type: 'public_traded', note: 'News Corp trades NASDAQ (NWSA). Australia\'s largest news website' },
+    funding: { model: 'Advertising (free access)' },
+  },
+  '9news.com.au': {
+    displayName: '9 NEWS',
+    type: 'corporate',
+    countryCode: 'AU',
+    ownership: { owner: 'Nine Entertainment', type: 'public_traded', note: 'Traded on ASX (NEC). Merged with Fairfax Media 2018' },
+    funding: { model: 'Advertising & streaming (9Now)' },
+  },
+  '7news.com.au': {
+    displayName: '7 NEWS',
+    type: 'corporate',
+    countryCode: 'AU',
+    ownership: { owner: 'Seven West Media', type: 'public_traded', note: 'Traded on ASX (SWM). Kerry Stokes is chairman and major shareholder' },
+    funding: { model: 'Advertising & streaming (7plus)' },
+  },
+
+  // ===========================================================================
+  // US NATIONAL
+  // ===========================================================================
+  'usatoday.com': {
+    displayName: 'USA TODAY',
+    type: 'national',
+    countryCode: 'US',
+    ownership: { owner: 'Gannett Co., Inc.', type: 'public_traded', note: 'NYSE (GCI). Largest US newspaper chain by circulation; merged with GateHouse 2019' },
+    funding: { model: 'Advertising, subscriptions & digital marketing services' },
+  },
+  'axios.com': {
+    displayName: 'AXIOS',
+    type: 'national',
+    countryCode: 'US',
+    ownership: { owner: 'Axios Media', parent: 'Cox Enterprises', type: 'private', note: 'Cox Enterprises acquired Axios in 2022 for $525M. Founded by Politico alumni' },
+    funding: { model: 'Newsletters, advertising & Axios Pro subscriptions' },
+  },
+
+  // ===========================================================================
+  // CANADIAN NATIONAL & LOCAL
+  // ===========================================================================
+  'nationalpost.com': {
+    displayName: 'NATIONAL POST',
+    type: 'national',
+    countryCode: 'CA',
+    ownership: { owner: 'Postmedia Network', type: 'public_traded', note: 'TSX (PNC.A). US hedge funds (Chatham Asset Management) hold significant debt position' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'theglobeandmail.com': {
+    displayName: 'GLOBE AND MAIL',
+    type: 'national',
+    countryCode: 'CA',
+    ownership: { owner: 'Woodbridge Company', type: 'private', note: 'Thomson family investment vehicle owns 85%. Canada\'s newspaper of record' },
+    funding: { model: 'Subscriptions & advertising' },
+  },
+  'globeandmail.com': {
+    displayName: 'GLOBE AND MAIL',
+    type: 'national',
+    countryCode: 'CA',
+    ownership: { owner: 'Woodbridge Company', type: 'private', note: 'Thomson family investment vehicle owns 85%' },
+    funding: { model: 'Subscriptions & advertising' },
+  },
+  'torontostar.com': {
+    displayName: 'TORONTO STAR',
+    type: 'national',
+    countryCode: 'CA',
+    ownership: { owner: 'Torstar Corporation', parent: 'NordStar Capital', type: 'private', note: 'Acquired by NordStar (Jordan Chicken, Paul Chicken) in 2020 for $52M' },
+    funding: { model: 'Subscriptions & advertising' },
+  },
+  'thestar.com': {
+    displayName: 'TORONTO STAR',
+    type: 'national',
+    countryCode: 'CA',
+    ownership: { owner: 'Torstar Corporation', parent: 'NordStar Capital', type: 'private', note: 'Acquired by NordStar in 2020 for $52M' },
+    funding: { model: 'Subscriptions & advertising' },
+  },
+  // Postmedia chain
+  'calgaryherald.com': {
+    displayName: 'CALGARY HERALD',
+    type: 'local',
+    countryCode: 'CA',
+    ownership: { owner: 'Postmedia Network', type: 'public_traded', note: 'Part of Postmedia chain. TSX (PNC.A)' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'edmontonjournal.com': {
+    displayName: 'EDMONTON JOURNAL',
+    type: 'local',
+    countryCode: 'CA',
+    ownership: { owner: 'Postmedia Network', type: 'public_traded', note: 'Part of Postmedia chain' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'vancouversun.com': {
+    displayName: 'VANCOUVER SUN',
+    type: 'local',
+    countryCode: 'CA',
+    ownership: { owner: 'Postmedia Network', type: 'public_traded', note: 'Part of Postmedia chain' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'ottawacitizen.com': {
+    displayName: 'OTTAWA CITIZEN',
+    type: 'local',
+    countryCode: 'CA',
+    ownership: { owner: 'Postmedia Network', type: 'public_traded', note: 'Part of Postmedia chain' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'montrealgazette.com': {
+    displayName: 'MONTREAL GAZETTE',
+    type: 'local',
+    countryCode: 'CA',
+    ownership: { owner: 'Postmedia Network', type: 'public_traded', note: 'Part of Postmedia chain' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'theprovince.com': {
+    displayName: 'THE PROVINCE',
+    type: 'local',
+    countryCode: 'CA',
+    ownership: { owner: 'Postmedia Network', type: 'public_traded', note: 'Vancouver tabloid. Part of Postmedia chain' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'windsorstar.com': {
+    displayName: 'WINDSOR STAR',
+    type: 'local',
+    countryCode: 'CA',
+    ownership: { owner: 'Postmedia Network', type: 'public_traded', note: 'Part of Postmedia chain' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'leaderpost.com': {
+    displayName: 'REGINA LEADER-POST',
+    type: 'local',
+    countryCode: 'CA',
+    ownership: { owner: 'Postmedia Network', type: 'public_traded', note: 'Part of Postmedia chain' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'winnipegfreepress.com': {
+    displayName: 'WINNIPEG FREE PRESS',
+    type: 'local',
+    countryCode: 'CA',
+    ownership: { owner: 'FP Canadian Newspapers LP', type: 'private', note: 'One of few major independent papers in Canada. Family-owned since 2001' },
+    funding: { model: 'Subscriptions & advertising' },
+  },
+  'thechronicleherald.ca': {
+    displayName: 'CHRONICLE HERALD',
+    type: 'local',
+    countryCode: 'CA',
+    ownership: { owner: 'SaltWire Network', type: 'private', note: 'Largest independently owned newspaper group in Atlantic Canada' },
+    funding: { model: 'Subscriptions & advertising' },
+  },
+
+  // ===========================================================================
+  // UK NATIONAL
+  // ===========================================================================
+  'telegraph.co.uk': {
+    displayName: 'THE TELEGRAPH',
+    type: 'national',
+    countryCode: 'UK',
+    ownership: { owner: 'RedBird IMI', type: 'private', note: 'UAE-backed consortium bid approved 2024; previously Barclay family (since 2004)' },
+    funding: { model: 'Subscriptions (primary) & advertising' },
+  },
+  'independent.co.uk': {
+    displayName: 'THE INDEPENDENT',
+    type: 'national',
+    countryCode: 'UK',
+    ownership: { owner: 'Independent Digital News & Media', parent: 'Sultan Muhammad Abuljadayel', type: 'private', note: 'Saudi investor acquired majority 2023. Digital-only since 2016' },
+    funding: { model: 'Advertising (free access)' },
+  },
+  'thetimes.co.uk': {
+    displayName: 'THE TIMES',
+    type: 'national',
+    countryCode: 'UK',
+    ownership: { owner: 'Times Media Limited', parent: 'News UK (News Corp)', type: 'public_traded', note: 'News Corp trades NASDAQ (NWSA). Murdoch family controls voting shares' },
+    funding: { model: 'Subscriptions (hard paywall) & advertising' },
+  },
+  'dailymail.co.uk': {
+    displayName: 'DAILY MAIL',
+    type: 'national',
+    countryCode: 'UK',
+    ownership: { owner: 'Daily Mail and General Trust (DMGT)', type: 'private', note: 'Controlled by 4th Viscount Rothermere (Jonathan Harmsworth). Delisted 2021' },
+    funding: { model: 'Advertising (largest English-language newspaper website)' },
+  },
+  'mirror.co.uk': {
+    displayName: 'THE MIRROR',
+    type: 'national',
+    countryCode: 'UK',
+    ownership: { owner: 'Reach plc', type: 'public_traded', note: 'Traded on London Stock Exchange (RCH). UK\'s largest newspaper publisher' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'thesun.co.uk': {
+    displayName: 'THE SUN',
+    type: 'national',
+    countryCode: 'UK',
+    ownership: { owner: 'News UK', parent: 'News Corp (Murdoch family)', type: 'public_traded', note: 'News Corp trades NASDAQ (NWSA). UK\'s highest-circulation newspaper' },
+    funding: { model: 'Advertising (free access)' },
+  },
+  'express.co.uk': {
+    displayName: 'EXPRESS',
+    type: 'national',
+    countryCode: 'UK',
+    ownership: { owner: 'Reach plc', type: 'public_traded', note: 'LSE (RCH). Acquired from Richard Desmond in 2018 for £127M' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+
+  // ===========================================================================
+  // AUSTRALIAN NATIONAL
+  // ===========================================================================
+  'theaustralian.com.au': {
+    displayName: 'THE AUSTRALIAN',
+    type: 'national',
+    countryCode: 'AU',
+    ownership: { owner: 'News Corp Australia', parent: 'News Corp (Murdoch family)', type: 'public_traded', note: 'News Corp trades NASDAQ (NWSA). Australia\'s only national broadsheet' },
+    funding: { model: 'Subscriptions (paywall) & advertising' },
+  },
+  'smh.com.au': {
+    displayName: 'SYDNEY MORNING HERALD',
+    type: 'national',
+    countryCode: 'AU',
+    ownership: { owner: 'Nine Entertainment', type: 'public_traded', note: 'ASX (NEC). Part of former Fairfax Media, merged with Nine 2018' },
+    funding: { model: 'Subscriptions & advertising' },
+  },
+  'theage.com.au': {
+    displayName: 'THE AGE',
+    type: 'national',
+    countryCode: 'AU',
+    ownership: { owner: 'Nine Entertainment', type: 'public_traded', note: 'ASX (NEC). Melbourne broadsheet; part of former Fairfax Media' },
+    funding: { model: 'Subscriptions & advertising' },
+  },
+  'afr.com': {
+    displayName: 'AFR',
+    type: 'specialized',
+    countryCode: 'AU',
+    ownership: { owner: 'Nine Entertainment', type: 'public_traded', note: 'Australian Financial Review; acquired via Fairfax merger. ASX (NEC)' },
+    funding: { model: 'Subscriptions (primary) & advertising' },
+  },
+
+  // ===========================================================================
+  // NEW ZEALAND
+  // ===========================================================================
+  'nzherald.co.nz': {
+    displayName: 'NZ HERALD',
+    type: 'national',
+    countryCode: 'NZ',
+    ownership: { owner: 'New Zealand Media and Entertainment (NZME)', type: 'public_traded', note: 'Traded on NZX (NZM). New Zealand\'s largest newspaper' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'stuff.co.nz': {
+    displayName: 'STUFF',
+    type: 'national',
+    countryCode: 'NZ',
+    ownership: { owner: 'Stuff Limited', type: 'private', note: 'Sold by Nine Entertainment to CEO Sinead Boucher for $1 in 2020' },
+    funding: { model: 'Advertising (free access model)' },
+  },
+
+  // ===========================================================================
+  // IRELAND
+  // ===========================================================================
+  'irishtimes.com': {
+    displayName: 'IRISH TIMES',
+    type: 'national',
+    countryCode: 'IE',
+    ownership: { owner: 'The Irish Times Trust', type: 'trust', note: 'Trust structure ensures editorial independence; cannot be sold for profit' },
+    funding: { model: 'Subscriptions & advertising' },
+  },
+  'independent.ie': {
+    displayName: 'IRISH INDEPENDENT',
+    type: 'national',
+    countryCode: 'IE',
+    ownership: { owner: 'Mediahuis', type: 'private', note: 'Belgian media group acquired from INM in 2019. Ireland\'s largest newspaper' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+
+  // ===========================================================================
+  // ANALYSIS / THINK TANKS
+  // ===========================================================================
+  'thehill.com': {
+    displayName: 'THE HILL',
+    type: 'analysis',
+    countryCode: 'US',
+    ownership: { owner: 'Nexstar Media Group', type: 'public_traded', note: 'NASDAQ (NXST). Nexstar acquired The Hill in 2021 for $130M' },
+    funding: { model: 'Advertising & events' },
+  },
+  'politico.com': {
+    displayName: 'POLITICO',
+    type: 'analysis',
+    countryCode: 'US',
+    ownership: { owner: 'Axel Springer SE', type: 'private', note: 'German media conglomerate acquired Politico in 2021 for ~$1B. KKR is investor' },
+    funding: { model: 'Advertising, Politico Pro subscriptions & events' },
+  },
+  'responsiblestatecraft.org': {
+    displayName: 'RESPONSIBLE STATECRAFT',
+    type: 'analysis',
+    countryCode: 'US',
+    ownership: { owner: 'Quincy Institute for Responsible Statecraft', type: 'nonprofit', note: 'Think tank founded 2019 with Koch & Soros funding' },
+    funding: { model: 'Foundation grants & donations' },
+  },
+  'foreignpolicy.com': {
+    displayName: 'FOREIGN POLICY',
+    type: 'analysis',
+    countryCode: 'US',
+    ownership: { owner: 'The FP Group', parent: 'Graham Holdings Company', type: 'public_traded', note: 'NYSE (GHC). Founded by Samuel Huntington' },
+    funding: { model: 'Subscriptions, advertising & events' },
+  },
+  'foreignaffairs.com': {
+    displayName: 'FOREIGN AFFAIRS',
+    type: 'analysis',
+    countryCode: 'US',
+    ownership: { owner: 'Council on Foreign Relations', type: 'nonprofit', note: 'Published by CFR since 1922. Influential foreign policy journal' },
+    funding: { model: 'Subscriptions & CFR funding' },
+  },
+  'cfr.org': {
+    displayName: 'CFR',
+    type: 'analysis',
+    countryCode: 'US',
+    ownership: { owner: 'Council on Foreign Relations', type: 'nonprofit', note: 'Non-partisan think tank founded 1921. ~5,000 members' },
+    funding: { model: 'Membership dues, corporate sponsors & foundation grants' },
+  },
+  'brookings.edu': {
+    displayName: 'BROOKINGS',
+    type: 'analysis',
+    countryCode: 'US',
+    ownership: { owner: 'Brookings Institution', type: 'nonprofit', note: 'Founded 1916. Centrist/center-left; largest US think tank' },
+    funding: { model: 'Foundation grants, corporate donations & government contracts' },
+  },
+  'cato.org': {
+    displayName: 'CATO INSTITUTE',
+    type: 'analysis',
+    countryCode: 'US',
+    ownership: { owner: 'Cato Institute', type: 'nonprofit', note: 'Libertarian think tank founded 1977 by Charles Koch' },
+    funding: { model: 'Individual donations & foundation grants (no government funding)' },
+  },
+  'heritage.org': {
+    displayName: 'HERITAGE FOUNDATION',
+    type: 'analysis',
+    countryCode: 'US',
+    ownership: { owner: 'The Heritage Foundation', type: 'nonprofit', note: 'Conservative think tank founded 1973. Influential in Republican circles' },
+    funding: { model: 'Individual donations, foundation grants & corporate sponsors' },
+  },
+  'carnegieendowment.org': {
+    displayName: 'CARNEGIE',
+    type: 'analysis',
+    countryCode: 'US',
+    ownership: { owner: 'Carnegie Endowment for International Peace', type: 'nonprofit', note: 'Founded 1910 by Andrew Carnegie. Global network' },
+    funding: { model: 'Endowment income, foundation grants & government contracts' },
+  },
+  'rand.org': {
+    displayName: 'RAND',
+    type: 'analysis',
+    countryCode: 'US',
+    ownership: { owner: 'RAND Corporation', type: 'nonprofit', note: 'Founded 1948; originally Douglas Aircraft/Air Force project' },
+    funding: { model: 'US government contracts (primary), foundation grants' },
+  },
+  'diplomaticopinion.com': {
+    displayName: 'DIPLOMATIC OPINION',
+    type: 'analysis',
+    countryCode: 'US',
+    ownership: { owner: 'Diplomatic Opinion', type: 'private' },
+    funding: { model: 'Not publicly disclosed' },
+  },
+  'harvardpoliticalreview.com': {
+    displayName: 'HARVARD POLITICAL REVIEW',
+    type: 'analysis',
+    countryCode: 'US',
+    ownership: { owner: 'Harvard Political Review', type: 'nonprofit', note: 'Student-run journal at Harvard; non-partisan since 1969' },
+    funding: { model: 'Harvard University funding & advertising' },
+  },
+  'theharvardpoliticalreview.com': {
+    displayName: 'HARVARD POLITICAL REVIEW',
+    type: 'analysis',
+    countryCode: 'US',
+    ownership: { owner: 'Harvard Political Review', type: 'nonprofit', note: 'Student-run journal' },
+    funding: { model: 'Harvard University funding' },
+  },
+  'leaders-mena.com': {
+    displayName: 'LEADERS MENA',
+    type: 'analysis',
+    countryCode: 'AE',
+    ownership: { owner: 'Leaders MENA', type: 'private', note: 'Middle East & North Africa focused' },
+    funding: { model: 'Sponsorships & events' },
+  },
+
+  // ===========================================================================
+  // MAGAZINES
+  // ===========================================================================
+  'forbes.com': {
+    displayName: 'FORBES',
+    type: 'magazine',
+    countryCode: 'US',
+    ownership: { owner: 'Forbes Media', parent: 'Integrated Whale Media (Austin Russell)', type: 'private', note: 'Luminar founder Austin Russell acquired majority stake 2022' },
+    funding: { model: 'Advertising, Forbes contributor network & events' },
+  },
+  'time.com': {
+    displayName: 'TIME',
+    type: 'magazine',
+    countryCode: 'US',
+    ownership: { owner: 'Time USA, LLC', parent: 'Marc Benioff', type: 'private', note: 'Purchased by Salesforce founder Marc Benioff in 2018 for $190M' },
+    funding: { model: 'Advertising, subscriptions & events' },
+  },
+  'newsweek.com': {
+    displayName: 'NEWSWEEK',
+    type: 'magazine',
+    countryCode: 'US',
+    ownership: { owner: 'Newsweek Media Group', parent: 'IBT Media', type: 'private', note: 'Owned by IBT Media (Dev Pragad). Controversial ownership history' },
+    funding: { model: 'Advertising (primarily digital)' },
+  },
+  'economist.com': {
+    displayName: 'THE ECONOMIST',
+    type: 'magazine',
+    countryCode: 'UK',
+    ownership: { owner: 'The Economist Group', type: 'private', note: 'Agnelli family (Exor) ~43%, Rothschild family ~21%' },
+    funding: { model: 'Subscriptions (primary) & advertising' },
+  },
+  'theatlantic.com': {
+    displayName: 'THE ATLANTIC',
+    type: 'magazine',
+    countryCode: 'US',
+    ownership: { owner: 'The Atlantic Monthly Group', parent: 'Emerson Collective (Laurene Powell Jobs)', type: 'private', note: 'Steve Jobs\' widow acquired majority stake in 2017' },
+    funding: { model: 'Subscriptions, advertising & events (Atlantic Festival)' },
+  },
+  'newyorker.com': {
+    displayName: 'THE NEW YORKER',
+    type: 'magazine',
+    countryCode: 'US',
+    ownership: { owner: 'The New Yorker', parent: 'Condé Nast (Advance Publications)', type: 'private', note: 'Advance owned by Newhouse family since 1985' },
+    funding: { model: 'Subscriptions & advertising' },
+  },
+
+  // ===========================================================================
+  // SPECIALIZED / FINANCIAL / TECH
+  // ===========================================================================
+  'bloomberg.com': {
+    displayName: 'BLOOMBERG',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'Michael Bloomberg', parent: 'Bloomberg L.P.', type: 'private', note: 'Michael Bloomberg owns ~88%. Revenue primarily from Terminal (~$10B/year)' },
+    funding: { model: 'Bloomberg Terminal subscriptions (primary), news licensing & advertising' },
+  },
+  'cnbc.com': {
+    displayName: 'CNBC',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'NBCUniversal', parent: 'Comcast Corporation', type: 'public_traded', note: 'NASDAQ (CMCSA). Business & financial news network' },
+    funding: { model: 'Advertising, cable carriage fees & CNBC Pro subscriptions' },
+  },
+  'ft.com': {
+    displayName: 'FINANCIAL TIMES',
+    type: 'specialized',
+    countryCode: 'UK',
+    ownership: { owner: 'Nikkei, Inc.', type: 'private', note: 'Japanese media company acquired FT from Pearson in 2015 for $1.3B' },
+    funding: { model: 'Subscriptions (1M+ paying readers) & advertising' },
+  },
+  'wsj.com': {
+    displayName: 'WALL STREET JOURNAL',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'Dow Jones & Company', parent: 'News Corp (Murdoch family)', type: 'public_traded', note: 'News Corp trades NASDAQ (NWSA). Largest US newspaper by circulation' },
+    funding: { model: 'Subscriptions (3M+) & advertising' },
+  },
+  'business-standard.com': {
+    displayName: 'BUSINESS STANDARD',
+    type: 'specialized',
+    countryCode: 'IN',
+    ownership: { owner: 'Business Standard Limited', type: 'private', note: 'Founded by ABP Group; Kotak Mahindra is significant shareholder' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'livemint.com': {
+    displayName: 'MINT',
+    type: 'specialized',
+    countryCode: 'IN',
+    ownership: { owner: 'HT Media Ltd.', type: 'public_traded', note: 'Listed on BSE/NSE. Part of the Birla family media group' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'financialpost.com': {
+    displayName: 'FINANCIAL POST',
+    type: 'specialized',
+    countryCode: 'CA',
+    ownership: { owner: 'Postmedia Network', type: 'public_traded', note: 'Business section of National Post. TSX (PNC.A)' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'bnnbloomberg.ca': {
+    displayName: 'BNN BLOOMBERG',
+    type: 'specialized',
+    countryCode: 'CA',
+    ownership: { owner: 'Bell Media', parent: 'BCE Inc.', type: 'public_traded', note: 'Canadian business news; Bloomberg partnership. BCE trades TSX/NYSE' },
+    funding: { model: 'Advertising & cable carriage fees' },
+  },
+  'wired.com': {
+    displayName: 'WIRED',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'Wired', parent: 'Condé Nast (Advance Publications)', type: 'private', note: 'Advance owned by Newhouse family' },
+    funding: { model: 'Subscriptions & advertising' },
+  },
+  'techcrunch.com': {
+    displayName: 'TECHCRUNCH',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'TechCrunch', parent: 'Yahoo (Apollo Global Management)', type: 'private', note: 'Yahoo acquired from AOL/Verizon. Apollo acquired Yahoo 2021' },
+    funding: { model: 'Advertising & TechCrunch+ subscriptions' },
+  },
+  'theverge.com': {
+    displayName: 'THE VERGE',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'Vox Media', type: 'private', note: 'Backed by NBCUniversal and venture capital' },
+    funding: { model: 'Advertising & Vox Media brand partnerships' },
+  },
+  'marketwatch.com': {
+    displayName: 'MARKETWATCH',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'Dow Jones & Company', parent: 'News Corp (Murdoch family)', type: 'public_traded', note: 'News Corp trades NASDAQ (NWSA). Sister to WSJ' },
+    funding: { model: 'Advertising (free access)' },
+  },
+  'barrons.com': {
+    displayName: 'BARRONS',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'Dow Jones & Company', parent: 'News Corp (Murdoch family)', type: 'public_traded', note: 'Premium financial weekly since 1921' },
+    funding: { model: 'Subscriptions (paywall) & advertising' },
+  },
+  'investopedia.com': {
+    displayName: 'INVESTOPEDIA',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'Investopedia', parent: 'Dotdash Meredith (IAC)', type: 'public_traded', note: 'IAC trades NASDAQ (IAC)' },
+    funding: { model: 'Advertising & affiliate marketing' },
+  },
+  'seekingalpha.com': {
+    displayName: 'SEEKING ALPHA',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'Seeking Alpha Ltd.', type: 'private', note: 'Crowd-sourced financial analysis; venture-backed' },
+    funding: { model: 'Premium subscriptions & advertising' },
+  },
+  'fool.com': {
+    displayName: 'MOTLEY FOOL',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'The Motley Fool Holdings, Inc.', type: 'private', note: 'Founded 1993 by Tom & David Gardner' },
+    funding: { model: 'Premium subscription services (Stock Advisor, Rule Breakers)' },
+  },
+  'zacks.com': {
+    displayName: 'ZACKS',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'Zacks Investment Research', type: 'private', note: 'Founded 1978 by Len Zacks' },
+    funding: { model: 'Premium subscriptions & advertising' },
+  },
+  '247wallst.com': {
+    displayName: '24/7 WALL ST',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: '24/7 Wall St. LLC', type: 'private' },
+    funding: { model: 'Advertising' },
+  },
+  'investing.com': {
+    displayName: 'INVESTING.COM',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'Investing.com', parent: 'Fusion Media Ltd.', type: 'private' },
+    funding: { model: 'Advertising & broker partnerships' },
+  },
+  'marketscreener.com': {
+    displayName: 'MARKETSCREENER',
+    type: 'specialized',
+    countryCode: 'FR',
+    ownership: { owner: 'Surperformance SAS', type: 'private' },
+    funding: { model: 'Premium subscriptions & advertising' },
+  },
+  'thestreet.com': {
+    displayName: 'THE STREET',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'TheStreet, Inc.', parent: 'Maven', type: 'private', note: 'Founded by Jim Cramer 1996. Acquired by Maven 2019' },
+    funding: { model: 'Advertising & premium subscriptions' },
+  },
+  'kiplinger.com': {
+    displayName: 'KIPLINGER',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'Kiplinger Washington Editors', parent: 'Future plc', type: 'public_traded', note: 'UK-based Future plc acquired 2019. LSE (FUTR)' },
+    funding: { model: 'Subscriptions & advertising' },
+  },
+  'morningstar.com': {
+    displayName: 'MORNINGSTAR',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'Morningstar, Inc.', type: 'public_traded', note: 'NASDAQ (MORN). Independent investment research founded 1984' },
+    funding: { model: 'Data/software licensing, Morningstar Premium subscriptions' },
+  },
+  'benzinga.com': {
+    displayName: 'BENZINGA',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'Benzinga', parent: 'Beringer Capital', type: 'private', note: 'Acquired by Beringer Capital 2021' },
+    funding: { model: 'Advertising, data licensing & Benzinga Pro subscriptions' },
+  },
+  'tradingview.com': {
+    displayName: 'TRADINGVIEW',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'TradingView Inc.', type: 'private', note: 'Charting platform valued at $3B+; backed by Tiger Global' },
+    funding: { model: 'Premium subscriptions & broker partnerships' },
+  },
+  'biv.com': {
+    displayName: 'BIV',
+    type: 'specialized',
+    countryCode: 'CA',
+    ownership: { owner: 'Business in Vancouver', parent: 'Glacier Media', type: 'public_traded', note: 'TSX Venture (GVC)' },
+    funding: { model: 'Subscriptions & advertising' },
+  },
+  'virginiabusiness.com': {
+    displayName: 'VIRGINIA BUSINESS',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'Virginia Business Magazine', type: 'private' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+  'producer.com': {
+    displayName: 'WESTERN PRODUCER',
+    type: 'specialized',
+    countryCode: 'CA',
+    ownership: { owner: 'Glacier FarmMedia', parent: 'Glacier Media', type: 'public_traded', note: 'TSX Venture (GVC). Canadian agricultural publication' },
+    funding: { model: 'Subscriptions & agricultural advertising' },
+  },
+  'successfulfarming.com': {
+    displayName: 'SUCCESSFUL FARMING',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'Meredith Corporation', parent: 'Dotdash Meredith (IAC)', type: 'public_traded', note: 'IAC trades NASDAQ (IAC)' },
+    funding: { model: 'Advertising & subscriptions' },
+  },
+};
+
+// Get source info with transparency data
+function getSourceInfo(domain: string): SourceInfo {
   if (!domain) return { displayName: 'SOURCE', type: 'local', countryCode: 'US' };
   const lower = domain.toLowerCase();
   
-  const sources: Record<string, { displayName: string; type: SourceType; countryCode: string }> = {
-    // Syndication
-    'finance.yahoo.com': { displayName: 'YAHOO FINANCE', type: 'syndication', countryCode: 'US' },
-    'news.yahoo.com': { displayName: 'YAHOO NEWS', type: 'syndication', countryCode: 'US' },
-    'yahoo.com': { displayName: 'YAHOO', type: 'syndication', countryCode: 'US' },
-    'msn.com': { displayName: 'MSN', type: 'syndication', countryCode: 'US' },
-    // Wire
-    'apnews.com': { displayName: 'AP NEWS', type: 'wire', countryCode: 'US' },
-    'reuters.com': { displayName: 'REUTERS', type: 'wire', countryCode: 'UK' },
-    'afp.com': { displayName: 'AFP', type: 'wire', countryCode: 'FR' },
-    // Public Broadcasting
-    'npr.org': { displayName: 'NPR', type: 'public', countryCode: 'US' },
-    'pbs.org': { displayName: 'PBS', type: 'public', countryCode: 'US' },
-    'opb.org': { displayName: 'OPB', type: 'public', countryCode: 'US' },
-    'bbc.com': { displayName: 'BBC', type: 'public', countryCode: 'UK' },
-    'bbc.co.uk': { displayName: 'BBC', type: 'public', countryCode: 'UK' },
-    'cbc.ca': { displayName: 'CBC', type: 'public', countryCode: 'CA' },
-    'abc.net.au': { displayName: 'ABC AUSTRALIA', type: 'public', countryCode: 'AU' },
-    'sbs.com.au': { displayName: 'SBS', type: 'public', countryCode: 'AU' },
-    'channel4.com': { displayName: 'CHANNEL 4', type: 'public', countryCode: 'UK' },
-    'rnz.co.nz': { displayName: 'RNZ', type: 'public', countryCode: 'NZ' },
-    'rte.ie': { displayName: 'RTE', type: 'public', countryCode: 'IE' },
-    // International
-    'aljazeera.com': { displayName: 'AL JAZEERA', type: 'international', countryCode: 'QA' },
-    'theguardian.com': { displayName: 'THE GUARDIAN', type: 'international', countryCode: 'UK' },
-    'thehindu.com': { displayName: 'THE HINDU', type: 'international', countryCode: 'IN' },
-    'dw.com': { displayName: 'DW', type: 'international', countryCode: 'DE' },
-    'france24.com': { displayName: 'FRANCE 24', type: 'international', countryCode: 'FR' },
-    'scmp.com': { displayName: 'SCMP', type: 'international', countryCode: 'HK' },
-    // Israeli outlets
-    'timesofisrael.com': { displayName: 'TIMES OF ISRAEL', type: 'international', countryCode: 'IL' },
-    'jpost.com': { displayName: 'JERUSALEM POST', type: 'international', countryCode: 'IL' },
-    'ynetnews.com': { displayName: 'YNET NEWS', type: 'international', countryCode: 'IL' },
-    'haaretz.com': { displayName: 'HAARETZ', type: 'international', countryCode: 'IL' },
-    'i24news.tv': { displayName: 'I24 NEWS', type: 'international', countryCode: 'IL' },
-    // Middle East
-    'thearabdailynews.com': { displayName: 'ARAB DAILY NEWS', type: 'international', countryCode: 'US' },
-    'arabnews.com': { displayName: 'ARAB NEWS', type: 'international', countryCode: 'SA' },
-    'middleeasteye.net': { displayName: 'MIDDLE EAST EYE', type: 'international', countryCode: 'UK' },
-    // Asia Pacific
-    'straitstimes.com': { displayName: 'STRAITS TIMES', type: 'international', countryCode: 'SG' },
-    'channelnewsasia.com': { displayName: 'CNA', type: 'international', countryCode: 'SG' },
-    'japantimes.co.jp': { displayName: 'JAPAN TIMES', type: 'international', countryCode: 'JP' },
-    'koreaherald.com': { displayName: 'KOREA HERALD', type: 'international', countryCode: 'KR' },
-    'koreatimes.co.kr': { displayName: 'KOREA TIMES', type: 'international', countryCode: 'KR' },
-    'bangkokpost.com': { displayName: 'BANGKOK POST', type: 'international', countryCode: 'TH' },
-    // US Corporate
-    'cnn.com': { displayName: 'CNN', type: 'corporate', countryCode: 'US' },
-    'foxnews.com': { displayName: 'FOX NEWS', type: 'corporate', countryCode: 'US' },
-    'nbcnews.com': { displayName: 'NBC NEWS', type: 'corporate', countryCode: 'US' },
-    'cbsnews.com': { displayName: 'CBS NEWS', type: 'corporate', countryCode: 'US' },
-    'abcnews.go.com': { displayName: 'ABC NEWS', type: 'corporate', countryCode: 'US' },
-    'msnbc.com': { displayName: 'MSNBC', type: 'corporate', countryCode: 'US' },
-    // UK Corporate
-    'sky.com': { displayName: 'SKY NEWS', type: 'corporate', countryCode: 'UK' },
-    'news.sky.com': { displayName: 'SKY NEWS', type: 'corporate', countryCode: 'UK' },
-    'itv.com': { displayName: 'ITV NEWS', type: 'corporate', countryCode: 'UK' },
-    // Canadian Corporate
-    'globalnews.ca': { displayName: 'GLOBAL NEWS', type: 'corporate', countryCode: 'CA' },
-    'ctvnews.ca': { displayName: 'CTV NEWS', type: 'corporate', countryCode: 'CA' },
-    'citynews.ca': { displayName: 'CITY NEWS', type: 'corporate', countryCode: 'CA' },
-    // Australian Corporate
-    'news.com.au': { displayName: 'NEWS.COM.AU', type: 'corporate', countryCode: 'AU' },
-    '9news.com.au': { displayName: '9 NEWS', type: 'corporate', countryCode: 'AU' },
-    '7news.com.au': { displayName: '7 NEWS', type: 'corporate', countryCode: 'AU' },
-    // US National
-    'usatoday.com': { displayName: 'USA TODAY', type: 'national', countryCode: 'US' },
-    'axios.com': { displayName: 'AXIOS', type: 'national', countryCode: 'US' },
-    // Canadian National
-    'nationalpost.com': { displayName: 'NATIONAL POST', type: 'national', countryCode: 'CA' },
-    'theglobeandmail.com': { displayName: 'GLOBE AND MAIL', type: 'national', countryCode: 'CA' },
-    'globeandmail.com': { displayName: 'GLOBE AND MAIL', type: 'national', countryCode: 'CA' },
-    'torontostar.com': { displayName: 'TORONTO STAR', type: 'national', countryCode: 'CA' },
-    'thestar.com': { displayName: 'TORONTO STAR', type: 'national', countryCode: 'CA' },
-    // Australian National
-    'theaustralian.com.au': { displayName: 'THE AUSTRALIAN', type: 'national', countryCode: 'AU' },
-    'smh.com.au': { displayName: 'SYDNEY MORNING HERALD', type: 'national', countryCode: 'AU' },
-    'theage.com.au': { displayName: 'THE AGE', type: 'national', countryCode: 'AU' },
-    // UK National
-    'telegraph.co.uk': { displayName: 'THE TELEGRAPH', type: 'national', countryCode: 'UK' },
-    'independent.co.uk': { displayName: 'THE INDEPENDENT', type: 'national', countryCode: 'UK' },
-    'thetimes.co.uk': { displayName: 'THE TIMES', type: 'national', countryCode: 'UK' },
-    'dailymail.co.uk': { displayName: 'DAILY MAIL', type: 'national', countryCode: 'UK' },
-    'mirror.co.uk': { displayName: 'THE MIRROR', type: 'national', countryCode: 'UK' },
-    'thesun.co.uk': { displayName: 'THE SUN', type: 'national', countryCode: 'UK' },
-    'express.co.uk': { displayName: 'EXPRESS', type: 'national', countryCode: 'UK' },
-    // New Zealand National
-    'nzherald.co.nz': { displayName: 'NZ HERALD', type: 'national', countryCode: 'NZ' },
-    'stuff.co.nz': { displayName: 'STUFF', type: 'national', countryCode: 'NZ' },
-    // Ireland National
-    'irishtimes.com': { displayName: 'IRISH TIMES', type: 'national', countryCode: 'IE' },
-    'independent.ie': { displayName: 'IRISH INDEPENDENT', type: 'national', countryCode: 'IE' },
-    // Canadian Local (Postmedia chain)
-    'leaderpost.com': { displayName: 'REGINA LEADER-POST', type: 'local', countryCode: 'CA' },
-    'calgaryherald.com': { displayName: 'CALGARY HERALD', type: 'local', countryCode: 'CA' },
-    'edmontonjournal.com': { displayName: 'EDMONTON JOURNAL', type: 'local', countryCode: 'CA' },
-    'vancouversun.com': { displayName: 'VANCOUVER SUN', type: 'local', countryCode: 'CA' },
-    'ottawacitizen.com': { displayName: 'OTTAWA CITIZEN', type: 'local', countryCode: 'CA' },
-    'montrealgazette.com': { displayName: 'MONTREAL GAZETTE', type: 'local', countryCode: 'CA' },
-    'winnipegfreepress.com': { displayName: 'WINNIPEG FREE PRESS', type: 'local', countryCode: 'CA' },
-    'theprovince.com': { displayName: 'THE PROVINCE', type: 'local', countryCode: 'CA' },
-    'windsorstar.com': { displayName: 'WINDSOR STAR', type: 'local', countryCode: 'CA' },
-    'thechronicleherald.ca': { displayName: 'CHRONICLE HERALD', type: 'local', countryCode: 'CA' },
-    // Analysis / Think Tanks
-    'thehill.com': { displayName: 'THE HILL', type: 'analysis', countryCode: 'US' },
-    'politico.com': { displayName: 'POLITICO', type: 'analysis', countryCode: 'US' },
-    'responsiblestatecraft.org': { displayName: 'RESPONSIBLE STATECRAFT', type: 'analysis', countryCode: 'US' },
-    'foreignpolicy.com': { displayName: 'FOREIGN POLICY', type: 'analysis', countryCode: 'US' },
-    'foreignaffairs.com': { displayName: 'FOREIGN AFFAIRS', type: 'analysis', countryCode: 'US' },
-    'cfr.org': { displayName: 'CFR', type: 'analysis', countryCode: 'US' },
-    'brookings.edu': { displayName: 'BROOKINGS', type: 'analysis', countryCode: 'US' },
-    'cato.org': { displayName: 'CATO INSTITUTE', type: 'analysis', countryCode: 'US' },
-    'heritage.org': { displayName: 'HERITAGE', type: 'analysis', countryCode: 'US' },
-    'carnegieendowment.org': { displayName: 'CARNEGIE', type: 'analysis', countryCode: 'US' },
-    'rand.org': { displayName: 'RAND', type: 'analysis', countryCode: 'US' },
-    'diplomaticopinion.com': { displayName: 'DIPLOMATIC OPINION', type: 'analysis', countryCode: 'US' },
-    'harvardpoliticalreview.com': { displayName: 'HARVARD POLITICAL REVIEW', type: 'analysis', countryCode: 'US' },
-    'theharvardpoliticalreview.com': { displayName: 'HARVARD POLITICAL REVIEW', type: 'analysis', countryCode: 'US' },
-    'leaders-mena.com': { displayName: 'LEADERS MENA', type: 'analysis', countryCode: 'AE' },
-    // Magazines
-    'forbes.com': { displayName: 'FORBES', type: 'magazine', countryCode: 'US' },
-    'time.com': { displayName: 'TIME', type: 'magazine', countryCode: 'US' },
-    'newsweek.com': { displayName: 'NEWSWEEK', type: 'magazine', countryCode: 'US' },
-    'economist.com': { displayName: 'THE ECONOMIST', type: 'magazine', countryCode: 'UK' },
-    'theatlantic.com': { displayName: 'THE ATLANTIC', type: 'magazine', countryCode: 'US' },
-    'newyorker.com': { displayName: 'THE NEW YORKER', type: 'magazine', countryCode: 'US' },
-    // Specialized / Business / Financial
-    'wired.com': { displayName: 'WIRED', type: 'specialized', countryCode: 'US' },
-    'techcrunch.com': { displayName: 'TECHCRUNCH', type: 'specialized', countryCode: 'US' },
-    'theverge.com': { displayName: 'THE VERGE', type: 'specialized', countryCode: 'US' },
-    'producer.com': { displayName: 'PRODUCER', type: 'specialized', countryCode: 'US' },
-    'successfulfarming.com': { displayName: 'SUCCESSFUL FARMING', type: 'specialized', countryCode: 'US' },
-    'livemint.com': { displayName: 'MINT', type: 'specialized', countryCode: 'IN' },
-    'bloomberg.com': { displayName: 'BLOOMBERG', type: 'specialized', countryCode: 'US' },
-    'cnbc.com': { displayName: 'CNBC', type: 'specialized', countryCode: 'US' },
-    'ft.com': { displayName: 'FINANCIAL TIMES', type: 'specialized', countryCode: 'UK' },
-    'wsj.com': { displayName: 'WSJ', type: 'specialized', countryCode: 'US' },
-    'business-standard.com': { displayName: 'BUSINESS STANDARD', type: 'specialized', countryCode: 'IN' },
-    'financialpost.com': { displayName: 'FINANCIAL POST', type: 'specialized', countryCode: 'CA' },
-    'bnnbloomberg.ca': { displayName: 'BNN BLOOMBERG', type: 'specialized', countryCode: 'CA' },
-    'tradingview.com': { displayName: 'TRADINGVIEW', type: 'specialized', countryCode: 'US' },
-    'marketwatch.com': { displayName: 'MARKETWATCH', type: 'specialized', countryCode: 'US' },
-    'barrons.com': { displayName: 'BARRONS', type: 'specialized', countryCode: 'US' },
-    'investopedia.com': { displayName: 'INVESTOPEDIA', type: 'specialized', countryCode: 'US' },
-    'seekingalpha.com': { displayName: 'SEEKING ALPHA', type: 'specialized', countryCode: 'US' },
-    'fool.com': { displayName: 'MOTLEY FOOL', type: 'specialized', countryCode: 'US' },
-    'zacks.com': { displayName: 'ZACKS', type: 'specialized', countryCode: 'US' },
-    '247wallst.com': { displayName: '24/7 WALL ST', type: 'specialized', countryCode: 'US' },
-    'investing.com': { displayName: 'INVESTING.COM', type: 'specialized', countryCode: 'US' },
-    'marketscreener.com': { displayName: 'MARKETSCREENER', type: 'specialized', countryCode: 'FR' },
-    'thestreet.com': { displayName: 'THE STREET', type: 'specialized', countryCode: 'US' },
-    'kiplinger.com': { displayName: 'KIPLINGER', type: 'specialized', countryCode: 'US' },
-    'morningstar.com': { displayName: 'MORNINGSTAR', type: 'specialized', countryCode: 'US' },
-    'benzinga.com': { displayName: 'BENZINGA', type: 'specialized', countryCode: 'US' },
-    'biv.com': { displayName: 'BIV', type: 'specialized', countryCode: 'CA' },
-    'virginiabusiness.com': { displayName: 'VIRGINIA BUSINESS', type: 'specialized', countryCode: 'US' },
-    'afr.com': { displayName: 'AFR', type: 'specialized', countryCode: 'AU' },
-  };
-  
+  // Check exact matches first
   for (const [key, info] of Object.entries(sources)) {
     if (lower.includes(key)) return info;
   }
   
-  // Country from TLD
+  // Country from TLD for unknown sources
   let countryCode = 'US';
   if (lower.endsWith('.uk') || lower.endsWith('.co.uk')) countryCode = 'UK';
   else if (lower.endsWith('.ca')) countryCode = 'CA';
@@ -275,28 +1160,15 @@ function getSourceInfo(domain: string): { displayName: string; type: SourceType;
   else if (lower.endsWith('.ru')) countryCode = 'RU';
   else if (lower.endsWith('.br') || lower.endsWith('.com.br')) countryCode = 'BR';
   else if (lower.endsWith('.mx') || lower.endsWith('.com.mx')) countryCode = 'MX';
-  else if (lower.endsWith('.es')) countryCode = 'ES';
-  else if (lower.endsWith('.it')) countryCode = 'IT';
-  else if (lower.endsWith('.nl')) countryCode = 'NL';
-  else if (lower.endsWith('.se')) countryCode = 'SE';
-  else if (lower.endsWith('.no')) countryCode = 'NO';
-  else if (lower.endsWith('.ae')) countryCode = 'AE';
-  else if (lower.endsWith('.sa')) countryCode = 'SA';
-  else if (lower.endsWith('.za')) countryCode = 'ZA';
   else if (lower.endsWith('.sg')) countryCode = 'SG';
   else if (lower.endsWith('.hk') || lower.endsWith('.com.hk')) countryCode = 'HK';
   else if (lower.endsWith('.th') || lower.endsWith('.co.th')) countryCode = 'TH';
-  else if (lower.endsWith('.ph') || lower.endsWith('.com.ph')) countryCode = 'PH';
-  else if (lower.endsWith('.my') || lower.endsWith('.com.my')) countryCode = 'MY';
   
   // Smart fallback: detect type from domain name patterns
   let type: SourceType = 'local';
-  
-  // Financial/business domains should be 'specialized', never 'local'
   if (lower.includes('financial') || lower.includes('finance') || 
       lower.includes('business') || lower.includes('market') ||
-      lower.includes('trading') || lower.includes('invest') ||
-      lower.includes('economic') || lower.includes('money')) {
+      lower.includes('trading') || lower.includes('invest')) {
     type = 'specialized';
   }
   
@@ -310,24 +1182,17 @@ function extractKeywordsFromUrl(url: string): string | null {
     const urlObj = new URL(url);
     const path = urlObj.pathname.toLowerCase();
     
-    // Extract meaningful words from the URL path
     const words = path
       .split(/[\/\-_.]/)
-      .filter(segment => segment.length > 2) // At least 3 chars
-      .filter(segment => !/^[0-9a-f]+$/i.test(segment)) // Remove pure hex/IDs
-      .filter(segment => !/^\d+$/.test(segment)) // Remove pure numbers
-      .filter(segment => /[a-z]/i.test(segment)) // Must have letters
+      .filter(segment => segment.length > 2)
+      .filter(segment => !/^[0-9a-f]+$/i.test(segment))
+      .filter(segment => !/^\d+$/.test(segment))
+      .filter(segment => /[a-z]/i.test(segment))
       .filter(segment => !/^(content|article|story|news|post|index|html|htm|php|aspx|world|us|uk|business|tech|opinion|markets|amp|www|com|org|net)$/i.test(segment));
     
-    if (words.length < 2) {
-      return null; // Opaque URL - need user keywords
-    }
-    
-    // Take up to 8 meaningful words
+    if (words.length < 2) return null;
     return words.slice(0, 8).join(' ');
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 // --- Helpers ---
@@ -387,7 +1252,7 @@ async function searchWithCSE(query: string): Promise<CSEResult[]> {
   const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_CSE_API_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&num=10`;
   
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout for CSE
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   try {
     const response = await fetch(url, { signal: controller.signal });
@@ -401,15 +1266,11 @@ async function searchWithCSE(query: string): Promise<CSEResult[]> {
 
     const data = await response.json();
     
-    if (!data.items || data.items.length === 0) {
-      return [];
-    }
+    if (!data.items || data.items.length === 0) return [];
 
     return data.items.map((item: any) => {
       let domain = '';
-      try {
-        domain = new URL(item.link).hostname.replace(/^www\./, '');
-      } catch {}
+      try { domain = new URL(item.link).hostname.replace(/^www\./, ''); } catch {}
       
       return {
         url: item.link,
@@ -420,15 +1281,13 @@ async function searchWithCSE(query: string): Promise<CSEResult[]> {
     });
   } catch (error: any) {
     clearTimeout(timeoutId);
-    if (error.name === 'AbortError') {
-      throw new Error('Search timeout');
-    }
+    if (error.name === 'AbortError') throw new Error('Search timeout');
     throw error;
   }
 }
 
 // =============================================================================
-// STEP 2: THE BRAIN - Gemini Synthesis (NO Grounding)
+// STEP 2: THE BRAIN - Gemini Synthesis
 // =============================================================================
 interface IntelBrief {
   summary: string;
@@ -436,11 +1295,7 @@ interface IntelBrief {
   keyDifferences: string;
 }
 
-async function synthesizeWithGemini(
-  searchResults: CSEResult[],
-  originalQuery: string
-): Promise<IntelBrief> {
-  // Build context from search results
+async function synthesizeWithGemini(searchResults: CSEResult[], originalQuery: string): Promise<IntelBrief> {
   const context = searchResults.map((r, i) => 
     `[Source ${i + 1}: ${r.domain}]\nTitle: ${r.title}\nSnippet: ${r.snippet}`
   ).join('\n\n');
@@ -455,27 +1310,25 @@ ${context}
 
 RESPOND IN JSON FORMAT:
 {
-  "summary": "3-4 sentences summarizing the story. Grade 6-8 reading level. Bold only the KEY TAKEAWAY of each sentence using **bold** syntax. Max 4 bold phrases. Reader should understand the story by reading ONLY the bold text.",
-  "commonGround": "1-2 sentences. What do the sources AGREE ON? Bold the conclusions/findings, not topic words.",
-  "keyDifferences": "1-2 sentences. The ONE biggest contrast in how sources cover this. Bold the CONTRASTING INTERPRETATIONS. If all sources agree, say 'Sources present a consistent narrative with no major differences.'"
+  "summary": "3-4 sentences summarizing the story. Grade 6-8 reading level. Bold only the KEY TAKEAWAY of each sentence using **bold** syntax. Max 4 bold phrases.",
+  "commonGround": "1-2 sentences. What do the sources AGREE ON? Bold the conclusions/findings.",
+  "keyDifferences": "1-2 sentences. The ONE biggest contrast. Bold the CONTRASTING INTERPRETATIONS. If all agree, say 'Sources present a consistent narrative.'"
 }
 
 RULES:
-- ONLY use information from the sources above - do not add outside knowledge
-- Bold key conclusions, not source names or generic words
-- Use simple language a 12-year-old would understand
-- If sources have limited information, acknowledge that
+- ONLY use information from the sources above
+- Bold key conclusions, not source names
+- Use simple language
 - MAX 2 sentences each for commonGround and keyDifferences
 `.trim();
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout for Gemini
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
     const geminiResponse: any = await genAI.models.generateContent({
       model: "gemini-2.5-flash",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      // NO tools/grounding - pure synthesis from provided context
     });
 
     clearTimeout(timeoutId);
@@ -496,7 +1349,6 @@ RULES:
     }
 
     const parsed = extractJson(text);
-    
     if (!parsed) {
       return {
         summary: `We found **${searchResults.length} sources** covering this story. Click any source below to read their coverage.`,
@@ -513,8 +1365,6 @@ RULES:
   } catch (error: any) {
     clearTimeout(timeoutId);
     console.error('Gemini synthesis error:', error?.message);
-    
-    // Return basic summary if Gemini fails
     return {
       summary: `We found **${searchResults.length} sources** covering this story. Click any source below to read their coverage.`,
       commonGround: '',
@@ -524,7 +1374,7 @@ RULES:
 }
 
 // =============================================================================
-// STEP 3: PROCESS RESULTS - Apply badges and sort
+// STEP 3: PROCESS RESULTS - Apply badges, transparency, and sort
 // =============================================================================
 interface ProcessedSource {
   uri: string;
@@ -534,6 +1384,9 @@ interface ProcessedSource {
   sourceType: SourceType;
   countryCode: string;
   isSyndicated: boolean;
+  // NEW: Transparency data
+  ownership?: OwnershipInfo;
+  funding?: FundingInfo;
 }
 
 function processSearchResults(cseResults: CSEResult[]): ProcessedSource[] {
@@ -553,29 +1406,31 @@ function processSearchResults(cseResults: CSEResult[]): ProcessedSource[] {
       sourceDomain: result.domain,
       sourceType: sourceInfo.type,
       countryCode: sourceInfo.countryCode,
-      isSyndicated: false, // CSE doesn't track syndication
+      isSyndicated: false,
+      // Include transparency data
+      ownership: sourceInfo.ownership,
+      funding: sourceInfo.funding,
     });
   }
 
-  // Sort by source type priority (intelligence hierarchy)
+  // Sort by source type priority
   const typePriority: Record<SourceType, number> = {
-    'wire': 0,          // Raw facts (AP/Reuters) - highest value
-    'specialized': 1,   // Financial intel (FT/Bloomberg/Financial Post)
-    'national': 2,      // Papers of record (NYT/Globe & Mail)
-    'international': 3, // Global perspective (Al Jazeera/Guardian)
-    'public': 4,        // Neutral public broadcasting (BBC/PBS/CBC)
-    'analysis': 5,      // Think tanks (Foreign Policy/Brookings)
-    'corporate': 6,     // TV networks (CNN/Fox/CTV)
-    'syndication': 7,   // Yahoo/MSN - useful paywall bypass, not primary
-    'magazine': 8,      // Long-form (Atlantic/New Yorker)
-    'local': 9,         // Regional papers
-    'state': 10,        // State-affiliated media
-    'reference': 11,    // Wikipedia etc.
-    'platform': 12,     // User-generated (YouTube/Medium)
+    'wire': 0,
+    'specialized': 1,
+    'national': 2,
+    'international': 3,
+    'public': 4,
+    'analysis': 5,
+    'corporate': 6,
+    'syndication': 7,
+    'magazine': 8,
+    'local': 9,
+    'state': 10,
+    'reference': 11,
+    'platform': 12,
   };
 
   processed.sort((a, b) => typePriority[a.sourceType] - typePriority[b.sourceType]);
-
   return processed;
 }
 
@@ -596,12 +1451,9 @@ export async function POST(req: NextRequest) {
 
     // 2. Parse Request Body
     let body: any;
-    try { 
-      body = await req.json(); 
-    } catch { 
-      const error = createError('INVALID_URL');
+    try { body = await req.json(); } catch { 
       return NextResponse.json(
-        { error: 'Invalid request body', errorType: error.type, retryable: false },
+        { error: 'Invalid request body', errorType: 'INVALID_URL', retryable: false },
         { status: 400, headers: corsHeaders }
       );
     }
@@ -622,18 +1474,14 @@ export async function POST(req: NextRequest) {
     let isPaywalled = false;
 
     if (hasKeywords) {
-      // User provided keywords directly
       searchQuery = body.keywords.trim();
-      
       if (searchQuery.length < 3) {
-        const error = createError('INVALID_KEYWORDS');
         return NextResponse.json(
-          { error: 'Please enter at least a few keywords to search.', errorType: error.type, retryable: false },
-          { status: error.statusCode, headers: corsHeaders }
+          { error: 'Please enter at least a few keywords to search.', errorType: 'INVALID_KEYWORDS', retryable: false },
+          { status: 400, headers: corsHeaders }
         );
       }
     } else {
-      // User provided URL - extract keywords
       const validation = validateUrl(body.url);
       if (!validation.valid && validation.error) {
         return NextResponse.json(
@@ -648,7 +1496,6 @@ export async function POST(req: NextRequest) {
       const extractedKeywords = extractKeywordsFromUrl(url);
       
       if (!extractedKeywords) {
-        // Opaque URL - need user to provide keywords
         return NextResponse.json({
           summary: null,
           commonGround: null,
@@ -691,7 +1538,7 @@ export async function POST(req: NextRequest) {
     const intelBrief = await synthesizeWithGemini(cseResults, searchQuery);
     console.log(`[Gemini] Synthesis complete`);
 
-    // 7. STEP 3: Process results with badges
+    // 7. STEP 3: Process results with badges + transparency
     const alternatives = processSearchResults(cseResults);
 
     // 8. Build Response
@@ -711,13 +1558,10 @@ export async function POST(req: NextRequest) {
     console.error('Error in /api/find:', error?.message || error);
     
     let appError: AppError;
-    
-    if (error.message?.includes('fetch failed') || error.message?.includes('ENOTFOUND') || error.message?.includes('network')) {
+    if (error.message?.includes('fetch failed') || error.message?.includes('ENOTFOUND')) {
       appError = createError('NETWORK_ERROR');
-    } else if (error.message?.includes('timeout') || error.message?.includes('aborted') || error.name === 'AbortError') {
+    } else if (error.message?.includes('timeout') || error.name === 'AbortError') {
       appError = createError('TIMEOUT');
-    } else if (error.message?.includes('CSE API error')) {
-      appError = createError('API_ERROR');
     } else {
       appError = createError('API_ERROR');
     }
