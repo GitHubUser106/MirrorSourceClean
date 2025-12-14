@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import UrlInputForm from "@/components/UrlInputForm";
 import ResultsDisplay from "@/components/ResultsDisplay";
+import TransparencyCard from "@/components/TransparencyCard";
 import type { GroundingSource } from "@/types";
 import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle } from "lucide-react";
 
@@ -569,19 +570,35 @@ function HomeContent() {
         <div className="flex-1 bg-slate-50 px-4 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="max-w-4xl mx-auto space-y-6">
 
-            {/* Source Icons */}
+            {/* Source Icons with Transparency Cards */}
             {results.length > 0 && (
               <div className="flex flex-wrap justify-center gap-5 md:gap-8 py-6">
                 {results.map((item, index) => {
                   const sourceDomain = item.sourceDomain || '';
                   const isVisible = index < visibleIcons;
+                  const hasTransparency = item.ownership || item.funding;
                   return (
-                    <a key={index} href={item.uri} target="_blank" rel="noopener noreferrer" className={`flex flex-col items-center gap-2 group ${isVisible ? 'icon-pop' : 'opacity-0 scale-0'}`} style={{ animationDelay: `${index * 100}ms` }}>
-                      <div className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 rounded-full bg-white shadow-md border border-slate-200 flex items-center justify-center group-hover:shadow-lg group-hover:border-blue-300 transition-all">
-                        <img src={getFaviconUrl(sourceDomain)} alt={sourceDomain} className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                      </div>
-                      <span className="text-xs md:text-sm font-medium text-slate-500 uppercase tracking-wide group-hover:text-blue-600 transition-colors text-center max-w-[90px] truncate">{sourceDomain.replace(/^www\./, '').split('.')[0]}</span>
-                    </a>
+                    <TransparencyCard
+                      key={index}
+                      source={{
+                        displayName: item.displayName || sourceDomain.split('.')[0].toUpperCase(),
+                        domain: sourceDomain,
+                        ownership: item.ownership,
+                        funding: item.funding,
+                      }}
+                      trigger={
+                        <a href={item.uri} target="_blank" rel="noopener noreferrer" className={`flex flex-col items-center gap-2 group ${isVisible ? 'icon-pop' : 'opacity-0 scale-0'}`} style={{ animationDelay: `${index * 100}ms` }}>
+                          <div className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 rounded-full bg-white shadow-md border border-slate-200 flex items-center justify-center group-hover:shadow-lg group-hover:border-blue-300 transition-all relative">
+                            <img src={getFaviconUrl(sourceDomain)} alt={sourceDomain} className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                            {/* Blue dot indicator for sources with transparency data */}
+                            {hasTransparency && (
+                              <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-blue-500 rounded-full border-2 border-white shadow-sm" title="Tap for ownership info" />
+                            )}
+                          </div>
+                          <span className="text-xs md:text-sm font-medium text-slate-500 uppercase tracking-wide group-hover:text-blue-600 transition-colors text-center max-w-[90px] truncate">{sourceDomain.replace(/^www\./, '').split('.')[0]}</span>
+                        </a>
+                      }
+                    />
                   );
                 })}
               </div>

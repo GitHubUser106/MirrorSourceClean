@@ -1,31 +1,74 @@
-export type SourceType = 'wire' | 'national' | 'international' | 'local' | 'public' | 'corporate' | 'state' | 'magazine' | 'specialized' | 'analysis' | 'reference' | 'syndication' | 'archive' | 'platform';
+// =============================================================================
+// types.ts - MirrorSource 3.0
+// =============================================================================
 
+// Ownership structure types
+export type OwnershipType = 
+  | 'private' 
+  | 'public_traded' 
+  | 'nonprofit' 
+  | 'public_media' 
+  | 'state_owned' 
+  | 'cooperative' 
+  | 'trust';
+
+export interface OwnershipInfo {
+  owner: string;
+  parent?: string;
+  type: OwnershipType;
+  note?: string;
+}
+
+export interface FundingInfo {
+  model: string;
+  note?: string;
+}
+
+// Source type from the API
+export type SourceType = 
+  | 'wire' 
+  | 'public' 
+  | 'corporate' 
+  | 'state' 
+  | 'analysis' 
+  | 'local' 
+  | 'national' 
+  | 'international' 
+  | 'magazine' 
+  | 'specialized' 
+  | 'reference' 
+  | 'syndication' 
+  | 'platform';
+
+// Main source interface returned from the API
 export interface GroundingSource {
   uri: string;
   title: string;
-  displayName?: string;
-  sourceDomain?: string;
-  sourceType?: SourceType;
-  countryCode?: string;  // <-- ADD THIS
-  isSyndicated?: boolean;
+  displayName: string;
+  sourceDomain: string;
+  sourceType: SourceType;
+  countryCode: string;
+  isSyndicated: boolean;
+  // NEW in 3.0 - Transparency data
+  ownership?: OwnershipInfo;
+  funding?: FundingInfo;
 }
 
-export interface ArchiveResult {
-  found: boolean;
-  url?: string;
-  source: 'wayback' | 'archive.today';
-  timestamp?: string;
-}
-
-export interface SearchResponse {
-  summary: string;
+// API Response structure
+export interface FindResponse {
+  summary: string | null;
+  commonGround: string | null;
+  keyDifferences: string | null;
   alternatives: GroundingSource[];
-  archives: ArchiveResult[];
   isPaywalled: boolean;
-  usage: {
+  usage?: {
     used: number;
-    limit: number;
     remaining: number;
+    limit: number;
     resetAt: string;
   };
+  needsKeywords?: boolean;
+  error?: string;
+  errorType?: string;
+  retryable?: boolean;
 }
