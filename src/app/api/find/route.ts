@@ -1176,12 +1176,71 @@ function getSourceInfo(domain: string): SourceInfo {
   return { displayName: parts[0].toUpperCase(), type, countryCode };
 }
 
+// --- Fetch Article Title from URL ---
+async function fetchArticleTitle(url: string): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MirrorSource/1.0)' },
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) return null;
+
+    const html = await response.text();
+    // Extract <title> tag content
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (titleMatch && titleMatch[1]) {
+      // Clean up: remove site name suffixes like " - CNN" or " | BBC"
+      let title = titleMatch[1].trim();
+      title = title.replace(/\s*[\|\-–—]\s*[^|\-–—]+$/, '').trim();
+      return title.length > 10 ? title : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// --- Quote Proper Nouns for Exact Match ---
+function quoteProperNouns(query: string): string {
+  const words = query.split(/\s+/);
+  const processed: string[] = [];
+  let i = 0;
+
+  while (i < words.length) {
+    // Check for multi-word proper noun sequences (e.g., "Bondi Beach", "New York")
+    if (/^[A-Z]/.test(words[i])) {
+      let properNounSequence = [words[i]];
+      let j = i + 1;
+      while (j < words.length && /^[A-Z]/.test(words[j])) {
+        properNounSequence.push(words[j]);
+        j++;
+      }
+      if (properNounSequence.length >= 2) {
+        // Multi-word proper noun: quote it
+        processed.push(`"${properNounSequence.join(' ')}"`);
+        i = j;
+        continue;
+      }
+    }
+    processed.push(words[i]);
+    i++;
+  }
+
+  return processed.join(' ');
+}
+
 // --- URL to Keywords Extraction ---
 function extractKeywordsFromUrl(url: string): string | null {
   try {
     const urlObj = new URL(url);
-    const path = urlObj.pathname.toLowerCase();
-    
+    const path = urlObj.pathname;
+
+    // Preserve case to detect proper nouns later
     const words = path
       .split(/[\/\-_.]/)
       .filter(segment => segment.length > 2)
@@ -1189,9 +1248,19 @@ function extractKeywordsFromUrl(url: string): string | null {
       .filter(segment => !/^\d+$/.test(segment))
       .filter(segment => /[a-z]/i.test(segment))
       .filter(segment => !/^(content|article|story|news|post|index|html|htm|php|aspx|world|us|uk|business|tech|opinion|markets|amp|www|com|org|net)$/i.test(segment));
-    
+
     if (words.length < 2) return null;
-    return words.slice(0, 8).join(' ');
+
+    // Title-case words that look like proper nouns (single lowercase word becomes Title Case)
+    const formatted = words.slice(0, 8).map(w => {
+      // If it's all lowercase and > 3 chars, title-case it for proper noun detection
+      if (w === w.toLowerCase() && w.length > 3) {
+        return w.charAt(0).toUpperCase() + w.slice(1);
+      }
+      return w;
+    });
+
+    return formatted.join(' ');
   } catch { return null; }
 }
 
@@ -1577,6 +1646,8 @@ export async function POST(req: NextRequest) {
           { status: 400, headers: corsHeaders }
         );
       }
+      // Apply proper noun quoting to keyword searches too
+      searchQuery = quoteProperNouns(searchQuery);
     } else {
       const validation = validateUrl(body.url);
       if (!validation.valid && validation.error) {
@@ -1588,41 +1659,53 @@ export async function POST(req: NextRequest) {
 
       const url = body.url.trim();
       isPaywalled = isPaywalledSource(url);
-      
-      const extractedKeywords = extractKeywordsFromUrl(url);
-      
-      if (!extractedKeywords) {
-        return NextResponse.json({
-          summary: null,
-          commonGround: null,
-          keyDifferences: null,
-          alternatives: [],
-          isPaywalled,
-          needsKeywords: true,
-          error: 'This link doesn\'t contain readable keywords. Please enter 3-5 key words from the story.',
-          errorType: 'NEEDS_KEYWORDS',
-          retryable: false,
-        }, { headers: corsHeaders });
+
+      // PRIORITY 1: Try to fetch the actual article title
+      console.log(`[Query] Attempting to fetch article title from: ${url}`);
+      const articleTitle = await fetchArticleTitle(url);
+
+      if (articleTitle) {
+        console.log(`[Query] Got article title: "${articleTitle}"`);
+        // Use the title with proper noun quoting
+        searchQuery = quoteProperNouns(articleTitle);
+      } else {
+        // FALLBACK: Extract from URL slug
+        console.log(`[Query] Title fetch failed, falling back to URL extraction`);
+        const extractedKeywords = extractKeywordsFromUrl(url);
+
+        if (!extractedKeywords) {
+          return NextResponse.json({
+            summary: null,
+            commonGround: null,
+            keyDifferences: null,
+            alternatives: [],
+            isPaywalled,
+            needsKeywords: true,
+            error: 'This link doesn\'t contain readable keywords. Please enter 3-5 key words from the story.',
+            errorType: 'NEEDS_KEYWORDS',
+            retryable: false,
+          }, { headers: corsHeaders });
+        }
+
+        searchQuery = quoteProperNouns(extractedKeywords);
       }
-      
-      searchQuery = extractedKeywords;
     }
 
     // 4. Increment Usage
     const { info: usageInfo, cookieValue } = await incrementUsage(req);
 
     // 5. STEP 1: THE EYES - Search with CSE (fetch 20 results in parallel)
-    console.log(`[CSE] Searching for: "${searchQuery}"`);
+    console.log(`[CSE] Final search query: "${searchQuery}"`);
     const [page1, page2] = await Promise.all([
       searchWithCSE(searchQuery, 1),
       searchWithCSE(searchQuery, 11),
     ]);
     const cseResults = [...page1, ...page2];
-    console.log(`[CSE] Found ${cseResults.length} total results`);
+    console.log(`[CSE] Raw results from Google: ${cseResults.length}`);
 
     // Filter out low-quality results (index pages, irrelevant content)
     const qualityFiltered = filterQualityResults(cseResults, searchQuery);
-    console.log(`[CSE] After quality filter: ${qualityFiltered.length} results`);
+    console.log(`[CSE] After quality filter: ${qualityFiltered.length} of ${cseResults.length} passed`);
 
     // Diversify by source type using round-robin
     const diverseResults = diversifyResults(qualityFiltered, 15);
