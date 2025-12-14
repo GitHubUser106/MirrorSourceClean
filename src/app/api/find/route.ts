@@ -1333,7 +1333,7 @@ RULES:
 - NEVER use generic references like "Source 1" or "Source 2". Always use the actual publisher name (e.g., "Reuters", "BBC", "Al Jazeera")
 - Bold publisher names in keyDifferences using **markdown** (e.g., "**Reuters** reports X, while **CNN** claims Y")
 - commonGround: 2-4 fact objects about THE PRIMARY EVENT with "label" (1-3 words) and "value"
-- keyDifferences: If sources DISAGREE about THE PRIMARY EVENT, return 1-3 difference objects. If they AGREE, return a consensus string.
+- keyDifferences: If sources DISAGREE about THE PRIMARY EVENT, return 1-3 difference objects. Keep each "value" CONCISE — max 25 words per bullet. Focus on the contrast, not background context. Example: "**CNN** reports 9 killed, while **Al Jazeera** and **NBC** report 15 fatalities." If sources AGREE, return a consensus string.
 - Use simple language`.trim();
 
   const controller = new AbortController();
