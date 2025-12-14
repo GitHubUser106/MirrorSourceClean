@@ -1550,7 +1550,23 @@ export async function POST(req: NextRequest) {
     const cseResults = await searchWithCSE(searchQuery);
     console.log(`[CSE] Found ${cseResults.length} results`);
 
-    if (cseResults.length === 0) {
+    // Filter out category/index pages (not actual articles)
+    const filteredResults = cseResults.filter(result => {
+      try {
+        const path = new URL(result.url).pathname;
+        // Reject if path is too short (likely a section page)
+        const segments = path.split('/').filter(s => s.length > 0);
+        if (segments.length < 3) return false;
+        // Reject common index patterns
+        if (path.endsWith('/') && segments.length < 4) return false;
+        return true;
+      } catch {
+        return true; // Keep result if URL parsing fails
+      }
+    });
+    console.log(`[CSE] After filtering: ${filteredResults.length} article results`);
+
+    if (filteredResults.length === 0) {
       const response = NextResponse.json({
         summary: 'No coverage found on trusted news sources for this story. Try different keywords.',
         commonGround: null,
@@ -1564,12 +1580,12 @@ export async function POST(req: NextRequest) {
     }
 
     // 6. STEP 2: THE BRAIN - Synthesize with Gemini
-    console.log(`[Gemini] Synthesizing ${cseResults.length} sources...`);
-    const intelBrief = await synthesizeWithGemini(cseResults, searchQuery);
+    console.log(`[Gemini] Synthesizing ${filteredResults.length} sources...`);
+    const intelBrief = await synthesizeWithGemini(filteredResults, searchQuery);
     console.log(`[Gemini] Synthesis complete`);
 
     // 7. STEP 3: Process results with badges + transparency
-    const alternatives = processSearchResults(cseResults);
+    const alternatives = processSearchResults(filteredResults);
 
     // 8. Build Response
     const response = NextResponse.json({
