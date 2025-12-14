@@ -8,10 +8,11 @@ import UrlInputForm from "@/components/UrlInputForm";
 import ResultsDisplay from "@/components/ResultsDisplay";
 import TransparencyCard from "@/components/TransparencyCard";
 import type { GroundingSource } from "@/types";
-import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle } from "lucide-react";
+import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle } from "lucide-react";
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
 type CommonGroundFact = { label: string; value: string };
+type KeyDifference = { label: string; value: string };
 
 const loadingFacts = [
   "Scanning news sources...",
@@ -69,7 +70,7 @@ function HomeContent() {
   const [errorRetryable, setErrorRetryable] = useState(true);
   const [summary, setSummary] = useState<string | null>(null);
   const [commonGround, setCommonGround] = useState<CommonGroundFact[] | string | null>(null);
-  const [keyDifferences, setKeyDifferences] = useState<string | null>(null);
+  const [keyDifferences, setKeyDifferences] = useState<KeyDifference[] | string | null>(null);
   const [results, setResults] = useState<GroundingSource[]>([]);
   const [isPaywalled, setIsPaywalled] = useState(false);
   const [usage, setUsage] = useState<Usage | null>(null);
@@ -653,13 +654,33 @@ function HomeContent() {
                       )}
                     </div>
                   )}
-                  {keyDifferences && (
-                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-5">
+                  {keyDifferences && (Array.isArray(keyDifferences) ? keyDifferences.length > 0 : keyDifferences) && (
+                    <div className={Array.isArray(keyDifferences) ? "bg-orange-50 border border-orange-200 rounded-xl p-5" : "bg-green-50 border border-green-200 rounded-xl p-5"}>
                       <div className="flex items-center gap-2 mb-3">
-                        <Scale className="w-4 h-4 text-orange-600" />
-                        <h3 className="text-sm font-semibold text-orange-800 uppercase tracking-wide">Key Differences</h3>
+                        {Array.isArray(keyDifferences) ? (
+                          <>
+                            <Scale className="w-4 h-4 text-orange-600" />
+                            <h3 className="text-sm font-semibold text-orange-800 uppercase tracking-wide">Key Differences</h3>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                            <h3 className="text-sm font-semibold text-green-800 uppercase tracking-wide">Consensus</h3>
+                          </>
+                        )}
                       </div>
-                      <p className="text-sm md:text-base text-orange-700 leading-relaxed">{parseMarkdownBold(keyDifferences, 'intel')}</p>
+                      {Array.isArray(keyDifferences) ? (
+                        <ul className="space-y-2">
+                          {keyDifferences.map((diff, idx) => (
+                            <li key={idx} className="flex items-start gap-2 text-sm md:text-base text-orange-700">
+                              <AlertTriangle className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                              <span><span className="font-medium text-orange-800">{diff.label}:</span> {diff.value}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm md:text-base text-green-700 leading-relaxed">{keyDifferences}</p>
+                      )}
                     </div>
                   )}
                 </div>

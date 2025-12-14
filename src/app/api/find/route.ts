@@ -1294,10 +1294,15 @@ interface CommonGroundFact {
   value: string;
 }
 
+interface KeyDifference {
+  label: string;
+  value: string;
+}
+
 interface IntelBrief {
   summary: string;
   commonGround: CommonGroundFact[] | string;  // Array preferred, string for backward compatibility
-  keyDifferences: string;
+  keyDifferences: KeyDifference[] | string;   // Array for differences, string for consensus message
 }
 
 async function synthesizeWithGemini(searchResults: CSEResult[], originalQuery: string): Promise<IntelBrief> {
@@ -1317,13 +1322,14 @@ RESPOND IN JSON FORMAT:
 {
   "summary": "3-4 sentences summarizing the story. Grade 6-8 reading level. Bold only the KEY TAKEAWAY of each sentence using **bold** syntax. Max 4 bold phrases.",
   "commonGround": [{"label": "Short category", "value": "What sources agree on"}, ...],
-  "keyDifferences": "1-2 sentences. The ONE biggest contrast. Bold the CONTRASTING INTERPRETATIONS. If all agree, say 'Sources present a consistent narrative.'"
+  "keyDifferences": [{"label": "Topic", "value": "How sources differ"}, ...] OR "Sources present a consistent narrative on this story."
 }
 
 RULES:
 - ONLY use information from the sources above
 - commonGround must be an array of 2-4 fact objects with "label" (1-3 words, e.g., "Location", "When", "Who") and "value" (the agreed-upon fact)
-- Bold key conclusions in summary and keyDifferences, not source names
+- keyDifferences: If sources DISAGREE, return an array of 1-3 difference objects with "label" (topic of disagreement, e.g., "Cause", "Blame", "Timeline") and "value" (the contrasting interpretations). If sources AGREE, return a simple string like "Sources present a consistent narrative on this story."
+- Bold key conclusions in summary only, not in commonGround or keyDifferences arrays
 - Use simple language
 `.trim();
 
@@ -1370,10 +1376,18 @@ RULES:
       commonGround = parsed.commonGround.trim();
     }
 
+    // Handle keyDifferences as array (conflicts) or string (consensus)
+    let keyDifferences: KeyDifference[] | string = '';
+    if (Array.isArray(parsed.keyDifferences)) {
+      keyDifferences = parsed.keyDifferences.filter((f: any) => f.label && f.value);
+    } else if (typeof parsed.keyDifferences === 'string') {
+      keyDifferences = parsed.keyDifferences.trim();
+    }
+
     return {
       summary: (parsed.summary || '').trim(),
       commonGround,
-      keyDifferences: (parsed.keyDifferences || '').trim(),
+      keyDifferences,
     };
   } catch (error: any) {
     clearTimeout(timeoutId);
