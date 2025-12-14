@@ -1310,29 +1310,31 @@ async function synthesizeWithGemini(searchResults: CSEResult[], originalQuery: s
     `[Source ${i + 1}: ${r.domain}]\nTitle: ${r.title}\nSnippet: ${r.snippet}`
   ).join('\n\n');
 
-  const prompt = `
-You are a news intelligence analyst. Based ONLY on the sources provided below, write a brief analysis.
+  const prompt = `You are a news intelligence analyst. Based ONLY on the sources provided below, write a brief analysis.
 
-STORY: "${originalQuery}"
+CRITICAL: First, identify the PRIMARY EVENT the user is researching based on the search query. Then ONLY analyze coverage of that specific event. Ignore tangential events, historical context, or unrelated incidents that may appear in snippets.
+
+STORY QUERY: "${originalQuery}"
 
 SOURCES:
 ${context}
 
 RESPOND IN JSON FORMAT:
 {
-  "summary": "3-4 sentences summarizing the story. Grade 6-8 reading level. Bold only the KEY TAKEAWAY of each sentence using **bold** syntax. Max 4 bold phrases.",
-  "commonGround": [{"label": "Short category", "value": "What sources agree on"}, ...],
-  "keyDifferences": [{"label": "Topic", "value": "How sources differ"}, ...] OR "Sources present a consistent narrative on this story."
+  "summary": "3-4 sentences summarizing THE PRIMARY EVENT ONLY. Grade 6-8 reading level. Bold only the KEY TAKEAWAY of each sentence using **bold** syntax. Max 4 bold phrases. Do NOT include unrelated historical events.",
+  "commonGround": [{"label": "Short category", "value": "What sources agree on ABOUT THE PRIMARY EVENT"}, ...],
+  "keyDifferences": [{"label": "Topic", "value": "How sources differ ON THE PRIMARY EVENT"}, ...] OR "Sources present a consistent narrative on this story."
 }
 
 RULES:
 - ONLY use information from the sources above
+- IDENTIFY THE PRIMARY EVENT first, then filter all analysis to that event only
+- If snippets mention historical/tangential events, DO NOT include them in your analysis
 - NEVER use generic references like "Source 1" or "Source 2". Always use the actual publisher name (e.g., "Reuters", "BBC", "Al Jazeera")
-- commonGround must be an array of 2-4 fact objects with "label" (1-3 words, e.g., "Location", "When", "Who") and "value" (the agreed-upon fact)
-- keyDifferences: If sources DISAGREE, return an array of 1-3 difference objects with "label" (topic of disagreement, e.g., "Cause", "Blame", "Timeline") and "value" (the contrasting interpretations with **bolded publisher names**, e.g., "**Reuters** reports X, while **CNN** claims Y"). If sources AGREE, return a simple string like "Sources present a consistent narrative on this story."
-- Bold key conclusions in summary only
-- Use simple language
-`.trim();
+- Bold publisher names in keyDifferences using **markdown** (e.g., "**Reuters** reports X, while **CNN** claims Y")
+- commonGround: 2-4 fact objects about THE PRIMARY EVENT with "label" (1-3 words) and "value"
+- keyDifferences: If sources DISAGREE about THE PRIMARY EVENT, return 1-3 difference objects. If they AGREE, return a consensus string.
+- Use simple language`.trim();
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
