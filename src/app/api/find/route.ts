@@ -1238,38 +1238,69 @@ function quoteProperNouns(query: string): string {
 function extractKeywordsFromUrl(url: string): string | null {
   try {
     const urlObj = new URL(url);
-    const path = urlObj.pathname.toLowerCase();
+    const path = urlObj.pathname;
 
-    // Common URL noise words to filter out
+    // Extract the slug (last meaningful path segment)
+    const segments = path.split('/').filter(s => s.length > 0);
+    const slug = segments[segments.length - 1] || '';
+
+    // Common URL noise words
     const noiseWords = new Set([
       'article', 'articles', 'news', 'story', 'stories', 'post', 'posts',
-      'content', 'index', 'page', 'pages', 'html', 'htm', 'php', 'aspx',
-      'world', 'us', 'uk', 'business', 'tech', 'opinion', 'markets', 'amp',
-      'www', 'com', 'org', 'net', 'live', 'video', 'watch', 'read',
-      'the', 'and', 'for', 'with', 'from', 'that', 'this', 'have', 'has',
-      'are', 'was', 'were', 'been', 'being', 'will', 'would', 'could',
-      'should', 'may', 'might', 'must', 'can', 'into', 'over', 'after',
-      'before', 'between', 'under', 'again', 'about', 'catch', 'scrambles'
+      'content', 'index', 'page', 'html', 'htm', 'php', 'aspx', 'amp',
+      'live', 'video', 'watch', 'read', 'the', 'and', 'for', 'with',
+      'from', 'that', 'this', 'have', 'has', 'are', 'was', 'were',
+      'been', 'will', 'would', 'could', 'should', 'into', 'over',
+      'after', 'before', 'catch', 'catches', 'scramble', 'scrambles'
     ]);
 
-    const words = path
-      .split(/[\/\-_.]/)
-      .filter(segment => segment.length > 2)
-      .filter(segment => !/^[0-9a-f]+$/i.test(segment)) // Remove hex/UUIDs
-      .filter(segment => !/^\d+$/.test(segment)) // Remove pure numbers
-      .filter(segment => /[a-z]/i.test(segment)) // Must have letters
-      .filter(segment => !noiseWords.has(segment)); // Remove noise words
+    // Important short words to KEEP (country codes, key terms)
+    const keepShortWords = new Set(['us', 'uk', 'eu', 'un', 'ai', 'nyc', 'la', 'dc']);
 
-    if (words.length < 2) return null;
+    // Detect compound entities (e.g., "us-military" -> "US military")
+    const compoundPatterns = [
+      { pattern: /\bus[-_]military\b/i, replacement: '"US military"' },
+      { pattern: /\buk[-_]military\b/i, replacement: '"UK military"' },
+      { pattern: /\bus[-_]troops\b/i, replacement: '"US troops"' },
+      { pattern: /\bus[-_]soldiers\b/i, replacement: '"US soldiers"' },
+    ];
 
-    // Take the most meaningful words (longer words tend to be more specific)
-    const sorted = words.sort((a, b) => b.length - a.length);
-    const topWords = sorted.slice(0, 6);
+    let processedSlug = slug.toLowerCase();
+    const entities: string[] = [];
 
-    // Title-case for proper noun detection by quoteProperNouns
-    const formatted = topWords.map(w => w.charAt(0).toUpperCase() + w.slice(1));
+    // Extract compound entities first
+    for (const { pattern, replacement } of compoundPatterns) {
+      if (pattern.test(processedSlug)) {
+        entities.push(replacement);
+        processedSlug = processedSlug.replace(pattern, '');
+      }
+    }
 
-    return formatted.join(' ');
+    // Process remaining words
+    const words = processedSlug
+      .split(/[-_.]/)
+      .filter(word => {
+        if (word.length < 2) return false;
+        if (/^[0-9a-f]+$/i.test(word) && word.length > 6) return false; // UUIDs
+        if (/^\d+$/.test(word)) return false; // Pure numbers
+        if (noiseWords.has(word)) return false;
+        // Keep short important words
+        if (word.length <= 2 && !keepShortWords.has(word)) return false;
+        return true;
+      });
+
+    // Prioritize longer, more specific words
+    const sorted = words.sort((a, b) => b.length - a.length).slice(0, 5);
+
+    // Title-case for proper noun detection
+    const formatted = sorted.map(w => w.charAt(0).toUpperCase() + w.slice(1));
+
+    // Combine entities and keywords
+    const allTerms = [...entities, ...formatted];
+
+    if (allTerms.length < 2) return null;
+
+    return allTerms.join(' ');
   } catch { return null; }
 }
 
