@@ -1287,55 +1287,28 @@ async function searchWithCSE(query: string, start: number = 1): Promise<CSEResul
 }
 
 // Filter out low-quality results (index pages, irrelevant content)
-function filterQualityResults(results: CSEResult[], query: string): CSEResult[] {
-  // Extract significant terms (>3 chars)
-  const significantTerms = query.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-  // Extract proper nouns (capitalized words) for entity matching
-  const properNouns = query.split(/\s+/).filter(w => w.length > 2 && /^[A-Z]/.test(w)).map(w => w.toLowerCase());
-
-  const sectionPatterns = ['/world', '/news', '/politics', '/business', '/tech', '/sports', '/entertainment', '/opinion', '/video', '/live', '/search', '/tag', '/category', '/author', '/topic'];
+function filterQualityResults(results: CSEResult[], searchQuery: string): CSEResult[] {
+  const queryWords = searchQuery.toLowerCase().split(/\s+/).filter(w => w.length > 3);
 
   return results.filter(result => {
+    // 1. Structural Filter (Keep rejecting index pages)
     try {
-      const url = new URL(result.url);
-      const path = url.pathname.toLowerCase();
-
-      // Reject short paths (likely section/index pages)
+      const path = new URL(result.url).pathname;
       const segments = path.split('/').filter(s => s.length > 0);
       if (segments.length < 2) return false;
-
-      // Reject common section patterns at the end of path
-      for (const pattern of sectionPatterns) {
-        if (path === pattern || path === pattern + '/') return false;
-      }
-
-      // Reject if path ends with slash and has few segments
       if (path.endsWith('/') && segments.length < 3) return false;
+      if (/\/(world|news|business|politics|tech|opinion)\/?$/.test(path)) return false;
+    } catch { return false; }
 
-      // STRICT RELEVANCE CHECK: Title must contain significant term overlap
-      const titleLower = result.title.toLowerCase();
-      const titleMatches = significantTerms.filter(term => titleLower.includes(term));
+    // 2. Relevance Filter (The "Rule of 2")
+    const combinedText = (result.title + ' ' + result.snippet).toLowerCase();
+    const matchCount = queryWords.filter(word => combinedText.includes(word)).length;
 
-      // Require at least 50% of significant terms in title, minimum 2
-      const requiredMatches = Math.max(2, Math.ceil(significantTerms.length * 0.5));
-      if (significantTerms.length >= 2 && titleMatches.length < requiredMatches) {
-        // Fallback: check if title contains a proper noun (entity) from query
-        const hasEntity = properNouns.some(noun => titleLower.includes(noun));
-        if (!hasEntity) return false;
-      }
+    // Restore the "Goldilocks" threshold:
+    // Long query (3+ words)? Need 2 matches. Short query? Need 1.
+    const minRequired = queryWords.length >= 3 ? 2 : 1;
 
-      // Entity matching boost: If query has proper nouns, prioritize results with them
-      if (properNouns.length > 0) {
-        const entityInTitle = properNouns.some(noun => titleLower.includes(noun));
-        const entityInSnippet = properNouns.some(noun => result.snippet.toLowerCase().includes(noun));
-        // Must have at least one entity match somewhere
-        if (!entityInTitle && !entityInSnippet) return false;
-      }
-
-      return true;
-    } catch {
-      return false;
-    }
+    return matchCount >= minRequired;
   });
 }
 
