@@ -1243,13 +1243,13 @@ interface CSEResult {
   domain: string;
 }
 
-async function searchWithCSE(query: string): Promise<CSEResult[]> {
+async function searchWithCSE(query: string, start: number = 1): Promise<CSEResult[]> {
   if (!GOOGLE_CSE_API_KEY || !GOOGLE_CSE_ID) {
     console.error('Missing CSE credentials');
     throw new Error('Search configuration error');
   }
 
-  const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_CSE_API_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&num=10`;
+  const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_CSE_API_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&num=10&start=${start}`;
   
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -1284,6 +1284,80 @@ async function searchWithCSE(query: string): Promise<CSEResult[]> {
     if (error.name === 'AbortError') throw new Error('Search timeout');
     throw error;
   }
+}
+
+// Filter out low-quality results (index pages, irrelevant content)
+function filterQualityResults(results: CSEResult[], query: string): CSEResult[] {
+  const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+  const sectionPatterns = ['/world', '/news', '/politics', '/business', '/tech', '/sports', '/entertainment', '/opinion', '/video', '/live', '/search', '/tag', '/category', '/author', '/topic'];
+
+  return results.filter(result => {
+    try {
+      const url = new URL(result.url);
+      const path = url.pathname.toLowerCase();
+
+      // Reject short paths (likely section/index pages)
+      const segments = path.split('/').filter(s => s.length > 0);
+      if (segments.length < 2) return false;
+
+      // Reject common section patterns at the end of path
+      for (const pattern of sectionPatterns) {
+        if (path === pattern || path === pattern + '/') return false;
+      }
+
+      // Reject if path ends with slash and has few segments
+      if (path.endsWith('/') && segments.length < 3) return false;
+
+      // Check relevance: title or snippet must contain at least 2 query words
+      const textToCheck = (result.title + ' ' + result.snippet).toLowerCase();
+      const matchedWords = queryWords.filter(word => textToCheck.includes(word));
+      if (matchedWords.length < 2 && queryWords.length >= 2) return false;
+
+      return true;
+    } catch {
+      return false;
+    }
+  });
+}
+
+// Diversify results by source type using round-robin
+function diversifyResults(results: CSEResult[], maxResults: number = 15): CSEResult[] {
+  // Group by source type
+  const byType: Record<string, CSEResult[]> = {};
+
+  for (const result of results) {
+    const info = getSourceInfo(result.domain);
+    const type = info.type || 'local';
+    if (!byType[type]) byType[type] = [];
+    byType[type].push(result);
+  }
+
+  // Round-robin selection
+  const types = Object.keys(byType);
+  const diversified: CSEResult[] = [];
+  const indices: Record<string, number> = {};
+  types.forEach(t => indices[t] = 0);
+
+  let typeIndex = 0;
+  while (diversified.length < maxResults) {
+    let found = false;
+    const startIndex = typeIndex;
+
+    // Try each type until we find one with remaining results
+    do {
+      const type = types[typeIndex];
+      if (indices[type] < byType[type].length) {
+        diversified.push(byType[type][indices[type]]);
+        indices[type]++;
+        found = true;
+      }
+      typeIndex = (typeIndex + 1) % types.length;
+    } while (!found && typeIndex !== startIndex);
+
+    if (!found) break; // All types exhausted
+  }
+
+  return diversified;
 }
 
 // =============================================================================
@@ -1545,28 +1619,24 @@ export async function POST(req: NextRequest) {
     // 4. Increment Usage
     const { info: usageInfo, cookieValue } = await incrementUsage(req);
 
-    // 5. STEP 1: THE EYES - Search with CSE
+    // 5. STEP 1: THE EYES - Search with CSE (fetch 20 results in parallel)
     console.log(`[CSE] Searching for: "${searchQuery}"`);
-    const cseResults = await searchWithCSE(searchQuery);
-    console.log(`[CSE] Found ${cseResults.length} results`);
+    const [page1, page2] = await Promise.all([
+      searchWithCSE(searchQuery, 1),
+      searchWithCSE(searchQuery, 11),
+    ]);
+    const cseResults = [...page1, ...page2];
+    console.log(`[CSE] Found ${cseResults.length} total results`);
 
-    // Filter out category/index pages (not actual articles)
-    const filteredResults = cseResults.filter(result => {
-      try {
-        const path = new URL(result.url).pathname;
-        // Reject if path is too short (likely a section page)
-        const segments = path.split('/').filter(s => s.length > 0);
-        if (segments.length < 3) return false;
-        // Reject common index patterns
-        if (path.endsWith('/') && segments.length < 4) return false;
-        return true;
-      } catch {
-        return true; // Keep result if URL parsing fails
-      }
-    });
-    console.log(`[CSE] After filtering: ${filteredResults.length} article results`);
+    // Filter out low-quality results (index pages, irrelevant content)
+    const qualityFiltered = filterQualityResults(cseResults, searchQuery);
+    console.log(`[CSE] After quality filter: ${qualityFiltered.length} results`);
 
-    if (filteredResults.length === 0) {
+    // Diversify by source type using round-robin
+    const diverseResults = diversifyResults(qualityFiltered, 15);
+    console.log(`[CSE] After diversity: ${diverseResults.length} results`);
+
+    if (diverseResults.length === 0) {
       const response = NextResponse.json({
         summary: 'No coverage found on trusted news sources for this story. Try different keywords.',
         commonGround: null,
@@ -1580,12 +1650,12 @@ export async function POST(req: NextRequest) {
     }
 
     // 6. STEP 2: THE BRAIN - Synthesize with Gemini
-    console.log(`[Gemini] Synthesizing ${filteredResults.length} sources...`);
-    const intelBrief = await synthesizeWithGemini(filteredResults, searchQuery);
+    console.log(`[Gemini] Synthesizing ${diverseResults.length} sources...`);
+    const intelBrief = await synthesizeWithGemini(diverseResults, searchQuery);
     console.log(`[Gemini] Synthesis complete`);
 
     // 7. STEP 3: Process results with badges + transparency
-    const alternatives = processSearchResults(filteredResults);
+    const alternatives = processSearchResults(diverseResults);
 
     // 8. Build Response
     const response = NextResponse.json({
