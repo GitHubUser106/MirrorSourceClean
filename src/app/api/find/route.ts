@@ -1289,9 +1289,14 @@ async function searchWithCSE(query: string): Promise<CSEResult[]> {
 // =============================================================================
 // STEP 2: THE BRAIN - Gemini Synthesis
 // =============================================================================
+interface CommonGroundFact {
+  label: string;
+  value: string;
+}
+
 interface IntelBrief {
   summary: string;
-  commonGround: string;
+  commonGround: CommonGroundFact[] | string;  // Array preferred, string for backward compatibility
   keyDifferences: string;
 }
 
@@ -1311,15 +1316,15 @@ ${context}
 RESPOND IN JSON FORMAT:
 {
   "summary": "3-4 sentences summarizing the story. Grade 6-8 reading level. Bold only the KEY TAKEAWAY of each sentence using **bold** syntax. Max 4 bold phrases.",
-  "commonGround": "1-2 sentences. What do the sources AGREE ON? Bold the conclusions/findings.",
+  "commonGround": [{"label": "Short category", "value": "What sources agree on"}, ...],
   "keyDifferences": "1-2 sentences. The ONE biggest contrast. Bold the CONTRASTING INTERPRETATIONS. If all agree, say 'Sources present a consistent narrative.'"
 }
 
 RULES:
 - ONLY use information from the sources above
-- Bold key conclusions, not source names
+- commonGround must be an array of 2-4 fact objects with "label" (1-3 words, e.g., "Location", "When", "Who") and "value" (the agreed-upon fact)
+- Bold key conclusions in summary and keyDifferences, not source names
 - Use simple language
-- MAX 2 sentences each for commonGround and keyDifferences
 `.trim();
 
   const controller = new AbortController();
@@ -1343,7 +1348,7 @@ RULES:
     if (!text) {
       return {
         summary: `We found **${searchResults.length} sources** covering this story. Click any source below to read their coverage.`,
-        commonGround: '',
+        commonGround: [],
         keyDifferences: '',
       };
     }
@@ -1352,14 +1357,22 @@ RULES:
     if (!parsed) {
       return {
         summary: `We found **${searchResults.length} sources** covering this story. Click any source below to read their coverage.`,
-        commonGround: '',
+        commonGround: [],
         keyDifferences: '',
       };
     }
 
+    // Handle commonGround as array or string for backward compatibility
+    let commonGround: CommonGroundFact[] | string = [];
+    if (Array.isArray(parsed.commonGround)) {
+      commonGround = parsed.commonGround.filter((f: any) => f.label && f.value);
+    } else if (typeof parsed.commonGround === 'string') {
+      commonGround = parsed.commonGround.trim();
+    }
+
     return {
       summary: (parsed.summary || '').trim(),
-      commonGround: (parsed.commonGround || '').trim(),
+      commonGround,
       keyDifferences: (parsed.keyDifferences || '').trim(),
     };
   } catch (error: any) {
@@ -1367,7 +1380,7 @@ RULES:
     console.error('Gemini synthesis error:', error?.message);
     return {
       summary: `We found **${searchResults.length} sources** covering this story. Click any source below to read their coverage.`,
-      commonGround: '',
+      commonGround: [],
       keyDifferences: '',
     };
   }

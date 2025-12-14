@@ -11,6 +11,7 @@ import type { GroundingSource } from "@/types";
 import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle } from "lucide-react";
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
+type CommonGroundFact = { label: string; value: string };
 
 const loadingFacts = [
   "Scanning news sources...",
@@ -67,7 +68,7 @@ function HomeContent() {
   const [error, setError] = useState<string | null>(null);
   const [errorRetryable, setErrorRetryable] = useState(true);
   const [summary, setSummary] = useState<string | null>(null);
-  const [commonGround, setCommonGround] = useState<string | null>(null);
+  const [commonGround, setCommonGround] = useState<CommonGroundFact[] | string | null>(null);
   const [keyDifferences, setKeyDifferences] = useState<string | null>(null);
   const [results, setResults] = useState<GroundingSource[]>([]);
   const [isPaywalled, setIsPaywalled] = useState(false);
@@ -572,7 +573,7 @@ function HomeContent() {
 
             {/* Source Icons with Transparency Cards */}
             {results.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-5 md:gap-8 py-6">
+              <div className="flex flex-wrap justify-center gap-3 md:gap-4 py-4">
                 {results.map((item, index) => {
                   const sourceDomain = item.sourceDomain || '';
                   const isVisible = index < visibleIcons;
@@ -587,15 +588,15 @@ function HomeContent() {
                         funding: item.funding,
                       }}
                       trigger={
-                        <a href={item.uri} target="_blank" rel="noopener noreferrer" className={`flex flex-col items-center gap-2 group ${isVisible ? 'icon-pop' : 'opacity-0 scale-0'}`} style={{ animationDelay: `${index * 100}ms` }}>
-                          <div className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 rounded-full bg-white shadow-md border border-slate-200 flex items-center justify-center group-hover:shadow-lg group-hover:border-blue-300 transition-all relative">
-                            <img src={getFaviconUrl(sourceDomain)} alt={sourceDomain} className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        <a href={item.uri} target="_blank" rel="noopener noreferrer" className={`flex flex-col items-center gap-1.5 group ${isVisible ? 'icon-pop' : 'opacity-0 scale-0'}`} style={{ animationDelay: `${index * 100}ms` }}>
+                          <div className="w-10 h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full bg-white shadow-md border border-slate-200 flex items-center justify-center group-hover:shadow-lg group-hover:border-blue-300 transition-all relative">
+                            <img src={getFaviconUrl(sourceDomain)} alt={sourceDomain} className="w-5 h-5 md:w-6 md:h-6 lg:w-8 lg:h-8 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                             {/* Blue dot indicator for sources with transparency data */}
                             {hasTransparency && (
-                              <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-blue-500 rounded-full border-2 border-white shadow-sm" title="Tap for ownership info" />
+                              <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-blue-500 rounded-full border-2 border-white shadow-sm" title="Tap for ownership info" />
                             )}
                           </div>
-                          <span className="text-xs md:text-sm font-medium text-slate-500 uppercase tracking-wide group-hover:text-blue-600 transition-colors text-center max-w-[90px] truncate">{sourceDomain.replace(/^www\./, '').split('.')[0]}</span>
+                          <span className="text-[10px] md:text-xs font-medium text-slate-500 uppercase tracking-wide group-hover:text-blue-600 transition-colors text-center max-w-[60px] truncate">{sourceDomain.replace(/^www\./, '').split('.')[0]}</span>
                         </a>
                       }
                     />
@@ -632,13 +633,24 @@ function HomeContent() {
                   <h2 className="text-xl md:text-2xl font-bold text-slate-900">Intel Brief</h2>
                 </div>
                 <div className="grid md:grid-cols-2 gap-5">
-                  {commonGround && (
+                  {commonGround && (Array.isArray(commonGround) ? commonGround.length > 0 : commonGround) && (
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
                       <div className="flex items-center gap-2 mb-3">
                         <CheckCircle2 className="w-4 h-4 text-blue-600" />
                         <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Common Ground</h3>
                       </div>
-                      <p className="text-sm md:text-base text-slate-600 leading-relaxed">{parseMarkdownBold(commonGround, 'intel')}</p>
+                      {Array.isArray(commonGround) ? (
+                        <ul className="space-y-2">
+                          {commonGround.map((fact, idx) => (
+                            <li key={idx} className="flex items-start gap-2 text-sm md:text-base text-slate-600">
+                              <Check className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                              <span><span className="font-medium text-slate-700">{fact.label}:</span> {fact.value}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm md:text-base text-slate-600 leading-relaxed">{parseMarkdownBold(commonGround, 'intel')}</p>
+                      )}
                     </div>
                   )}
                   {keyDifferences && (
