@@ -674,7 +674,7 @@ function HomeContent() {
                           {keyDifferences.map((diff, idx) => (
                             <li key={idx} className="flex items-start gap-2 text-sm md:text-base text-orange-700">
                               <AlertTriangle className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
-                              <span><span className="font-medium text-orange-800">{diff.label}:</span> {diff.value}</span>
+                              <span><span className="font-medium text-orange-800">{diff.label}:</span> {parseMarkdownBold(diff.value, 'intel')}</span>
                             </li>
                           ))}
                         </ul>

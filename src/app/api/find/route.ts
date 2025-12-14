@@ -1327,9 +1327,10 @@ RESPOND IN JSON FORMAT:
 
 RULES:
 - ONLY use information from the sources above
+- NEVER use generic references like "Source 1" or "Source 2". Always use the actual publisher name (e.g., "Reuters", "BBC", "Al Jazeera")
 - commonGround must be an array of 2-4 fact objects with "label" (1-3 words, e.g., "Location", "When", "Who") and "value" (the agreed-upon fact)
-- keyDifferences: If sources DISAGREE, return an array of 1-3 difference objects with "label" (topic of disagreement, e.g., "Cause", "Blame", "Timeline") and "value" (the contrasting interpretations). If sources AGREE, return a simple string like "Sources present a consistent narrative on this story."
-- Bold key conclusions in summary only, not in commonGround or keyDifferences arrays
+- keyDifferences: If sources DISAGREE, return an array of 1-3 difference objects with "label" (topic of disagreement, e.g., "Cause", "Blame", "Timeline") and "value" (the contrasting interpretations with **bolded publisher names**, e.g., "**Reuters** reports X, while **CNN** claims Y"). If sources AGREE, return a simple string like "Sources present a consistent narrative on this story."
+- Bold key conclusions in summary only
 - Use simple language
 `.trim();
 
