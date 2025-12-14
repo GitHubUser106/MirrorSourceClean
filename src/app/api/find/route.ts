@@ -1288,7 +1288,11 @@ async function searchWithCSE(query: string, start: number = 1): Promise<CSEResul
 
 // Filter out low-quality results (index pages, irrelevant content)
 function filterQualityResults(results: CSEResult[], query: string): CSEResult[] {
-  const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+  // Extract significant terms (>3 chars)
+  const significantTerms = query.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+  // Extract proper nouns (capitalized words) for entity matching
+  const properNouns = query.split(/\s+/).filter(w => w.length > 2 && /^[A-Z]/.test(w)).map(w => w.toLowerCase());
+
   const sectionPatterns = ['/world', '/news', '/politics', '/business', '/tech', '/sports', '/entertainment', '/opinion', '/video', '/live', '/search', '/tag', '/category', '/author', '/topic'];
 
   return results.filter(result => {
@@ -1308,10 +1312,25 @@ function filterQualityResults(results: CSEResult[], query: string): CSEResult[] 
       // Reject if path ends with slash and has few segments
       if (path.endsWith('/') && segments.length < 3) return false;
 
-      // Check relevance: title or snippet must contain at least 2 query words
-      const textToCheck = (result.title + ' ' + result.snippet).toLowerCase();
-      const matchedWords = queryWords.filter(word => textToCheck.includes(word));
-      if (matchedWords.length < 2 && queryWords.length >= 2) return false;
+      // STRICT RELEVANCE CHECK: Title must contain significant term overlap
+      const titleLower = result.title.toLowerCase();
+      const titleMatches = significantTerms.filter(term => titleLower.includes(term));
+
+      // Require at least 50% of significant terms in title, minimum 2
+      const requiredMatches = Math.max(2, Math.ceil(significantTerms.length * 0.5));
+      if (significantTerms.length >= 2 && titleMatches.length < requiredMatches) {
+        // Fallback: check if title contains a proper noun (entity) from query
+        const hasEntity = properNouns.some(noun => titleLower.includes(noun));
+        if (!hasEntity) return false;
+      }
+
+      // Entity matching boost: If query has proper nouns, prioritize results with them
+      if (properNouns.length > 0) {
+        const entityInTitle = properNouns.some(noun => titleLower.includes(noun));
+        const entityInSnippet = properNouns.some(noun => result.snippet.toLowerCase().includes(noun));
+        // Must have at least one entity match somewhere
+        if (!entityInTitle && !entityInSnippet) return false;
+      }
 
       return true;
     } catch {
@@ -1403,8 +1422,8 @@ RESPOND IN JSON FORMAT:
 RULES:
 - ONLY use information from the sources above.
 - TIME AWARENESS: If sources differ because some are older (e.g., "Manhunt underway" vs "Suspect caught"), trust the latest status. Do NOT list outdated early reports as a "Key Difference". Only list genuine conflicts where sources disagree on the *same* facts at the *same* time.
-- CITATION STYLE: Use the Publisher Name ONLY (e.g., "**Reuters**", "**CNN**").
-- NEGATIVE CONSTRAINT: DO NOT include source index numbers like "(Source 1)" or "[Source 1]". NEVER output the string "Source" followed by a number.
+- CITATION STYLE: Refer to sources by their Publisher Name as written in the text (e.g., "**Reuters**", "**CNN**", "**Al Jazeera**").
+- NEGATIVE CONSTRAINT: Strictly forbidden: Do not use "(Source X)" or "[Source X]" or "Source 1" or any index-based reference. You will be penalized for using indices. Use the Publisher Name ONLY.
 - Bold publisher names in keyDifferences using **markdown**.
 - commonGround: 2-4 fact objects.
 - keyDifferences: If sources DISAGREE about the PRIMARY EVENT (and it's not just an update), return 1-3 difference objects. If they AGREE, return a consensus string.
