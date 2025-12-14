@@ -1238,27 +1238,36 @@ function quoteProperNouns(query: string): string {
 function extractKeywordsFromUrl(url: string): string | null {
   try {
     const urlObj = new URL(url);
-    const path = urlObj.pathname;
+    const path = urlObj.pathname.toLowerCase();
 
-    // Preserve case to detect proper nouns later
+    // Common URL noise words to filter out
+    const noiseWords = new Set([
+      'article', 'articles', 'news', 'story', 'stories', 'post', 'posts',
+      'content', 'index', 'page', 'pages', 'html', 'htm', 'php', 'aspx',
+      'world', 'us', 'uk', 'business', 'tech', 'opinion', 'markets', 'amp',
+      'www', 'com', 'org', 'net', 'live', 'video', 'watch', 'read',
+      'the', 'and', 'for', 'with', 'from', 'that', 'this', 'have', 'has',
+      'are', 'was', 'were', 'been', 'being', 'will', 'would', 'could',
+      'should', 'may', 'might', 'must', 'can', 'into', 'over', 'after',
+      'before', 'between', 'under', 'again', 'about', 'catch', 'scrambles'
+    ]);
+
     const words = path
       .split(/[\/\-_.]/)
       .filter(segment => segment.length > 2)
-      .filter(segment => !/^[0-9a-f]+$/i.test(segment))
-      .filter(segment => !/^\d+$/.test(segment))
-      .filter(segment => /[a-z]/i.test(segment))
-      .filter(segment => !/^(content|article|story|news|post|index|html|htm|php|aspx|world|us|uk|business|tech|opinion|markets|amp|www|com|org|net)$/i.test(segment));
+      .filter(segment => !/^[0-9a-f]+$/i.test(segment)) // Remove hex/UUIDs
+      .filter(segment => !/^\d+$/.test(segment)) // Remove pure numbers
+      .filter(segment => /[a-z]/i.test(segment)) // Must have letters
+      .filter(segment => !noiseWords.has(segment)); // Remove noise words
 
     if (words.length < 2) return null;
 
-    // Title-case words that look like proper nouns (single lowercase word becomes Title Case)
-    const formatted = words.slice(0, 8).map(w => {
-      // If it's all lowercase and > 3 chars, title-case it for proper noun detection
-      if (w === w.toLowerCase() && w.length > 3) {
-        return w.charAt(0).toUpperCase() + w.slice(1);
-      }
-      return w;
-    });
+    // Take the most meaningful words (longer words tend to be more specific)
+    const sorted = words.sort((a, b) => b.length - a.length);
+    const topWords = sorted.slice(0, 6);
+
+    // Title-case for proper noun detection by quoteProperNouns
+    const formatted = topWords.map(w => w.charAt(0).toUpperCase() + w.slice(1));
 
     return formatted.join(' ');
   } catch { return null; }
