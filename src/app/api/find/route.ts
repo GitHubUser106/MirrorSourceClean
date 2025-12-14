@@ -1236,13 +1236,24 @@ function quoteProperNouns(query: string): string {
 
 // --- URL to Keywords Extraction ---
 function extractKeywordsFromUrl(url: string): string | null {
+  if (!url || typeof url !== 'string') return null;
+
   try {
     const urlObj = new URL(url);
     const path = urlObj.pathname;
 
+    if (!path || typeof path !== 'string') return null;
+
     // Extract the slug (last meaningful path segment)
-    const segments = path.split('/').filter(s => s.length > 0);
-    const slug = segments[segments.length - 1] || '';
+    const segments = path.split('/').filter(s => s && s.length > 0);
+    if (!segments || segments.length === 0) return null;
+
+    // Try last segment, fallback to second-to-last if empty
+    let slug = segments[segments.length - 1] || '';
+    if (!slug && segments.length > 1) {
+      slug = segments[segments.length - 2] || '';
+    }
+    if (!slug) return null;
 
     // Common URL noise words
     const noiseWords = new Set([
@@ -1397,9 +1408,14 @@ async function searchWithCSE(query: string, start: number = 1): Promise<CSEResul
 
 // Filter out low-quality results (index pages, irrelevant content)
 function filterQualityResults(results: CSEResult[], searchQuery: string): CSEResult[] {
-  const queryWords = searchQuery.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+  // Defensive null checks
+  if (!results || !Array.isArray(results)) return [];
+  if (!searchQuery || typeof searchQuery !== 'string') return results;
+
+  const queryWords = searchQuery.toLowerCase().split(/\s+/).filter(w => w && w.length > 3);
 
   return results.filter(result => {
+    if (!result || !result.url) return false;
     // 1. Structural Filter (Keep rejecting index pages)
     try {
       const path = new URL(result.url).pathname;
@@ -1423,10 +1439,14 @@ function filterQualityResults(results: CSEResult[], searchQuery: string): CSERes
 
 // Diversify results by source type using round-robin
 function diversifyResults(results: CSEResult[], maxResults: number = 15): CSEResult[] {
+  // Defensive null checks
+  if (!results || !Array.isArray(results) || results.length === 0) return [];
+
   // Group by source type
   const byType: Record<string, CSEResult[]> = {};
 
   for (const result of results) {
+    if (!result || !result.domain) continue;
     const info = getSourceInfo(result.domain);
     const type = info.type || 'local';
     if (!byType[type]) byType[type] = [];
@@ -1729,6 +1749,21 @@ export async function POST(req: NextRequest) {
 
         searchQuery = quoteProperNouns(extractedKeywords);
       }
+    }
+
+    // Final safeguard: ensure searchQuery is valid
+    if (!searchQuery || typeof searchQuery !== 'string' || searchQuery.trim().length < 2) {
+      return NextResponse.json({
+        summary: null,
+        commonGround: null,
+        keyDifferences: null,
+        alternatives: [],
+        isPaywalled,
+        needsKeywords: true,
+        error: 'Could not generate a valid search query. Please enter keywords manually.',
+        errorType: 'NEEDS_KEYWORDS',
+        retryable: false,
+      }, { headers: corsHeaders });
     }
 
     // 4. Increment Usage
