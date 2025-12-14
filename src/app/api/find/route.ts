@@ -1386,7 +1386,7 @@ async function synthesizeWithGemini(searchResults: CSEResult[], originalQuery: s
 
   const prompt = `You are a news intelligence analyst. Based ONLY on the sources provided below, write a brief analysis.
 
-CRITICAL: First, identify the PRIMARY EVENT the user is researching based on the search query. Then ONLY analyze coverage of that specific event. Ignore tangential events, historical context, or unrelated incidents that may appear in snippets.
+CRITICAL: First, identify the PRIMARY EVENT the user is researching. Then ONLY analyze coverage of that specific event. Ignore tangential events.
 
 STORY QUERY: "${originalQuery}"
 
@@ -1401,13 +1401,13 @@ RESPOND IN JSON FORMAT:
 }
 
 RULES:
-- ONLY use information from the sources above
-- IDENTIFY THE PRIMARY EVENT first, then filter all analysis to that event only
-- If snippets mention historical/tangential events, DO NOT include them in your analysis
-- NEVER use generic references like "Source 1" or "Source 2". Always use the actual publisher name (e.g., "Reuters", "BBC", "Al Jazeera")
-- Bold publisher names in keyDifferences using **markdown** (e.g., "**Reuters** reports X, while **CNN** claims Y")
-- commonGround: 2-4 fact objects about THE PRIMARY EVENT with "label" (1-3 words) and "value"
-- keyDifferences: If sources DISAGREE about THE PRIMARY EVENT, return 1-3 difference objects. Keep each "value" CONCISE — max 25 words per bullet. Focus on the contrast, not background context. Example: "**CNN** reports 9 killed, while **Al Jazeera** and **NBC** report 15 fatalities." If sources AGREE, return a consensus string.
+- ONLY use information from the sources above.
+- TIME AWARENESS: If sources differ because some are older (e.g., "Manhunt underway" vs "Suspect caught"), trust the latest status. Do NOT list outdated early reports as a "Key Difference". Only list genuine conflicts where sources disagree on the *same* facts at the *same* time.
+- CITATION STYLE: Use the Publisher Name ONLY (e.g., "**Reuters**", "**CNN**").
+- NEGATIVE CONSTRAINT: DO NOT include source index numbers like "(Source 1)" or "[Source 1]". NEVER output the string "Source" followed by a number.
+- Bold publisher names in keyDifferences using **markdown**.
+- commonGround: 2-4 fact objects.
+- keyDifferences: If sources DISAGREE about the PRIMARY EVENT (and it's not just an update), return 1-3 difference objects. If they AGREE, return a consensus string.
 - Use simple language`.trim();
 
   const controller = new AbortController();
