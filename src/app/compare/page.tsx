@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, Check, X, Minus, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, ExternalLink, X } from "lucide-react";
 
 interface SourceData {
   id: string;
@@ -66,8 +66,9 @@ function CompareContent() {
   const [sources, setSources] = useState<SourceData[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [showTypeInfo, setShowTypeInfo] = useState<string | null>(null);
+  const [analyses, setAnalyses] = useState<Record<string, any>>({});
+  const [analyzing, setAnalyzing] = useState<Set<string>>(new Set());
 
   // Load sources from URL params or localStorage
   useEffect(() => {
@@ -88,6 +89,36 @@ function CompareContent() {
     }
     setLoading(false);
   }, [searchParams]);
+
+  // Analyze selected sources
+  useEffect(() => {
+    async function analyzeSource(source: SourceData) {
+      if (analyses[source.id] || analyzing.has(source.id)) return;
+
+      setAnalyzing(prev => new Set(prev).add(source.id));
+
+      try {
+        const res = await fetch('/api/analyze-source', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: source.url, sourceName: source.name }),
+        });
+        const data = await res.json();
+        setAnalyses(prev => ({ ...prev, [source.id]: data }));
+      } catch (err) {
+        console.error('Analysis failed:', err);
+      } finally {
+        setAnalyzing(prev => {
+          const next = new Set(prev);
+          next.delete(source.id);
+          return next;
+        });
+      }
+    }
+
+    const sourcesToAnalyze = sources.filter(s => selectedIds.includes(s.id));
+    sourcesToAnalyze.forEach(source => analyzeSource(source));
+  }, [selectedIds, sources, analyses, analyzing]);
 
   const selectedSources = sources.filter(s => selectedIds.includes(s.id));
   const availableSources = sources.filter(s => !selectedIds.includes(s.id));
@@ -247,60 +278,56 @@ function CompareContent() {
 
                 {/* Content */}
                 <div className="p-4 flex-1 flex flex-col">
-                  {/* Headline */}
-                  {source.headline && (
-                    <div className="mb-4 pb-4 border-b border-slate-100">
-                      <h3 className="font-medium text-slate-900 leading-snug">
-                        "{source.headline}"
-                      </h3>
+                  {analyzing.has(source.id) ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                      <span className="ml-2 text-sm text-slate-500">Analyzing...</span>
                     </div>
-                  )}
+                  ) : analyses[source.id] ? (
+                    <>
+                      {/* Headline */}
+                      <div className="mb-4 pb-4 border-b border-slate-100">
+                        <h3 className="font-medium text-slate-900 leading-snug">
+                          "{analyses[source.id].headline}"
+                        </h3>
+                      </div>
 
-                  {/* Key Points */}
-                  {source.keyPoints && source.keyPoints.length > 0 && (
-                    <div className="mb-4">
-                      <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Key Points</h4>
-                      <ul className="space-y-2">
-                        {source.keyPoints.map((point, i) => (
-                          <li key={i} className="text-sm text-slate-700 flex gap-2">
-                            <span className="text-slate-400">•</span>
-                            {point}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                      {/* Key Points */}
+                      {analyses[source.id].keyPoints?.length > 0 && (
+                        <div className="mb-4">
+                          <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Key Points</h4>
+                          <ul className="space-y-1">
+                            {analyses[source.id].keyPoints.map((point: string, i: number) => (
+                              <li key={i} className="text-sm text-slate-700 flex gap-2">
+                                <span className="text-slate-400">•</span>
+                                {point}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
 
-                  {/* Analysis (collapsible on mobile) */}
-                  <div className="mt-auto">
-                    <button
-                      onClick={() => setExpandedCard(expandedCard === source.id ? null : source.id)}
-                      className="flex items-center justify-between w-full text-left md:hidden py-2 text-sm text-slate-600"
-                    >
-                      <span>View analysis</span>
-                      {expandedCard === source.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </button>
-                    <div className={`space-y-3 ${expandedCard === source.id || 'hidden md:block'}`}>
-                      {source.tone && (
+                      {/* Tone & Focus */}
+                      <div className="space-y-3 mt-auto">
                         <div>
                           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Tone</span>
-                          <p className="text-sm text-slate-700">{source.tone}</p>
+                          <p className="text-sm text-slate-700">{analyses[source.id].tone}</p>
                         </div>
-                      )}
-                      {source.focus && (
                         <div>
                           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Focus</span>
-                          <p className="text-sm text-slate-700">{source.focus}</p>
+                          <p className="text-sm text-slate-700">{analyses[source.id].focus}</p>
                         </div>
-                      )}
-                      {source.missing && (
                         <div>
                           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Not Covered</span>
-                          <p className="text-sm text-slate-500 italic">{source.missing}</p>
+                          <p className="text-sm text-slate-500 italic">{analyses[source.id].missing}</p>
                         </div>
-                      )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-8 text-slate-400">
+                      <p>Waiting to analyze...</p>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             ))}
