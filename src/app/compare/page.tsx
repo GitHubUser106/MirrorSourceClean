@@ -174,10 +174,13 @@ function CompareContent() {
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2 text-slate-600 hover:text-slate-900">
+            <button
+              onClick={() => window.history.back()}
+              className="flex items-center gap-2 text-slate-600 hover:text-slate-900 bg-transparent border-none cursor-pointer"
+            >
               <ArrowLeft size={20} />
               <span className="hidden sm:inline">Back to results</span>
-            </Link>
+            </button>
             <Link href="/" className="hover:opacity-80 transition-opacity">
               <Image src="/logo.png" alt="MirrorSource" width={140} height={35} className="h-8 w-auto" />
             </Link>

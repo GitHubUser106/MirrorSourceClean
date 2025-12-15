@@ -242,6 +242,16 @@ function HomeContent() {
       setKeyDifferences(data.keyDifferences ?? null);
       setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
       setIsPaywalled(data.isPaywalled ?? false);
+
+      // Save to sessionStorage for back navigation
+      sessionStorage.setItem('mirrorSourceResults', JSON.stringify({
+        url: url,
+        summary: data.summary,
+        commonGround: data.commonGround,
+        keyDifferences: data.keyDifferences,
+        results: data.alternatives,
+        isPaywalled: data.isPaywalled
+      }));
     } catch (e: unknown) {
       // Network error - browser couldn't reach the server
       setError("Unable to connect. Please check your internet connection and try again.");
@@ -293,6 +303,16 @@ function HomeContent() {
       setKeyDifferences(data.keyDifferences ?? null);
       setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
       setIsPaywalled(data.isPaywalled ?? false);
+
+      // Save to sessionStorage for back navigation
+      sessionStorage.setItem('mirrorSourceResults', JSON.stringify({
+        url: keywords.trim(),
+        summary: data.summary,
+        commonGround: data.commonGround,
+        keyDifferences: data.keyDifferences,
+        results: data.alternatives,
+        isPaywalled: data.isPaywalled
+      }));
     } catch (e: unknown) {
       setError("Unable to connect. Please check your internet connection and try again.");
       setErrorRetryable(true);
@@ -304,6 +324,25 @@ function HomeContent() {
 
   useEffect(() => {
     refreshUsage();
+
+    // Check for saved results from sessionStorage (for back navigation)
+    const saved = sessionStorage.getItem('mirrorSourceResults');
+    if (saved && !hasAutoSearched) {
+      try {
+        const data = JSON.parse(saved);
+        setCurrentUrl(data.url || '');
+        setSummary(data.summary);
+        setCommonGround(data.commonGround);
+        setKeyDifferences(data.keyDifferences);
+        setResults(data.results || []);
+        setIsPaywalled(data.isPaywalled || false);
+        setHasAutoSearched(true);
+        return; // Don't proceed with URL param search if we restored from session
+      } catch (e) {
+        console.error('Failed to restore results:', e);
+      }
+    }
+
     const urlParam = searchParams.get('url');
     if (urlParam && !hasAutoSearched) {
       setCurrentUrl(urlParam);
