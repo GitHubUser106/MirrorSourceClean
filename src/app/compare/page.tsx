@@ -68,7 +68,7 @@ function CompareContent() {
   const [loading, setLoading] = useState(true);
   const [showTypeInfo, setShowTypeInfo] = useState<string | null>(null);
   const [analyses, setAnalyses] = useState<Record<string, any>>({});
-  const [analyzing, setAnalyzing] = useState<Set<string>>(new Set());
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Load sources from URL params or localStorage
   useEffect(() => {
@@ -77,7 +77,7 @@ function CompareContent() {
       try {
         const parsed = JSON.parse(decodeURIComponent(sourcesParam));
         // De-duplicate by domain just in case
-        const uniqueSources = parsed.filter((source: SourceData, index: number, self: SourceData[]) => 
+        const uniqueSources = parsed.filter((source: SourceData, index: number, self: SourceData[]) =>
           index === self.findIndex(s => s.domain === source.domain)
         );
         setSources(uniqueSources);
@@ -90,35 +90,41 @@ function CompareContent() {
     setLoading(false);
   }, [searchParams]);
 
-  // Analyze selected sources
+  // Batch analyze selected sources
   useEffect(() => {
-    async function analyzeSource(source: SourceData) {
-      if (analyses[source.id] || analyzing.has(source.id)) return;
+    async function fetchAnalyses() {
+      const selectedSources = sources.filter(s => selectedIds.includes(s.id));
+      if (selectedSources.length === 0) return;
 
-      setAnalyzing(prev => new Set(prev).add(source.id));
+      // Check if we already have analyses for all selected sources
+      const needsAnalysis = selectedSources.some(s => !analyses[s.id]);
+      if (!needsAnalysis) return;
 
+      setIsAnalyzing(true);
       try {
-        const res = await fetch('/api/analyze-source', {
+        const res = await fetch('/api/compare', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: source.url, sourceName: source.name }),
+          body: JSON.stringify({ sources: selectedSources }),
         });
         const data = await res.json();
-        setAnalyses(prev => ({ ...prev, [source.id]: data }));
+
+        if (data.analyses) {
+          const analysisMap: Record<string, any> = { ...analyses };
+          data.analyses.forEach((a: any) => {
+            analysisMap[a.sourceId] = a;
+          });
+          setAnalyses(analysisMap);
+        }
       } catch (err) {
         console.error('Analysis failed:', err);
       } finally {
-        setAnalyzing(prev => {
-          const next = new Set(prev);
-          next.delete(source.id);
-          return next;
-        });
+        setIsAnalyzing(false);
       }
     }
 
-    const sourcesToAnalyze = sources.filter(s => selectedIds.includes(s.id));
-    sourcesToAnalyze.forEach(source => analyzeSource(source));
-  }, [selectedIds, sources, analyses, analyzing]);
+    fetchAnalyses();
+  }, [selectedIds, sources]);
 
   const selectedSources = sources.filter(s => selectedIds.includes(s.id));
   const availableSources = sources.filter(s => !selectedIds.includes(s.id));
@@ -280,57 +286,66 @@ function CompareContent() {
                 </div>
 
                 {/* Content */}
-                <div className="p-4 flex-1 flex flex-col">
-                  {analyzing.has(source.id) ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                      <span className="ml-2 text-sm text-slate-500">Analyzing...</span>
+                <div className="p-5 flex-1">
+                  {isAnalyzing && !analyses[source.id] ? (
+                    <div className="space-y-3 animate-pulse">
+                      <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+                      <div className="h-3 bg-slate-100 rounded w-1/2"></div>
+                      <div className="h-3 bg-slate-100 rounded w-2/3"></div>
+                      <div className="h-3 bg-slate-100 rounded w-1/2"></div>
                     </div>
                   ) : analyses[source.id] ? (
-                    <>
+                    <div className="space-y-4">
                       {/* Headline */}
-                      <div className="mb-4 pb-4 border-b border-slate-100">
-                        <h3 className="font-medium text-slate-900 leading-snug">
+                      <div>
+                        <p className="font-semibold text-slate-900 leading-snug">
                           "{analyses[source.id].headline}"
-                        </h3>
+                        </p>
                       </div>
 
-                      {/* Key Points */}
-                      {analyses[source.id].keyPoints?.length > 0 && (
-                        <div className="mb-4">
-                          <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Key Points</h4>
-                          <ul className="space-y-1">
-                            {analyses[source.id].keyPoints.map((point: string, i: number) => (
-                              <li key={i} className="text-sm text-slate-700 flex gap-2">
-                                <span className="text-slate-400">•</span>
-                                {point}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Tone & Focus */}
-                      <div className="space-y-3 mt-auto">
-                        <div>
-                          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Tone</span>
-                          <p className="text-sm text-slate-700">{analyses[source.id].tone}</p>
-                        </div>
-                        <div>
-                          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Focus</span>
-                          <p className="text-sm text-slate-700">{analyses[source.id].focus}</p>
-                        </div>
-                        <div>
-                          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Not Covered</span>
-                          <p className="text-sm text-slate-500 italic">{analyses[source.id].missing}</p>
-                        </div>
+                      {/* Tone Badge */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Tone</span>
+                        <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
+                          {analyses[source.id].tone}
+                        </span>
                       </div>
-                    </>
+
+                      {/* Focus */}
+                      <div>
+                        <span className="text-xs font-medium text-slate-500 uppercase tracking-wide block mb-1">Focus</span>
+                        <p className="text-sm text-slate-700">{analyses[source.id].focus}</p>
+                      </div>
+
+                      {/* Unique Angle */}
+                      <div>
+                        <span className="text-xs font-medium text-slate-500 uppercase tracking-wide block mb-1">Unique Angle</span>
+                        <p className="text-sm text-slate-700">{analyses[source.id].uniqueAngle}</p>
+                      </div>
+
+                      {/* Missing Context */}
+                      <div className="pt-3 border-t border-slate-100">
+                        <span className="text-xs font-medium text-amber-600 uppercase tracking-wide block mb-1">Not Covered</span>
+                        <p className="text-sm text-slate-500 italic">{analyses[source.id].missingContext}</p>
+                      </div>
+                    </div>
                   ) : (
-                    <div className="text-center py-8 text-slate-400">
-                      <p>Waiting to analyze...</p>
+                    <div className="text-center py-6 text-slate-400">
+                      <p className="text-sm">Analysis unavailable</p>
                     </div>
                   )}
+                </div>
+
+                {/* Read full article link */}
+                <div className="p-4 pt-0">
+                  <a
+                    href={source.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                  >
+                    Read full article <ExternalLink size={14} />
+                  </a>
                 </div>
               </div>
             ))}
