@@ -742,7 +742,10 @@ function HomeContent() {
             {/* Alternative Sources */}
             <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8 lg:p-10">
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-xl md:text-2xl font-bold text-slate-900">Alternative Sources</h2>
+                <div>
+                  <h2 className="text-xl md:text-2xl font-bold text-slate-900">Alternative Sources</h2>
+                  <p className="text-sm text-slate-500 mt-1">Select sources to compare side-by-side</p>
+                </div>
               </div>
 
               {results.length > 0 ? (
@@ -793,33 +796,46 @@ function HomeContent() {
       </footer>
 
       {/* Floating Compare Bar */}
-      {selectedForCompare.length > 0 && (
+      {results.length >= 2 && (
         <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300">
           <div className="bg-white px-6 py-3 rounded-full shadow-2xl border border-slate-200 flex items-center gap-4">
-            <span className="font-medium text-slate-700">
-              {selectedForCompare.length} {selectedForCompare.length === 1 ? 'source' : 'sources'} selected
-            </span>
-            {selectedForCompare.length >= 2 ? (
-              <Link
-                href={`/compare?sources=${encodeURIComponent(JSON.stringify(
-                  results
-                    .filter(r => selectedForCompare.includes(r.uri))
-                    .map((r, i) => ({
-                      id: `source-${i}`,
-                      name: r.displayName || r.sourceDomain?.split('.')[0].toUpperCase(),
-                      type: r.sourceType || 'Corporate',
-                      url: r.uri,
-                      domain: r.sourceDomain || '',
-                      countryCode: r.countryCode || 'US',
-                    }))
-                ))}`}
-                className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white px-5 py-2 rounded-full font-semibold transition-colors flex items-center gap-2"
-              >
-                Compare Coverage
-                <ArrowRight size={16} />
-              </Link>
+            {selectedForCompare.length === 0 ? (
+              <>
+                <div className="w-5 h-5 rounded border-2 border-slate-300 flex items-center justify-center">
+                  <Check size={14} className="text-slate-300" />
+                </div>
+                <span className="text-slate-500">
+                  Use checkboxes to select sources for comparison
+                </span>
+              </>
             ) : (
-              <span className="text-slate-400 text-sm">Select 1 more to compare</span>
+              <>
+                <span className="font-medium text-slate-700">
+                  {selectedForCompare.length} {selectedForCompare.length === 1 ? 'source' : 'sources'} selected
+                </span>
+                {selectedForCompare.length >= 2 ? (
+                  <Link
+                    href={`/compare?sources=${encodeURIComponent(JSON.stringify(
+                      results
+                        .filter(r => selectedForCompare.includes(r.uri))
+                        .map((r, i) => ({
+                          id: `source-${i}`,
+                          name: r.displayName || r.sourceDomain?.split('.')[0].toUpperCase(),
+                          type: r.sourceType || 'Corporate',
+                          url: r.uri,
+                          domain: r.sourceDomain || '',
+                          countryCode: r.countryCode || 'US',
+                        }))
+                    ))}`}
+                    className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white px-5 py-2 rounded-full font-semibold transition-colors flex items-center gap-2"
+                  >
+                    Compare Coverage
+                    <ArrowRight size={16} />
+                  </Link>
+                ) : (
+                  <span className="text-slate-400 text-sm">Select 1 more to compare</span>
+                )}
+              </>
             )}
           </div>
         </div>
