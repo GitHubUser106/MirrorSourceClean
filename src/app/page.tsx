@@ -8,7 +8,7 @@ import UrlInputForm from "@/components/UrlInputForm";
 import ResultsDisplay from "@/components/ResultsDisplay";
 import TransparencyCard from "@/components/TransparencyCard";
 import type { GroundingSource } from "@/types";
-import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, GitCompare } from "lucide-react";
+import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, ArrowRight } from "lucide-react";
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
 type CommonGroundFact = { label: string; value: string };
@@ -743,29 +743,6 @@ function HomeContent() {
             <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8 lg:p-10">
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-xl md:text-2xl font-bold text-slate-900">Alternative Sources</h2>
-                {results.length >= 2 && (
-                  <Link
-                    href={`/compare?sources=${encodeURIComponent(JSON.stringify(
-                      // De-duplicate by domain and use API data (not local function)
-                      results
-                        .map((r, i) => ({
-                          id: `source-${i}`,
-                          name: r.displayName || r.title?.split(' - ')[0] || new URL(r.uri).hostname.replace('www.', ''),
-                          type: r.sourceType || 'Corporate',  // Use API data
-                          url: r.uri,
-                          domain: r.sourceDomain || new URL(r.uri).hostname.replace('www.', ''),
-                          countryCode: r.countryCode || 'US',  // Use API data
-                        }))
-                        .filter((source, index, self) => 
-                          index === self.findIndex(s => s.domain === source.domain)
-                        )
-                    ))}`}
-                    className="text-sm text-[#2563eb] hover:underline flex items-center gap-1"
-                  >
-                    <Scale size={16} />
-                    <span className="hidden sm:inline">Compare coverage</span>
-                  </Link>
-                )}
               </div>
 
               {results.length > 0 ? (
@@ -815,27 +792,36 @@ function HomeContent() {
         </div>
       </footer>
 
-      {/* Floating compare button */}
-      {selectedForCompare.length >= 2 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <Link
-            href={`/compare?sources=${encodeURIComponent(JSON.stringify(
-              results
-                .filter(r => selectedForCompare.includes(r.uri))
-                .map((r, i) => ({
-                  id: `source-${i}`,
-                  name: r.displayName || r.title?.split(' - ')[0] || new URL(r.uri).hostname.replace('www.', ''),
-                  type: r.sourceType || 'Corporate',
-                  url: r.uri,
-                  domain: r.sourceDomain || new URL(r.uri).hostname.replace('www.', ''),
-                  countryCode: r.countryCode || 'US',
-                }))
-            ))}`}
-            className="flex items-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold py-3 px-6 rounded-full shadow-lg hover:shadow-xl transition-all"
-          >
-            <GitCompare size={20} />
-            Compare {selectedForCompare.length} Sources
-          </Link>
+      {/* Floating Compare Bar */}
+      {selectedForCompare.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300">
+          <div className="bg-white px-6 py-3 rounded-full shadow-2xl border border-slate-200 flex items-center gap-4">
+            <span className="font-medium text-slate-700">
+              {selectedForCompare.length} {selectedForCompare.length === 1 ? 'source' : 'sources'} selected
+            </span>
+            {selectedForCompare.length >= 2 ? (
+              <Link
+                href={`/compare?sources=${encodeURIComponent(JSON.stringify(
+                  results
+                    .filter(r => selectedForCompare.includes(r.uri))
+                    .map((r, i) => ({
+                      id: `source-${i}`,
+                      name: r.displayName || r.sourceDomain?.split('.')[0].toUpperCase(),
+                      type: r.sourceType || 'Corporate',
+                      url: r.uri,
+                      domain: r.sourceDomain || '',
+                      countryCode: r.countryCode || 'US',
+                    }))
+                ))}`}
+                className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white px-5 py-2 rounded-full font-semibold transition-colors flex items-center gap-2"
+              >
+                Compare Coverage
+                <ArrowRight size={16} />
+              </Link>
+            ) : (
+              <span className="text-slate-400 text-sm">Select 1 more to compare</span>
+            )}
+          </div>
         </div>
       )}
     </main>
