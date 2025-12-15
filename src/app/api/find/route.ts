@@ -1496,14 +1496,16 @@ RESPOND IN JSON FORMAT:
 }
 
 RULES:
+- ABSOLUTE PROHIBITION: Never write "(Source X)", "[Source X]", "Source 1", or any variation. No source numbers anywhere. Use Publisher Names ONLY (e.g., "Reuters", "CNN", "Fox News").
 - ONLY use information from the sources above.
 - TIME AWARENESS: If sources differ because some are older (e.g., "Manhunt underway" vs "Suspect caught"), trust the latest status. Do NOT list outdated early reports as a "Key Difference". Only list genuine conflicts where sources disagree on the *same* facts at the *same* time.
 - CITATION STYLE: Refer to sources by their Publisher Name as written in the text (e.g., "**Reuters**", "**CNN**", "**Al Jazeera**").
-- NEGATIVE CONSTRAINT: Strictly forbidden: Do not use "(Source X)" or "[Source X]" or "Source 1" or any index-based reference. You will be penalized for using indices. Use the Publisher Name ONLY.
 - Bold publisher names in keyDifferences using **markdown**.
 - commonGround: 2-4 fact objects.
 - keyDifferences: If sources DISAGREE about the PRIMARY EVENT (and it's not just an update), return 1-3 difference objects. If they AGREE, return a consensus string.
-- Use simple language`.trim();
+- Use simple language
+
+FINAL CHECK: Before responding, verify you have not included any "(Source" or "Source 1" text anywhere in your response.`.trim();
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
