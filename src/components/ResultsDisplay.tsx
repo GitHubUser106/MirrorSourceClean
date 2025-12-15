@@ -30,6 +30,8 @@ interface SourceResult {
 
 interface ResultsDisplayProps {
   results: SourceResult[] | null;
+  selectedIds?: string[];
+  onToggleSelect?: (id: string) => void;
 }
 
 // Country flag emoji mapping
@@ -172,7 +174,7 @@ function getHeadline(result: SourceResult): string {
   return `Read article on ${result.sourceDomain || 'source'}`;
 }
 
-export default function ResultsDisplay({ results }: ResultsDisplayProps) {
+export default function ResultsDisplay({ results, selectedIds = [], onToggleSelect }: ResultsDisplayProps) {
   const [linksCopied, setLinksCopied] = useState(false);
 
   if (!results || results.length === 0) {
@@ -262,11 +264,35 @@ export default function ResultsDisplay({ results }: ResultsDisplayProps) {
                   {headline}
                 </h3>
                 
-                {/* External link icon */}
-                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400">
-                  <ExternalLink size={16} />
-                </div>
+                {/* External link icon - shown when not in compare mode */}
+                {!onToggleSelect && (
+                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400">
+                    <ExternalLink size={16} />
+                  </div>
+                )}
               </a>
+
+              {/* Selection checkbox for compare mode */}
+              {onToggleSelect && (
+                <div
+                  className="absolute top-3 right-3 z-10"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onToggleSelect(item.uri);
+                  }}
+                >
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer transition-all ${
+                    selectedIds.includes(item.uri)
+                      ? 'bg-[#2563eb] border-[#2563eb]'
+                      : 'bg-white border-slate-300 hover:border-[#2563eb]'
+                  }`}>
+                    {selectedIds.includes(item.uri) && (
+                      <Check size={14} className="text-white" />
+                    )}
+                  </div>
+                </div>
+              )}
             </article>
           );
         })}

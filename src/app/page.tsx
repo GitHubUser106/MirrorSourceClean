@@ -8,7 +8,7 @@ import UrlInputForm from "@/components/UrlInputForm";
 import ResultsDisplay from "@/components/ResultsDisplay";
 import TransparencyCard from "@/components/TransparencyCard";
 import type { GroundingSource } from "@/types";
-import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle } from "lucide-react";
+import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, GitCompare } from "lucide-react";
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
 type CommonGroundFact = { label: string; value: string };
@@ -84,6 +84,7 @@ function HomeContent() {
   const [visibleIcons, setVisibleIcons] = useState(0);
   const [showKeywordFallback, setShowKeywordFallback] = useState(false);
   const [keywords, setKeywords] = useState("");
+  const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
 
   // Helper to extract source name from URL
   function getSourceName(url: string): string {
@@ -94,6 +95,15 @@ function HomeContent() {
     } catch {
       return "this source";
     }
+  }
+
+  // Toggle source selection for compare
+  function handleToggleCompare(uri: string) {
+    setSelectedForCompare(prev =>
+      prev.includes(uri)
+        ? prev.filter(id => id !== uri)
+        : [...prev, uri]
+    );
   }
 
   // Rotate loading facts
@@ -181,14 +191,15 @@ function HomeContent() {
     setVisibleIcons(0);
     setShowKeywordFallback(false);
     setKeywords("");
-    
+    setSelectedForCompare([]);
+
     // Check for opaque URLs (FT, Bloomberg, etc. with UUIDs)
     if (isOpaqueUrl(url)) {
       setError(null);
       setShowKeywordFallback(true);
       return;
     }
-    
+
     try {
       setIsLoading(true);
       setError(null);
@@ -243,12 +254,13 @@ function HomeContent() {
 
   async function handleKeywordSearch() {
     if (!keywords.trim()) return;
-    
+
     setLoadingFactIndex(0);
     setScannerIconIndex(0);
     setVisibleIcons(0);
     setShowKeywordFallback(false);
-    
+    setSelectedForCompare([]);
+
     try {
       setIsLoading(true);
       setError(null);
@@ -347,6 +359,7 @@ function HomeContent() {
     setVisibleIcons(0);
     setShowKeywordFallback(false);
     setKeywords("");
+    setSelectedForCompare([]);
     window.history.pushState({}, '', '/');
   }
 
@@ -718,7 +731,11 @@ function HomeContent() {
 
               {results.length > 0 ? (
                 <>
-                  <ResultsDisplay results={results} />
+                  <ResultsDisplay
+                    results={results}
+                    selectedIds={selectedForCompare}
+                    onToggleSelect={handleToggleCompare}
+                  />
                   <div className="mt-6 pt-6 border-t border-slate-100">
                     <p className="text-sm text-slate-500 text-center mb-3">Results may vary. Try again for different sources.</p>
                     <button onClick={() => handleSearchWithUrl(lastSubmittedUrl)} disabled={loading} className="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 disabled:bg-slate-50 text-slate-700 font-medium py-3 px-6 rounded-full transition-colors border border-slate-200">
@@ -758,6 +775,30 @@ function HomeContent() {
           </div>
         </div>
       </footer>
+
+      {/* Floating compare button */}
+      {selectedForCompare.length >= 2 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <Link
+            href={`/compare?sources=${encodeURIComponent(JSON.stringify(
+              results
+                .filter(r => selectedForCompare.includes(r.uri))
+                .map((r, i) => ({
+                  id: `source-${i}`,
+                  name: r.displayName || r.title?.split(' - ')[0] || new URL(r.uri).hostname.replace('www.', ''),
+                  type: r.sourceType || 'Corporate',
+                  url: r.uri,
+                  domain: r.sourceDomain || new URL(r.uri).hostname.replace('www.', ''),
+                  countryCode: r.countryCode || 'US',
+                }))
+            ))}`}
+            className="flex items-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold py-3 px-6 rounded-full shadow-lg hover:shadow-xl transition-all"
+          >
+            <GitCompare size={20} />
+            Compare {selectedForCompare.length} Sources
+          </Link>
+        </div>
+      )}
     </main>
   );
 }
