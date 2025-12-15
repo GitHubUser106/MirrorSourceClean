@@ -1268,30 +1268,11 @@ function extractKeywordsFromUrl(url: string): string | null {
     // Important short words to KEEP (country codes, key terms)
     const keepShortWords = new Set(['us', 'uk', 'eu', 'un', 'ai', 'nyc', 'la', 'dc']);
 
-    // Detect compound entities (e.g., "us-military" -> "US military")
-    const compoundPatterns = [
-      { pattern: /\bus[-_]military\b/i, replacement: '"US military"' },
-      { pattern: /\buk[-_]military\b/i, replacement: '"UK military"' },
-      { pattern: /\bus[-_]troops\b/i, replacement: '"US troops"' },
-      { pattern: /\bus[-_]soldiers\b/i, replacement: '"US soldiers"' },
-    ];
-
-    let processedSlug = slug.toLowerCase();
-    const entities: string[] = [];
-
-    // Extract compound entities first
-    for (const { pattern, replacement } of compoundPatterns) {
-      if (pattern.test(processedSlug)) {
-        entities.push(replacement);
-        processedSlug = processedSlug.replace(pattern, '');
-      }
-    }
-
-    // Process remaining words
-    const words = processedSlug
+    // Process words - keep natural order from URL, just filter noise
+    const words = slug.toLowerCase()
       .split(/[-_.]/)
       .filter(word => {
-        if (word.length < 2) return false;
+        if (!word || word.length < 2) return false;
         if (/^[0-9a-f]+$/i.test(word) && word.length > 6) return false; // UUIDs
         if (/^\d+$/.test(word)) return false; // Pure numbers
         if (noiseWords.has(word)) return false;
@@ -1300,18 +1281,11 @@ function extractKeywordsFromUrl(url: string): string | null {
         return true;
       });
 
-    // Prioritize longer, more specific words
-    const sorted = words.sort((a, b) => b.length - a.length).slice(0, 5);
+    if (words.length < 2) return null;
 
-    // Title-case for proper noun detection
-    const formatted = sorted.map(w => w.charAt(0).toUpperCase() + w.slice(1));
-
-    // Combine entities and keywords
-    const allTerms = [...entities, ...formatted];
-
-    if (allTerms.length < 2) return null;
-
-    return allTerms.join(' ');
+    // Keep natural order, just take first 6 meaningful terms
+    // No quotes, no sorting - let Google handle matching
+    return words.slice(0, 6).join(' ');
   } catch { return null; }
 }
 
@@ -1706,8 +1680,7 @@ export async function POST(req: NextRequest) {
           { status: 400, headers: corsHeaders }
         );
       }
-      // Apply proper noun quoting to keyword searches too
-      searchQuery = quoteProperNouns(searchQuery);
+      // Use keywords directly - no quote wrapping
     } else {
       const validation = validateUrl(body.url);
       if (!validation.valid && validation.error) {
@@ -1726,8 +1699,8 @@ export async function POST(req: NextRequest) {
 
       if (articleTitle) {
         console.log(`[Query] Got article title: "${articleTitle}"`);
-        // Use the title with proper noun quoting
-        searchQuery = quoteProperNouns(articleTitle);
+        // Use the title directly - no quote wrapping
+        searchQuery = articleTitle;
       } else {
         // FALLBACK: Extract from URL slug
         console.log(`[Query] Title fetch failed, falling back to URL extraction`);
@@ -1747,7 +1720,8 @@ export async function POST(req: NextRequest) {
           }, { headers: corsHeaders });
         }
 
-        searchQuery = quoteProperNouns(extractedKeywords);
+        // Use extracted keywords directly - no quote wrapping
+        searchQuery = extractedKeywords;
       }
     }
 
