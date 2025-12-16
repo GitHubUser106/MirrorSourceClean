@@ -108,12 +108,15 @@ interface FundingInfo {
   note?: string;
 }
 
+type PoliticalLean = 'left' | 'center-left' | 'center' | 'center-right' | 'right';
+
 interface SourceInfo {
   displayName: string;
   type: SourceType;
   countryCode: string;
   ownership?: OwnershipInfo;
   funding?: FundingInfo;
+  lean?: PoliticalLean;
 }
 
 // Complete source database with transparency data
@@ -159,6 +162,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Associated Press', type: 'cooperative', note: 'Non-profit cooperative owned by ~1,300 member newspapers and broadcasters' },
     funding: { model: 'Member fees & content licensing to media outlets worldwide' },
+    lean: 'center',
   },
   'reuters.com': {
     displayName: 'REUTERS',
@@ -166,6 +170,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'UK',
     ownership: { owner: 'Thomson Reuters Corporation', type: 'public_traded', note: 'NYSE (TRI) and TSX. Thomson family holds ~65% voting control' },
     funding: { model: 'Financial data terminals, news licensing & professional services' },
+    lean: 'center',
   },
   'afp.com': {
     displayName: 'AFP',
@@ -184,6 +189,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'National Public Radio, Inc.', type: 'nonprofit', note: '501(c)(3) non-profit media organization founded 1970' },
     funding: { model: 'Member station fees, corporate sponsors, foundations & individual donors', note: 'Federal funding via CPB is <1% of total budget' },
+    lean: 'center-left',
   },
   'pbs.org': {
     displayName: 'PBS',
@@ -191,6 +197,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Public Broadcasting Service', type: 'nonprofit', note: 'Non-profit public broadcaster; member organization of 350+ local stations' },
     funding: { model: 'Member stations, corporate underwriting, foundations & viewer donations' },
+    lean: 'center',
   },
   'opb.org': {
     displayName: 'OPB',
@@ -205,6 +212,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'UK',
     ownership: { owner: 'British Broadcasting Corporation', type: 'public_media', note: 'UK public corporation established by Royal Charter; governed by BBC Board' },
     funding: { model: 'UK TV license fee (£159/year) & BBC Studios commercial revenue' },
+    lean: 'center',
   },
   'bbc.co.uk': {
     displayName: 'BBC',
@@ -265,6 +273,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'QA',
     ownership: { owner: 'Al Jazeera Media Network', type: 'state_owned', note: 'Funded by the government of Qatar; headquartered in Doha' },
     funding: { model: 'Qatar government funding (estimated $500M+ annually)' },
+    lean: 'center',
   },
   'theguardian.com': {
     displayName: 'THE GUARDIAN',
@@ -272,6 +281,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'UK',
     ownership: { owner: 'Guardian Media Group', parent: 'Scott Trust Limited', type: 'trust', note: 'Trust structure (since 1936) ensures editorial independence in perpetuity' },
     funding: { model: 'Reader contributions, advertising, events & Guardian Foundation grants', note: 'No paywall; relies on voluntary reader support (~1M+ paying supporters)' },
+    lean: 'left',
   },
   'thehindu.com': {
     displayName: 'THE HINDU',
@@ -409,6 +419,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Warner Bros. Discovery', type: 'public_traded', note: 'WBD trades on NASDAQ (WBD). Created from WarnerMedia-Discovery merger 2022' },
     funding: { model: 'Advertising, cable carriage fees & CNN+ subscriptions' },
+    lean: 'left',
   },
   'foxnews.com': {
     displayName: 'Fox News',
@@ -416,6 +427,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Fox Corporation', parent: 'Fox Corporation', type: 'public_traded', note: 'Owned by Murdoch family via Fox Corp (NASDAQ: FOX)' },
     funding: { model: 'Advertising, cable fees', note: 'Largest US cable news network by viewership' },
+    lean: 'right',
   },
   'nbcnews.com': {
     displayName: 'NBC NEWS',
@@ -444,6 +456,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'NBCUniversal News Group', parent: 'Comcast Corporation', type: 'public_traded', note: 'Comcast trades NASDAQ (CMCSA). Originally NBC-Microsoft joint venture (1996)' },
     funding: { model: 'Advertising & cable carriage fees' },
+    lean: 'left',
   },
 
   // ===========================================================================
@@ -530,6 +543,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Gannett Co., Inc.', type: 'public_traded', note: 'NYSE (GCI). Largest US newspaper chain by circulation; merged with GateHouse 2019' },
     funding: { model: 'Advertising, subscriptions & digital marketing services' },
+    lean: 'center',
   },
   'axios.com': {
     displayName: 'AXIOS',
@@ -537,6 +551,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Axios Media', parent: 'Cox Enterprises', type: 'private', note: 'Cox Enterprises acquired Axios in 2022 for $525M. Founded by Politico alumni' },
     funding: { model: 'Newsletters, advertising & Axios Pro subscriptions' },
+    lean: 'center',
   },
 
   // ===========================================================================
@@ -548,6 +563,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'News Corp', parent: 'News Corp', type: 'public_traded', note: 'Owned by Rupert Murdoch\'s News Corp (NASDAQ: NWSA)' },
     funding: { model: 'Advertising, subscriptions', note: 'Tabloid format, conservative editorial stance' },
+    lean: 'right',
   },
   'washingtonexaminer.com': {
     displayName: 'Washington Examiner',
@@ -555,6 +571,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Clarity Media Group', parent: 'Anschutz Corporation', type: 'private', note: 'Owned by billionaire Philip Anschutz' },
     funding: { model: 'Advertising, subscriptions', note: 'Conservative news and opinion' },
+    lean: 'right',
   },
   'washingtontimes.com': {
     displayName: 'Washington Times',
@@ -562,6 +579,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Operations Holdings', parent: 'Unification Church affiliates', type: 'private', note: 'Founded by Sun Myung Moon, now independent' },
     funding: { model: 'Advertising, subscriptions', note: 'Conservative daily newspaper' },
+    lean: 'right',
   },
   'dailywire.com': {
     displayName: 'Daily Wire',
@@ -569,6 +587,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Daily Wire LLC', parent: 'Bentkey Ventures', type: 'private', note: 'Co-founded by Ben Shapiro and Jeremy Boreing' },
     funding: { model: 'Subscriptions, advertising', note: 'Conservative media and entertainment company' },
+    lean: 'right',
   },
   'newsmax.com': {
     displayName: 'Newsmax',
@@ -576,6 +595,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Newsmax Media Inc', parent: 'Newsmax Media Inc', type: 'private', note: 'Founded by Christopher Ruddy' },
     funding: { model: 'Advertising, cable fees', note: 'Conservative cable and digital news' },
+    lean: 'right',
   },
   'breitbart.com': {
     displayName: 'Breitbart',
@@ -583,6 +603,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Breitbart News Network', parent: 'Breitbart News Network', type: 'private', note: 'Founded by Andrew Breitbart, previously chaired by Steve Bannon' },
     funding: { model: 'Advertising', note: 'Right-wing news and opinion' },
+    lean: 'right',
   },
   'nationalreview.com': {
     displayName: 'National Review',
@@ -590,6 +611,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'National Review Inc', parent: 'National Review Inc', type: 'nonprofit', note: 'Founded by William F. Buckley Jr. in 1955' },
     funding: { model: 'Subscriptions, donations', note: 'Conservative intellectual magazine' },
+    lean: 'right',
   },
   'dailycaller.com': {
     displayName: 'Daily Caller',
@@ -597,6 +619,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Daily Caller Inc', parent: 'Daily Caller Inc', type: 'private', note: 'Co-founded by Tucker Carlson and Neil Patel' },
     funding: { model: 'Advertising', note: 'Conservative news and opinion website' },
+    lean: 'right',
   },
   'theblaze.com': {
     displayName: 'The Blaze',
@@ -604,6 +627,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Blaze Media', parent: 'Blaze Media', type: 'private', note: 'Founded by Glenn Beck, merged with CRTV' },
     funding: { model: 'Subscriptions, advertising', note: 'Conservative multimedia network' },
+    lean: 'right',
   },
   'freebeacon.com': {
     displayName: 'Washington Free Beacon',
@@ -611,6 +635,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Center for American Freedom', parent: 'Center for American Freedom', type: 'nonprofit', note: 'Conservative nonprofit news organization' },
     funding: { model: 'Donations', note: 'Investigative journalism, conservative perspective' },
+    lean: 'right',
   },
   'townhall.com': {
     displayName: 'Townhall',
@@ -618,6 +643,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Salem Communications', parent: 'Salem Communications', type: 'public_traded', note: 'Part of Salem Media Group (NASDAQ: SALM)' },
     funding: { model: 'Advertising', note: 'Conservative news and commentary' },
+    lean: 'right',
   },
   'redstate.com': {
     displayName: 'RedState',
@@ -625,6 +651,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Salem Communications', parent: 'Salem Communications', type: 'public_traded', note: 'Part of Salem Media Group (NASDAQ: SALM)' },
     funding: { model: 'Advertising', note: 'Conservative blog and news' },
+    lean: 'right',
   },
   'thefederalist.com': {
     displayName: 'The Federalist',
@@ -632,12 +659,14 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'FDRLST Media', parent: 'FDRLST Media', type: 'private', note: 'Co-founded by Ben Domenech and Sean Davis' },
     funding: { model: 'Advertising, donations', note: 'Conservative online magazine' },
+    lean: 'right',
   },
   'spectator.org': {
     displayName: 'The American Spectator',
     type: 'magazine',
     countryCode: 'US',
     ownership: { owner: 'American Spectator Foundation', parent: 'American Spectator Foundation', type: 'nonprofit', note: 'Founded in 1924, conservative publication' },
+    lean: 'right',
     funding: { model: 'Subscriptions, donations', note: 'Conservative monthly magazine' },
   },
 
@@ -881,6 +910,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Nexstar Media Group', type: 'public_traded', note: 'NASDAQ (NXST). Nexstar acquired The Hill in 2021 for $130M' },
     funding: { model: 'Advertising & events' },
+    lean: 'center',
   },
   'politico.com': {
     displayName: 'POLITICO',
@@ -888,6 +918,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Axel Springer SE', type: 'private', note: 'German media conglomerate acquired Politico in 2021 for ~$1B. KKR is investor' },
     funding: { model: 'Advertising, Politico Pro subscriptions & events' },
+    lean: 'center-left',
   },
   'responsiblestatecraft.org': {
     displayName: 'RESPONSIBLE STATECRAFT',
@@ -1057,6 +1088,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Dow Jones & Company', parent: 'News Corp (Murdoch family)', type: 'public_traded', note: 'News Corp trades NASDAQ (NWSA). Largest US newspaper by circulation' },
     funding: { model: 'Subscriptions (3M+) & advertising' },
+    lean: 'center-right',
   },
   'business-standard.com': {
     displayName: 'BUSINESS STANDARD',
@@ -1518,43 +1550,55 @@ function diversifyResults(results: CSEResult[], maxResults: number = 15): CSERes
   // Defensive null checks
   if (!results || !Array.isArray(results) || results.length === 0) return [];
 
-  // Group by source type
-  const byType: Record<string, CSEResult[]> = {};
+  // Group by political lean instead of just type
+  const byLean: Record<string, CSEResult[]> = {
+    'right': [],
+    'center-right': [],
+    'center': [],
+    'center-left': [],
+    'left': [],
+    'unknown': []
+  };
 
   for (const result of results) {
     if (!result || !result.domain) continue;
     const info = getSourceInfo(result.domain);
-    const type = info.type || 'local';
-    if (!byType[type]) byType[type] = [];
-    byType[type].push(result);
+    const lean = info.lean || 'unknown';
+    byLean[lean].push(result);
   }
 
-  // Round-robin selection
-  const types = Object.keys(byType);
-  const diversified: CSEResult[] = [];
-  const indices: Record<string, number> = {};
-  types.forEach(t => indices[t] = 0);
+  // Round-robin from each lean category (center first for neutrality)
+  const diverse: CSEResult[] = [];
+  const leans = ['center', 'right', 'left', 'center-right', 'center-left', 'unknown'];
+  let added = true;
+  let round = 0;
 
-  let typeIndex = 0;
-  while (diversified.length < maxResults) {
-    let found = false;
-    const startIndex = typeIndex;
-
-    // Try each type until we find one with remaining results
-    do {
-      const type = types[typeIndex];
-      if (indices[type] < byType[type].length) {
-        diversified.push(byType[type][indices[type]]);
-        indices[type]++;
-        found = true;
+  while (added && diverse.length < maxResults) {
+    added = false;
+    for (const lean of leans) {
+      if (byLean[lean][round]) {
+        // Avoid duplicates by domain
+        if (!diverse.find(d => d.domain === byLean[lean][round].domain)) {
+          diverse.push(byLean[lean][round]);
+          added = true;
+        }
+        if (diverse.length >= maxResults) break;
       }
-      typeIndex = (typeIndex + 1) % types.length;
-    } while (!found && typeIndex !== startIndex);
-
-    if (!found) break; // All types exhausted
+    }
+    round++;
   }
 
-  return diversified;
+  // Log lean breakdown for debugging
+  console.log('[CSE] Lean breakdown:', {
+    right: diverse.filter(r => getSourceInfo(r.domain).lean === 'right').length,
+    centerRight: diverse.filter(r => getSourceInfo(r.domain).lean === 'center-right').length,
+    center: diverse.filter(r => getSourceInfo(r.domain).lean === 'center').length,
+    centerLeft: diverse.filter(r => getSourceInfo(r.domain).lean === 'center-left').length,
+    left: diverse.filter(r => getSourceInfo(r.domain).lean === 'left').length,
+    unknown: diverse.filter(r => !getSourceInfo(r.domain).lean).length,
+  });
+
+  return diverse;
 }
 
 // =============================================================================
