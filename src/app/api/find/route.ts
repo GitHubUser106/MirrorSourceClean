@@ -19,6 +19,37 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
+// =============================================================================
+// SIMPLE IN-MEMORY CACHE (1 hour TTL, resets on cold start)
+// =============================================================================
+const searchCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+function getCachedResult(query: string): any | null {
+  const cached = searchCache.get(query.toLowerCase());
+  if (!cached) return null;
+
+  if (Date.now() - cached.timestamp > CACHE_TTL_MS) {
+    searchCache.delete(query.toLowerCase());
+    console.log('[Cache] Expired:', query);
+    return null;
+  }
+
+  console.log('[Cache] HIT:', query);
+  return cached.data;
+}
+
+function setCachedResult(query: string, data: any): void {
+  // Limit cache size to prevent memory issues
+  if (searchCache.size > 500) {
+    const oldest = searchCache.keys().next().value;
+    if (oldest) searchCache.delete(oldest);
+  }
+
+  searchCache.set(query.toLowerCase(), { data, timestamp: Date.now() });
+  console.log('[Cache] SET:', query);
+}
+
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
@@ -1208,6 +1239,22 @@ const sources: Record<string, SourceInfo> = {
     funding: { model: 'Subscriptions (3M+) & advertising' },
     lean: 'center-right',
   },
+  'nytimes.com': {
+    displayName: 'THE NEW YORK TIMES',
+    type: 'national',
+    countryCode: 'US',
+    ownership: { owner: 'The New York Times Company', type: 'public_traded', note: 'NYSE: NYT. Founded 1851, "Gray Lady"' },
+    funding: { model: 'Subscriptions (10M+) & advertising' },
+    lean: 'center-left',
+  },
+  'washingtonpost.com': {
+    displayName: 'THE WASHINGTON POST',
+    type: 'national',
+    countryCode: 'US',
+    ownership: { owner: 'Jeff Bezos', parent: 'Nash Holdings', type: 'private', note: 'Purchased by Bezos in 2013 for $250M' },
+    funding: { model: 'Subscriptions & advertising' },
+    lean: 'center-left',
+  },
   'business-standard.com': {
     displayName: 'BUSINESS STANDARD',
     type: 'specialized',
@@ -1547,7 +1594,20 @@ function getSourceInfo(domain: string): SourceInfo {
     .replace(/^amp\./, '');
 
   // Check exact match first
-  if (sources[normalized]) return sources[normalized];
+  if (sources[normalized]) {
+    return sources[normalized];
+  }
+
+  // Handle special cases for major newspapers
+  if (normalized.includes('washingtonpost')) {
+    return sources['washingtonpost.com'];
+  }
+  if (normalized.includes('nytimes')) {
+    return sources['nytimes.com'];
+  }
+  if (normalized.includes('abcnews')) {
+    return sources['abcnews.go.com'];
+  }
 
   // Check partial matches (e.g., nytimes.com matches www.nytimes.com)
   for (const [key, info] of Object.entries(sources)) {
@@ -2316,20 +2376,26 @@ export async function POST(req: NextRequest) {
       }, { headers: corsHeaders });
     }
 
-    // 4. Increment Usage
+    // 4. Check cache BEFORE incrementing usage (cache hits don't cost API calls)
+    const cachedResult = getCachedResult(searchQuery);
+    if (cachedResult) {
+      console.log('[Cache] Returning cached result for:', searchQuery);
+      return NextResponse.json({ ...cachedResult, cached: true }, { headers: corsHeaders });
+    }
+
+    // 5. Increment Usage (only for non-cached requests)
     const { info: usageInfo, cookieValue } = await incrementUsage(req);
 
-    // 5. STEP 1: THE EYES - Search with Google CSE + Brave in parallel
+    // 6. STEP 1: THE EYES - Search with Google CSE + Brave in parallel
     console.log(`[Search] Query: "${searchQuery}"`);
-    const [cseResults1, cseResults2, braveResults] = await Promise.all([
-      searchWithCSE(searchQuery, 1),
-      searchWithCSE(searchQuery, 11),
-      searchWithBrave(searchQuery),
+    const [cseResults, braveResults] = await Promise.all([
+      searchWithCSE(searchQuery, 1),  // Only 10 results from Google (cost reduction)
+      searchWithBrave(searchQuery),   // 10 results from Brave
     ]);
 
     // Combine all results
-    const allResults = [...cseResults1, ...cseResults2, ...braveResults];
-    console.log(`[Search] Total raw: ${allResults.length} (CSE: ${cseResults1.length + cseResults2.length}, Brave: ${braveResults.length})`);
+    const allResults = [...cseResults, ...braveResults];
+    console.log(`[Search] Total raw: ${allResults.length} (CSE: ${cseResults.length}, Brave: ${braveResults.length})`);
 
     // Deduplicate by domain (keep first occurrence - Google takes priority)
     const seenDomains = new Set<string>();
@@ -2451,7 +2517,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 11. Build Response
-    const response = NextResponse.json({
+    const responseData = {
       summary: intelBrief.summary,
       commonGround: intelBrief.commonGround || null,
       keyDifferences: finalKeyDifferences || null,
@@ -2466,8 +2532,12 @@ export async function POST(req: NextRequest) {
         warning: diversityAnalysis.warning,
       },
       queryBiasWarning,
-    }, { headers: corsHeaders });
+    };
 
+    // 12. Cache the result for future identical queries
+    setCachedResult(searchQuery, responseData);
+
+    const response = NextResponse.json(responseData, { headers: corsHeaders });
     response.cookies.set(COOKIE_OPTIONS.name, cookieValue, COOKIE_OPTIONS);
     return response;
 
