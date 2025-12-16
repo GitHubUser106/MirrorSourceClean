@@ -74,6 +74,7 @@ function HomeContent() {
   const [results, setResults] = useState<GroundingSource[]>([]);
   const [isPaywalled, setIsPaywalled] = useState(false);
   const [diversityWarning, setDiversityWarning] = useState<string | null>(null);
+  const [queryBiasWarning, setQueryBiasWarning] = useState<string | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
@@ -264,12 +265,14 @@ function HomeContent() {
       setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
       setIsPaywalled(data.isPaywalled ?? false);
       setDiversityWarning(data.diversityAnalysis?.warning ?? null);
+      setQueryBiasWarning(data.queryBiasWarning ?? null);
 
       // Save to sessionStorage for back navigation
       sessionStorage.setItem('mirrorSourceResults', JSON.stringify({
         url: url,
         summary: data.summary,
         diversityWarning: data.diversityAnalysis?.warning ?? null,
+        queryBiasWarning: data.queryBiasWarning ?? null,
         commonGround: data.commonGround,
         keyDifferences: data.keyDifferences,
         results: data.alternatives,
@@ -327,12 +330,14 @@ function HomeContent() {
       setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
       setIsPaywalled(data.isPaywalled ?? false);
       setDiversityWarning(data.diversityAnalysis?.warning ?? null);
+      setQueryBiasWarning(data.queryBiasWarning ?? null);
 
       // Save to sessionStorage for back navigation
       sessionStorage.setItem('mirrorSourceResults', JSON.stringify({
         url: keywords.trim(),
         summary: data.summary,
         diversityWarning: data.diversityAnalysis?.warning ?? null,
+        queryBiasWarning: data.queryBiasWarning ?? null,
         commonGround: data.commonGround,
         keyDifferences: data.keyDifferences,
         results: data.alternatives,
@@ -377,6 +382,7 @@ function HomeContent() {
         setResults(data.results || []);
         setIsPaywalled(data.isPaywalled || false);
         setDiversityWarning(data.diversityWarning || null);
+        setQueryBiasWarning(data.queryBiasWarning || null);
         setHasAutoSearched(true);
       } catch (e) {
         console.error('Failed to restore results:', e);
@@ -770,14 +776,19 @@ function HomeContent() {
                   )}
                 </div>
 
-                {/* Diversity Warning */}
-                {diversityWarning && (
+                {/* Perspective Warnings (Query Bias + Diversity) */}
+                {(queryBiasWarning || diversityWarning) && (
                   <div className="mt-5 p-4 bg-amber-50 border border-amber-200 rounded-xl">
                     <div className="flex items-start gap-3">
                       <span className="text-amber-500 text-xl">⚠️</span>
                       <div>
-                        <h4 className="font-semibold text-amber-800 text-sm">Perspective Check</h4>
-                        <p className="text-amber-700 text-sm mt-1">{diversityWarning}</p>
+                        <h4 className="font-semibold text-amber-800 text-sm">Perspective Alert</h4>
+                        {queryBiasWarning && (
+                          <p className="text-amber-700 text-sm mt-1">{queryBiasWarning}</p>
+                        )}
+                        {diversityWarning && (
+                          <p className="text-amber-700 text-sm mt-1">{diversityWarning}</p>
+                        )}
                         <p className="text-amber-600 text-xs mt-2">
                           Consider searching for additional viewpoints to get the full picture.
                         </p>

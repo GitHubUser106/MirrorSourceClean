@@ -1426,6 +1426,113 @@ const sources: Record<string, SourceInfo> = {
     funding: { model: 'Donations' },
     lean: 'center',
   },
+  // ===========================================================================
+  // ADDITIONAL MAGAZINES & OPINION OUTLETS
+  // ===========================================================================
+  'salon.com': {
+    displayName: 'Salon',
+    type: 'magazine',
+    countryCode: 'US',
+    ownership: { owner: 'Salon Media Group', type: 'private', note: 'Progressive online magazine' },
+    funding: { model: 'Advertising & subscriptions' },
+    lean: 'left',
+  },
+  'vanityfair.com': {
+    displayName: 'Vanity Fair',
+    type: 'magazine',
+    countryCode: 'US',
+    ownership: { owner: 'Condé Nast', parent: 'Advance Publications', type: 'private' },
+    funding: { model: 'Advertising & subscriptions' },
+    lean: 'center-left',
+  },
+  'businessinsider.com': {
+    displayName: 'Business Insider',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'Insider Inc', parent: 'Axel Springer', type: 'private' },
+    funding: { model: 'Advertising & subscriptions' },
+    lean: 'center-left',
+  },
+  'thedailybeast.com': {
+    displayName: 'The Daily Beast',
+    type: 'national',
+    countryCode: 'US',
+    ownership: { owner: 'The Daily Beast Company', parent: 'IAC', type: 'public_traded' },
+    funding: { model: 'Advertising & subscriptions' },
+    lean: 'left',
+  },
+  'rawstory.com': {
+    displayName: 'Raw Story',
+    type: 'national',
+    countryCode: 'US',
+    ownership: { owner: 'Raw Story Media Inc', type: 'private', note: 'Progressive news site' },
+    funding: { model: 'Advertising' },
+    lean: 'left',
+  },
+  'mediaite.com': {
+    displayName: 'Mediaite',
+    type: 'specialized',
+    countryCode: 'US',
+    ownership: { owner: 'Mediaite LLC', type: 'private', note: 'Media news and opinion' },
+    funding: { model: 'Advertising' },
+    lean: 'center',
+  },
+  'theweek.com': {
+    displayName: 'The Week',
+    type: 'magazine',
+    countryCode: 'US',
+    ownership: { owner: 'Future plc', type: 'public_traded', note: 'News digest magazine' },
+    funding: { model: 'Advertising & subscriptions' },
+    lean: 'center',
+  },
+  'reason.com': {
+    displayName: 'Reason',
+    type: 'magazine',
+    countryCode: 'US',
+    ownership: { owner: 'Reason Foundation', type: 'nonprofit', note: 'Libertarian magazine' },
+    funding: { model: 'Donations & subscriptions' },
+    lean: 'center-right',
+  },
+  'theepochtimes.com': {
+    displayName: 'The Epoch Times',
+    type: 'national',
+    countryCode: 'US',
+    ownership: { owner: 'Epoch Media Group', type: 'private', note: 'Falun Gong-affiliated' },
+    funding: { model: 'Subscriptions & donations' },
+    lean: 'right',
+  },
+  'oann.com': {
+    displayName: 'OAN',
+    type: 'national',
+    countryCode: 'US',
+    ownership: { owner: 'Herring Networks', type: 'private', note: 'One America News Network' },
+    funding: { model: 'Cable & advertising' },
+    lean: 'right',
+  },
+  'ijr.com': {
+    displayName: 'IJR',
+    type: 'national',
+    countryCode: 'US',
+    ownership: { owner: 'Independent Journal Review', type: 'private' },
+    funding: { model: 'Advertising' },
+    lean: 'center-right',
+  },
+  'hotair.com': {
+    displayName: 'Hot Air',
+    type: 'analysis',
+    countryCode: 'US',
+    ownership: { owner: 'Salem Media Group', type: 'public_traded', note: 'Conservative blog' },
+    funding: { model: 'Advertising' },
+    lean: 'right',
+  },
+  'pjmedia.com': {
+    displayName: 'PJ Media',
+    type: 'analysis',
+    countryCode: 'US',
+    ownership: { owner: 'Salem Media Group', type: 'public_traded', note: 'Conservative commentary' },
+    funding: { model: 'Advertising' },
+    lean: 'right',
+  },
 };
 
 // Get source info with transparency data
@@ -1968,6 +2075,32 @@ interface ProcessedSource {
   funding?: FundingInfo;
 }
 
+// Detect opinion-laden or characterization language in search query
+function detectQueryBias(query: string): string | null {
+  if (!query) return null;
+
+  const opinionPatterns = [
+    // Negative characterizations
+    /\b(maniac|lunatic|crazy|insane|unhinged|deranged|mad|nuts)\b/i,
+    /\b(liar|fraud|criminal|corrupt|evil|dangerous|extremist)\b/i,
+    /\b(failed|failing|disaster|catastrophe|worst|terrible)\b/i,
+    // Positive characterizations
+    /\b(genius|brilliant|amazing|best|greatest|hero)\b/i,
+    // Clickbait framing words
+    /\b(slams?|destroys?|obliterates?|owns?|wrecks?|eviscerates?)\b/i,
+    /\b(exposed|busted|caught|admits?|confesses?)\b/i,
+    /\b(humiliates?|embarrasses?|shocks?|stuns?)\b/i,
+  ];
+
+  for (const pattern of opinionPatterns) {
+    if (pattern.test(query)) {
+      console.log(`[QueryBias] Detected opinion language in query: "${query}"`);
+      return 'This search includes opinion language which may limit perspective diversity.';
+    }
+  }
+  return null;
+}
+
 // Analyze political diversity of results
 function analyzePoliticalDiversity(results: ProcessedSource[]): {
   isBalanced: boolean;
@@ -2268,9 +2401,11 @@ export async function POST(req: NextRequest) {
     // 7. STEP 3: Process results with badges + transparency
     const alternatives = processSearchResults(diverseResults);
 
-    // 8. Analyze political diversity
+    // 8. Analyze political diversity + query bias
     const diversityAnalysis = analyzePoliticalDiversity(alternatives);
+    const queryBiasWarning = detectQueryBias(searchQuery);
     console.log(`[Diversity] Left: ${diversityAnalysis.leftCount}, Center: ${diversityAnalysis.centerCount}, Right: ${diversityAnalysis.rightCount}, Balanced: ${diversityAnalysis.isBalanced}`);
+    if (queryBiasWarning) console.log(`[QueryBias] Warning: ${queryBiasWarning}`);
 
     // 9. Handle Gemini timeout - return fallback response
     if (!intelBrief) {
@@ -2289,6 +2424,7 @@ export async function POST(req: NextRequest) {
           rightCount: diversityAnalysis.rightCount,
           warning: diversityAnalysis.warning,
         },
+        queryBiasWarning,
         timedOut: true,
       }, { headers: corsHeaders });
       response.cookies.set(COOKIE_OPTIONS.name, cookieValue, COOKIE_OPTIONS);
@@ -2297,15 +2433,20 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Gemini] Synthesis complete`);
 
-    // 10. Override consensus language if diversity warning is triggered
+    // 10. Override consensus language if diversity warning OR query bias is triggered
     let finalKeyDifferences: KeyDifference[] | string = intelBrief.keyDifferences;
-    if (diversityAnalysis.warning && typeof finalKeyDifferences === 'string') {
+    if ((diversityAnalysis.warning || queryBiasWarning) && typeof finalKeyDifferences === 'string') {
       const consensusPhrases = ['consistent narrative', 'sources agree', 'consensus'];
       const kdLower = (finalKeyDifferences as string).toLowerCase();
       const hasConsensusLanguage = consensusPhrases.some(phrase => kdLower.includes(phrase));
       if (hasConsensusLanguage) {
-        finalKeyDifferences = 'Sources in this sample agree. Note: This sample may not include all political perspectives.';
-        console.log(`[Diversity] Overrode consensus language due to imbalanced sources`);
+        if (queryBiasWarning) {
+          finalKeyDifferences = 'Sources using this framing present a consistent narrative. Other perspectives may use different framing.';
+          console.log(`[QueryBias] Overrode consensus language due to opinion-laden query`);
+        } else {
+          finalKeyDifferences = 'Sources in this sample agree. Note: This sample may not include all political perspectives.';
+          console.log(`[Diversity] Overrode consensus language due to imbalanced sources`);
+        }
       }
     }
 
@@ -2324,6 +2465,7 @@ export async function POST(req: NextRequest) {
         rightCount: diversityAnalysis.rightCount,
         warning: diversityAnalysis.warning,
       },
+      queryBiasWarning,
     }, { headers: corsHeaders });
 
     response.cookies.set(COOKIE_OPTIONS.name, cookieValue, COOKIE_OPTIONS);
