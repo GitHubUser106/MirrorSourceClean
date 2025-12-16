@@ -2063,8 +2063,41 @@ export async function POST(req: NextRequest) {
     console.log(`[CSE] Raw results from Google: ${cseResults.length}`);
 
     // Filter out low-quality results (index pages, irrelevant content)
-    const qualityFiltered = filterQualityResults(cseResults, searchQuery);
+    let qualityFiltered = filterQualityResults(cseResults, searchQuery);
     console.log(`[CSE] After quality filter: ${qualityFiltered.length} of ${cseResults.length} passed`);
+
+    // FALLBACK: If quality filter returns 0 but CSE had results, retry with broader keywords
+    if (qualityFiltered.length === 0 && cseResults.length > 0) {
+      console.log(`[CSE Fallback] Quality filter returned 0. Trying broader search...`);
+
+      // Take first 3 keywords for broader search
+      const words = searchQuery.split(/\s+/).filter(w => w.length > 2);
+      const broaderQuery = words.slice(0, 3).join(' ');
+
+      if (broaderQuery && broaderQuery !== searchQuery) {
+        console.log(`[CSE Fallback] Broader query: "${broaderQuery}"`);
+        const [fallback1, fallback2] = await Promise.all([
+          searchWithCSE(broaderQuery, 1),
+          searchWithCSE(broaderQuery, 11),
+        ]);
+        const fallbackResults = [...fallback1, ...fallback2];
+        console.log(`[CSE Fallback] Got ${fallbackResults.length} results`);
+
+        // Use relaxed quality filter (only structural, skip relevance)
+        qualityFiltered = fallbackResults.filter(result => {
+          if (!result || !result.url) return false;
+          try {
+            const path = new URL(result.url).pathname;
+            const segments = path.split('/').filter(s => s.length > 0);
+            if (segments.length < 2) return false;
+            if (path.endsWith('/') && segments.length < 3) return false;
+            if (/\/(world|news|business|politics|tech|opinion)\/?$/.test(path)) return false;
+            return true;
+          } catch { return false; }
+        });
+        console.log(`[CSE Fallback] After relaxed filter: ${qualityFiltered.length} passed`);
+      }
+    }
 
     // Diversify by source type using round-robin
     const diverseResults = diversifyResults(qualityFiltered, 15);
