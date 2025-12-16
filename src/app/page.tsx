@@ -73,6 +73,7 @@ function HomeContent() {
   const [keyDifferences, setKeyDifferences] = useState<KeyDifference[] | string | null>(null);
   const [results, setResults] = useState<GroundingSource[]>([]);
   const [isPaywalled, setIsPaywalled] = useState(false);
+  const [diversityWarning, setDiversityWarning] = useState<string | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
@@ -262,11 +263,13 @@ function HomeContent() {
       setKeyDifferences(data.keyDifferences ?? null);
       setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
       setIsPaywalled(data.isPaywalled ?? false);
+      setDiversityWarning(data.diversityAnalysis?.warning ?? null);
 
       // Save to sessionStorage for back navigation
       sessionStorage.setItem('mirrorSourceResults', JSON.stringify({
         url: url,
         summary: data.summary,
+        diversityWarning: data.diversityAnalysis?.warning ?? null,
         commonGround: data.commonGround,
         keyDifferences: data.keyDifferences,
         results: data.alternatives,
@@ -323,11 +326,13 @@ function HomeContent() {
       setKeyDifferences(data.keyDifferences ?? null);
       setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
       setIsPaywalled(data.isPaywalled ?? false);
+      setDiversityWarning(data.diversityAnalysis?.warning ?? null);
 
       // Save to sessionStorage for back navigation
       sessionStorage.setItem('mirrorSourceResults', JSON.stringify({
         url: keywords.trim(),
         summary: data.summary,
+        diversityWarning: data.diversityAnalysis?.warning ?? null,
         commonGround: data.commonGround,
         keyDifferences: data.keyDifferences,
         results: data.alternatives,
@@ -356,6 +361,7 @@ function HomeContent() {
         setKeyDifferences(data.keyDifferences);
         setResults(data.results || []);
         setIsPaywalled(data.isPaywalled || false);
+        setDiversityWarning(data.diversityWarning || null);
         setHasAutoSearched(true);
         return; // Don't proceed with URL param search if we restored from session
       } catch (e) {
@@ -756,6 +762,22 @@ function HomeContent() {
                     </div>
                   )}
                 </div>
+
+                {/* Diversity Warning */}
+                {diversityWarning && (
+                  <div className="mt-5 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                    <div className="flex items-start gap-3">
+                      <span className="text-amber-500 text-xl">⚠️</span>
+                      <div>
+                        <h4 className="font-semibold text-amber-800 text-sm">Perspective Check</h4>
+                        <p className="text-amber-700 text-sm mt-1">{diversityWarning}</p>
+                        <p className="text-amber-600 text-xs mt-2">
+                          Consider searching for additional viewpoints to get the full picture.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

@@ -1813,6 +1813,48 @@ interface ProcessedSource {
   funding?: FundingInfo;
 }
 
+// Analyze political diversity of results
+function analyzePoliticalDiversity(results: ProcessedSource[]): {
+  isBalanced: boolean;
+  leftCount: number;
+  centerCount: number;
+  rightCount: number;
+  warning: string | null;
+} {
+  let leftCount = 0;    // left + center-left
+  let centerCount = 0;  // center
+  let rightCount = 0;   // right + center-right
+
+  for (const result of results) {
+    const info = getSourceInfo(result.sourceDomain || '');
+    const lean = info.lean || 'center';
+
+    if (lean === 'left' || lean === 'center-left') leftCount++;
+    else if (lean === 'right' || lean === 'center-right') rightCount++;
+    else centerCount++;
+  }
+
+  const total = results.length;
+  if (total === 0) return { isBalanced: true, leftCount: 0, centerCount: 0, rightCount: 0, warning: null };
+
+  const leftPct = leftCount / total;
+  const rightPct = rightCount / total;
+
+  // Check for imbalance (more than 60% from one side)
+  let warning: string | null = null;
+  let isBalanced = true;
+
+  if (leftPct > 0.6 && rightCount < 2) {
+    warning = `Sources lean left (${leftCount}/${total}). Right-leaning perspectives may be underrepresented.`;
+    isBalanced = false;
+  } else if (rightPct > 0.6 && leftCount < 2) {
+    warning = `Sources lean right (${rightCount}/${total}). Left-leaning perspectives may be underrepresented.`;
+    isBalanced = false;
+  }
+
+  return { isBalanced, leftCount, centerCount, rightCount, warning };
+}
+
 function processSearchResults(cseResults: CSEResult[]): ProcessedSource[] {
   const seen = new Set<string>();
   const processed: ProcessedSource[] = [];
@@ -2009,7 +2051,11 @@ export async function POST(req: NextRequest) {
     // 7. STEP 3: Process results with badges + transparency
     const alternatives = processSearchResults(diverseResults);
 
-    // 8. Build Response
+    // 8. Analyze political diversity
+    const diversityAnalysis = analyzePoliticalDiversity(alternatives);
+    console.log(`[Diversity] Left: ${diversityAnalysis.leftCount}, Center: ${diversityAnalysis.centerCount}, Right: ${diversityAnalysis.rightCount}, Balanced: ${diversityAnalysis.isBalanced}`);
+
+    // 9. Build Response
     const response = NextResponse.json({
       summary: intelBrief.summary,
       commonGround: intelBrief.commonGround || null,
@@ -2017,6 +2063,13 @@ export async function POST(req: NextRequest) {
       alternatives,
       isPaywalled,
       usage: usageInfo,
+      diversityAnalysis: {
+        isBalanced: diversityAnalysis.isBalanced,
+        leftCount: diversityAnalysis.leftCount,
+        centerCount: diversityAnalysis.centerCount,
+        rightCount: diversityAnalysis.rightCount,
+        warning: diversityAnalysis.warning,
+      },
     }, { headers: corsHeaders });
 
     response.cookies.set(COOKIE_OPTIONS.name, cookieValue, COOKIE_OPTIONS);
