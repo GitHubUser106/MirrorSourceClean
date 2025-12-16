@@ -92,7 +92,7 @@ function isPaywalledSource(url: string): boolean {
 // SOURCE CLASSIFICATION WITH TRANSPARENCY DATA
 // =============================================================================
 
-type SourceType = 'wire' | 'public' | 'corporate' | 'state' | 'analysis' | 'local' | 'national' | 'international' | 'magazine' | 'specialized' | 'reference' | 'syndication' | 'platform';
+type SourceType = 'wire' | 'public' | 'public-trust' | 'corporate' | 'state' | 'state-funded' | 'nonprofit' | 'analysis' | 'local' | 'national' | 'international' | 'magazine' | 'specialized' | 'reference' | 'syndication' | 'platform';
 
 type OwnershipType = 'private' | 'public_traded' | 'nonprofit' | 'public_media' | 'state_owned' | 'cooperative' | 'trust';
 
@@ -185,7 +185,7 @@ const sources: Record<string, SourceInfo> = {
   // ===========================================================================
   'npr.org': {
     displayName: 'NPR',
-    type: 'public',
+    type: 'public-trust',
     countryCode: 'US',
     ownership: { owner: 'National Public Radio, Inc.', type: 'nonprofit', note: '501(c)(3) non-profit media organization founded 1970' },
     funding: { model: 'Member station fees, corporate sponsors, foundations & individual donors', note: 'Federal funding via CPB is <1% of total budget' },
@@ -193,7 +193,7 @@ const sources: Record<string, SourceInfo> = {
   },
   'pbs.org': {
     displayName: 'PBS',
-    type: 'public',
+    type: 'public-trust',
     countryCode: 'US',
     ownership: { owner: 'Public Broadcasting Service', type: 'nonprofit', note: 'Non-profit public broadcaster; member organization of 350+ local stations' },
     funding: { model: 'Member stations, corporate underwriting, foundations & viewer donations' },
@@ -208,7 +208,7 @@ const sources: Record<string, SourceInfo> = {
   },
   'bbc.com': {
     displayName: 'BBC',
-    type: 'public',
+    type: 'public-trust',
     countryCode: 'UK',
     ownership: { owner: 'British Broadcasting Corporation', type: 'public_media', note: 'UK public corporation established by Royal Charter; governed by BBC Board' },
     funding: { model: 'UK TV license fee (£159/year) & BBC Studios commercial revenue' },
@@ -268,11 +268,11 @@ const sources: Record<string, SourceInfo> = {
   // INTERNATIONAL
   // ===========================================================================
   'aljazeera.com': {
-    displayName: 'AL JAZEERA',
-    type: 'international',
+    displayName: 'Al Jazeera',
+    type: 'state-funded',
     countryCode: 'QA',
-    ownership: { owner: 'Al Jazeera Media Network', type: 'state_owned', note: 'Funded by the government of Qatar; headquartered in Doha' },
-    funding: { model: 'Qatar government funding (estimated $500M+ annually)' },
+    ownership: { owner: 'Al Jazeera Media Network', parent: 'Government of Qatar', type: 'state_owned', note: 'Funded by Qatar government' },
+    funding: { model: 'State funding', note: 'Qatar state-backed international news' },
     lean: 'center',
   },
   'theguardian.com': {
@@ -553,6 +553,14 @@ const sources: Record<string, SourceInfo> = {
     funding: { model: 'Newsletters, advertising & Axios Pro subscriptions' },
     lean: 'center',
   },
+  'bostonglobe.com': {
+    displayName: 'Boston Globe',
+    type: 'national',
+    countryCode: 'US',
+    ownership: { owner: 'Boston Globe Media Partners', parent: 'John W. Henry', type: 'private', note: 'Owned by Red Sox owner John Henry' },
+    funding: { model: 'Subscriptions, advertising', note: 'Major Northeast newspaper' },
+    lean: 'left',
+  },
 
   // ===========================================================================
   // US CONSERVATIVE / RIGHT-LEANING
@@ -784,11 +792,12 @@ const sources: Record<string, SourceInfo> = {
   // UK NATIONAL
   // ===========================================================================
   'telegraph.co.uk': {
-    displayName: 'THE TELEGRAPH',
-    type: 'national',
-    countryCode: 'UK',
-    ownership: { owner: 'RedBird IMI', type: 'private', note: 'UAE-backed consortium bid approved 2024; previously Barclay family (since 2004)' },
-    funding: { model: 'Subscriptions (primary) & advertising' },
+    displayName: 'The Telegraph',
+    type: 'international',
+    countryCode: 'GB',
+    ownership: { owner: 'Telegraph Media Group', parent: 'RedBird IMI', type: 'private', note: 'British broadsheet, UAE-backed consortium' },
+    funding: { model: 'Subscriptions, advertising', note: 'UK center-right broadsheet' },
+    lean: 'center-right',
   },
   'independent.co.uk': {
     displayName: 'THE INDEPENDENT',
@@ -899,6 +908,74 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'IE',
     ownership: { owner: 'Mediahuis', type: 'private', note: 'Belgian media group acquired from INM in 2019. Ireland\'s largest newspaper' },
     funding: { model: 'Advertising & subscriptions' },
+  },
+
+  // ===========================================================================
+  // NONPROFIT INVESTIGATIVE
+  // ===========================================================================
+  'propublica.org': {
+    displayName: 'ProPublica',
+    type: 'nonprofit',
+    countryCode: 'US',
+    ownership: { owner: 'ProPublica Inc', parent: 'ProPublica Inc', type: 'nonprofit', note: 'Independent nonprofit newsroom' },
+    funding: { model: 'Donations, foundations', note: 'Pulitzer-winning investigative journalism' },
+    lean: 'left',
+  },
+  'theintercept.com': {
+    displayName: 'The Intercept',
+    type: 'nonprofit',
+    countryCode: 'US',
+    ownership: { owner: 'First Look Media', parent: 'First Look Media', type: 'nonprofit', note: 'Founded by Pierre Omidyar' },
+    funding: { model: 'Nonprofit grants', note: 'Adversarial investigative journalism' },
+    lean: 'left',
+  },
+  'motherjones.com': {
+    displayName: 'Mother Jones',
+    type: 'nonprofit',
+    countryCode: 'US',
+    ownership: { owner: 'Foundation for National Progress', parent: 'Foundation for National Progress', type: 'nonprofit', note: 'Reader-supported nonprofit' },
+    funding: { model: 'Donations, subscriptions', note: 'Progressive investigative reporting' },
+    lean: 'left',
+  },
+
+  // ===========================================================================
+  // PROGRESSIVE / LEFT MAGAZINES
+  // ===========================================================================
+  'newrepublic.com': {
+    displayName: 'The New Republic',
+    type: 'magazine',
+    countryCode: 'US',
+    ownership: { owner: 'Win McCormack', parent: 'Win McCormack', type: 'private', note: 'Owned by investor Win McCormack' },
+    funding: { model: 'Subscriptions, advertising', note: 'Progressive political magazine since 1914' },
+    lean: 'left',
+  },
+  'jacobin.com': {
+    displayName: 'Jacobin',
+    type: 'magazine',
+    countryCode: 'US',
+    ownership: { owner: 'Jacobin Foundation', parent: 'Jacobin Foundation', type: 'nonprofit', note: 'Democratic socialist quarterly' },
+    funding: { model: 'Subscriptions', note: 'Socialist perspective on politics and economics' },
+    lean: 'left',
+  },
+
+  // ===========================================================================
+  // CENTER-RIGHT MEDIA
+  // ===========================================================================
+  'thedispatch.com': {
+    displayName: 'The Dispatch',
+    type: 'magazine',
+    countryCode: 'US',
+    ownership: { owner: 'The Dispatch', parent: 'The Dispatch', type: 'private', note: 'Founded by Jonah Goldberg and Steve Hayes' },
+    funding: { model: 'Subscriptions', note: 'Anti-Trump conservative analysis' },
+    lean: 'center-right',
+  },
+  'thebulwark.com': {
+    displayName: 'The Bulwark',
+    type: 'magazine',
+    countryCode: 'US',
+    ownership: { owner: 'Bulwark Media', parent: 'Bulwark Media', type: 'private', note: 'Founded by Charlie Sykes' },
+    funding: { model: 'Subscriptions, advertising', note: 'Never-Trump conservative commentary' },
+    lean: 'center-right',
   },
 
   // ===========================================================================
@@ -1767,14 +1844,17 @@ function processSearchResults(cseResults: CSEResult[]): ProcessedSource[] {
     'national': 2,
     'international': 3,
     'public': 4,
-    'analysis': 5,
-    'corporate': 6,
-    'syndication': 7,
-    'magazine': 8,
-    'local': 9,
-    'state': 10,
-    'reference': 11,
-    'platform': 12,
+    'public-trust': 4,
+    'nonprofit': 5,
+    'analysis': 6,
+    'corporate': 7,
+    'syndication': 8,
+    'magazine': 9,
+    'local': 10,
+    'state': 11,
+    'state-funded': 11,
+    'reference': 12,
+    'platform': 13,
   };
 
   processed.sort((a, b) => typePriority[a.sourceType] - typePriority[b.sourceType]);

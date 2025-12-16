@@ -31,30 +31,36 @@ const countryFlags: Record<string, string> = {
 
 const typeColors: Record<string, string> = {
   Wire: 'bg-blue-100 text-blue-700 border-blue-200',
-  Corporate: 'bg-slate-100 text-slate-700 border-slate-200',
+  Corporate: 'bg-purple-100 text-purple-700 border-purple-200',
   Public: 'bg-green-100 text-green-700 border-green-200',
-  International: 'bg-purple-100 text-purple-700 border-purple-200',
-  Local: 'bg-teal-100 text-teal-700 border-teal-200',
+  'Public-Trust': 'bg-green-100 text-green-700 border-green-200',
+  'State-Funded': 'bg-red-100 text-red-700 border-red-200',
+  Nonprofit: 'bg-teal-100 text-teal-700 border-teal-200',
+  International: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+  Local: 'bg-stone-100 text-stone-700 border-stone-200',
   Syndicated: 'bg-gray-100 text-gray-600 border-gray-200',
-  Magazine: 'bg-rose-100 text-rose-700 border-rose-200',
-  Specialized: 'bg-amber-100 text-amber-700 border-amber-200',
+  Magazine: 'bg-pink-100 text-pink-700 border-pink-200',
+  Specialized: 'bg-orange-100 text-orange-700 border-orange-200',
   Analysis: 'bg-indigo-100 text-indigo-700 border-indigo-200',
-  Platform: 'bg-orange-100 text-orange-700 border-orange-200',
-  National: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+  Platform: 'bg-rose-100 text-rose-700 border-rose-200',
+  National: 'bg-yellow-100 text-yellow-700 border-yellow-200',
 };
 
 const typeDescriptions: Record<string, string> = {
   Wire: 'News agencies that provide factual reporting to other outlets',
+  'Public-Trust': 'Publicly funded with editorial independence charter',
+  'State-Funded': 'Government funded with potential state interests',
+  Nonprofit: 'Donor or foundation funded, not profit-driven',
   Corporate: 'Privately-owned media companies, often ad-supported',
-  Public: 'Publicly funded broadcasting, less commercial pressure',
+  National: 'Major national newspapers and outlets',
   International: 'Non-US outlets offering global perspective',
+  Magazine: 'Long-form journalism and in-depth analysis',
+  Analysis: 'Think tanks, policy experts, and investigative outlets',
+  Specialized: 'Industry-focused or financial news outlets',
   Local: 'Regional newspapers and stations',
   Syndicated: 'Content republished from other sources',
-  Magazine: 'Long-form journalism and in-depth analysis',
-  Specialized: 'Industry-focused or financial news outlets',
-  Analysis: 'Think tanks, policy experts, and academic review',
   Platform: 'User-generated content platforms',
-  National: 'Major national newspapers and outlets',
+  Public: 'Publicly funded broadcasting, less commercial pressure',
 };
 
 function getFaviconUrl(domain: string): string {

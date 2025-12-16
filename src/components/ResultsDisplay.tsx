@@ -1,19 +1,22 @@
 import { ExternalLink, Link2, Check, Clock } from 'lucide-react';
 import { useState } from 'react';
 
-type SourceType = 
-  | 'wire' 
-  | 'public' 
-  | 'corporate' 
+type SourceType =
+  | 'wire'
+  | 'public'
+  | 'public-trust'
+  | 'corporate'
   | 'state'
-  | 'analysis' 
-  | 'local' 
-  | 'national' 
-  | 'international' 
-  | 'magazine' 
+  | 'state-funded'
+  | 'nonprofit'
+  | 'analysis'
+  | 'local'
+  | 'national'
+  | 'international'
+  | 'magazine'
   | 'specialized'
-  | 'reference' 
-  | 'syndication' 
+  | 'reference'
+  | 'syndication'
   | 'archive'
   | 'platform';
 
@@ -70,60 +73,72 @@ const countryFlags: Record<string, { flag: string; label: string }> = {
 
 // Source type badge styling - cleaner, more compact
 const sourceTypeBadge: Record<SourceType, { label: string; className: string }> = {
-  wire: { 
-    label: 'Wire', 
-    className: 'bg-amber-50 text-amber-700 border-amber-200'
-  },
-  public: { 
-    label: 'Public', 
-    className: 'bg-green-50 text-green-700 border-green-200'
-  },
-  state: { 
-    label: 'State', 
-    className: 'bg-indigo-50 text-indigo-700 border-indigo-200'
-  },
-  corporate: { 
-    label: 'Corporate', 
-    className: 'bg-slate-50 text-slate-600 border-slate-200'
-  },
-  analysis: { 
-    label: 'Analysis', 
-    className: 'bg-violet-50 text-violet-700 border-violet-200'
-  },
-  national: { 
-    label: 'National', 
+  wire: {
+    label: 'Wire',
     className: 'bg-blue-50 text-blue-700 border-blue-200'
   },
-  international: { 
-    label: 'International', 
+  public: {
+    label: 'Public',
+    className: 'bg-green-50 text-green-700 border-green-200'
+  },
+  'public-trust': {
+    label: 'Public Trust',
+    className: 'bg-green-50 text-green-700 border-green-200'
+  },
+  state: {
+    label: 'State',
+    className: 'bg-indigo-50 text-indigo-700 border-indigo-200'
+  },
+  'state-funded': {
+    label: 'State-Funded',
+    className: 'bg-red-50 text-red-700 border-red-200'
+  },
+  nonprofit: {
+    label: 'Nonprofit',
+    className: 'bg-teal-50 text-teal-700 border-teal-200'
+  },
+  corporate: {
+    label: 'Corporate',
     className: 'bg-purple-50 text-purple-700 border-purple-200'
   },
-  magazine: { 
-    label: 'Magazine', 
-    className: 'bg-pink-50 text-pink-700 border-pink-200'
+  analysis: {
+    label: 'Analysis',
+    className: 'bg-indigo-50 text-indigo-700 border-indigo-200'
   },
-  local: { 
-    label: 'Local', 
+  national: {
+    label: 'National',
+    className: 'bg-yellow-50 text-yellow-700 border-yellow-200'
+  },
+  international: {
+    label: 'International',
     className: 'bg-cyan-50 text-cyan-700 border-cyan-200'
   },
-  specialized: { 
-    label: 'Specialized', 
+  magazine: {
+    label: 'Magazine',
+    className: 'bg-pink-50 text-pink-700 border-pink-200'
+  },
+  local: {
+    label: 'Local',
+    className: 'bg-stone-100 text-stone-700 border-stone-200'
+  },
+  specialized: {
+    label: 'Specialized',
     className: 'bg-orange-50 text-orange-700 border-orange-200'
   },
-  reference: { 
-    label: 'Reference', 
+  reference: {
+    label: 'Reference',
     className: 'bg-gray-50 text-gray-600 border-gray-200'
   },
-  syndication: { 
-    label: 'Syndicated', 
+  syndication: {
+    label: 'Syndicated',
     className: 'bg-emerald-50 text-emerald-700 border-emerald-200'
   },
-  archive: { 
-    label: 'Archive', 
+  archive: {
+    label: 'Archive',
     className: 'bg-orange-50 text-orange-700 border-orange-200'
   },
-  platform: { 
-    label: 'Platform', 
+  platform: {
+    label: 'Platform',
     className: 'bg-rose-50 text-rose-700 border-rose-200'
   },
 };
