@@ -1383,17 +1383,71 @@ const sources: Record<string, SourceInfo> = {
     ownership: { owner: 'Meredith Corporation', parent: 'Dotdash Meredith (IAC)', type: 'public_traded', note: 'IAC trades NASDAQ (IAC)' },
     funding: { model: 'Advertising & subscriptions' },
   },
+  // ===========================================================================
+  // ADDITIONAL SOURCES - Added for coverage gaps
+  // ===========================================================================
+  'rollingstone.com': {
+    displayName: 'Rolling Stone',
+    type: 'magazine',
+    countryCode: 'US',
+    ownership: { owner: 'Penske Media Corporation', parent: 'Penske Media Corporation', type: 'private', note: 'Entertainment and culture magazine since 1967' },
+    funding: { model: 'Advertising & subscriptions' },
+    lean: 'left',
+  },
+  'cleveland.com': {
+    displayName: 'Cleveland.com',
+    type: 'local',
+    countryCode: 'US',
+    ownership: { owner: 'Advance Local', parent: 'Advance Publications', type: 'private', note: 'Northeast Ohio regional news' },
+    funding: { model: 'Advertising & subscriptions' },
+    lean: 'center-left',
+  },
+  'dnyuz.com': {
+    displayName: 'DNYUZ',
+    type: 'syndication',
+    countryCode: 'US',
+    ownership: { owner: 'Unknown', type: 'private', note: 'News aggregator' },
+    funding: { model: 'Advertising' },
+    lean: 'center',
+  },
+  'wikipedia.org': {
+    displayName: 'Wikipedia',
+    type: 'reference',
+    countryCode: 'US',
+    ownership: { owner: 'Wikimedia Foundation', type: 'nonprofit', note: 'Crowdsourced encyclopedia' },
+    funding: { model: 'Donations' },
+    lean: 'center',
+  },
+  'en.wikipedia.org': {
+    displayName: 'Wikipedia',
+    type: 'reference',
+    countryCode: 'US',
+    ownership: { owner: 'Wikimedia Foundation', type: 'nonprofit', note: 'Crowdsourced encyclopedia' },
+    funding: { model: 'Donations' },
+    lean: 'center',
+  },
 };
 
 // Get source info with transparency data
 function getSourceInfo(domain: string): SourceInfo {
   if (!domain) return { displayName: 'SOURCE', type: 'local', countryCode: 'US' };
-  const lower = domain.toLowerCase();
-  
-  // Check exact matches first
+
+  // Normalize domain: remove www., m., and lowercase
+  const normalized = domain
+    .toLowerCase()
+    .replace(/^www\./, '')
+    .replace(/^m\./, '')
+    .replace(/^amp\./, '');
+
+  // Check exact match first
+  if (sources[normalized]) return sources[normalized];
+
+  // Check partial matches (e.g., nytimes.com matches www.nytimes.com)
   for (const [key, info] of Object.entries(sources)) {
-    if (lower.includes(key)) return info;
+    if (normalized.includes(key) || key.includes(normalized)) return info;
   }
+
+  const lower = normalized;
   
   // Country from TLD for unknown sources
   let countryCode = 'US';
@@ -1915,9 +1969,14 @@ function analyzePoliticalDiversity(results: ProcessedSource[]): {
   let centerCount = 0;  // center
   let rightCount = 0;   // right + center-right
 
+  console.log(`[Diversity] Analyzing ${results.length} sources...`);
+
   for (const result of results) {
-    const info = getSourceInfo(result.sourceDomain || '');
+    const domain = result.sourceDomain || '';
+    const info = getSourceInfo(domain);
     const lean = info.lean || 'center';
+
+    console.log(`[Diversity] ${domain} -> lean: ${lean}`);
 
     if (lean === 'left' || lean === 'center-left') leftCount++;
     else if (lean === 'right' || lean === 'center-right') rightCount++;
@@ -1930,6 +1989,8 @@ function analyzePoliticalDiversity(results: ProcessedSource[]): {
   const leftPct = leftCount / total;
   const rightPct = rightCount / total;
 
+  console.log(`[Diversity] Counts - Left: ${leftCount} (${(leftPct * 100).toFixed(0)}%), Center: ${centerCount}, Right: ${rightCount} (${(rightPct * 100).toFixed(0)}%)`);
+
   // Check for imbalance (more than 60% from one side)
   let warning: string | null = null;
   let isBalanced = true;
@@ -1937,9 +1998,13 @@ function analyzePoliticalDiversity(results: ProcessedSource[]): {
   if (leftPct > 0.6 && rightCount < 2) {
     warning = `Sources lean left (${leftCount}/${total}). Right-leaning perspectives may be underrepresented.`;
     isBalanced = false;
+    console.log(`[Diversity] WARNING: ${warning}`);
   } else if (rightPct > 0.6 && leftCount < 2) {
     warning = `Sources lean right (${rightCount}/${total}). Left-leaning perspectives may be underrepresented.`;
     isBalanced = false;
+    console.log(`[Diversity] WARNING: ${warning}`);
+  } else {
+    console.log(`[Diversity] Sources are balanced - no warning`);
   }
 
   return { isBalanced, leftCount, centerCount, rightCount, warning };
