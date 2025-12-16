@@ -8,7 +8,7 @@ import UrlInputForm from "@/components/UrlInputForm";
 import ResultsDisplay from "@/components/ResultsDisplay";
 import TransparencyCard from "@/components/TransparencyCard";
 import type { GroundingSource } from "@/types";
-import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, ArrowRight } from "lucide-react";
+import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, ArrowRight, X } from "lucide-react";
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
 type CommonGroundFact = { label: string; value: string };
@@ -85,6 +85,26 @@ function HomeContent() {
   const [showKeywordFallback, setShowKeywordFallback] = useState(false);
   const [keywords, setKeywords] = useState("");
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
+  const [showCompareHint, setShowCompareHint] = useState(false);
+
+  // Auto-show and auto-hide compare hint
+  useEffect(() => {
+    if (results.length >= 2 && selectedForCompare.length === 0) {
+      // Check if already dismissed this session
+      if (sessionStorage.getItem('compareHintDismissed')) {
+        setShowCompareHint(false);
+        return;
+      }
+      // Show hint
+      setShowCompareHint(true);
+      // Auto-hide after 5 seconds
+      const timer = setTimeout(() => {
+        setShowCompareHint(false);
+        sessionStorage.setItem('compareHintDismissed', 'true');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [results.length, selectedForCompare.length]);
 
   // Helper to extract source name from URL
   function getSourceName(url: string): string {
@@ -797,8 +817,8 @@ function HomeContent() {
       </footer>
 
       {/* Floating Compare Bar */}
-      {results.length >= 2 && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300">
+      {results.length >= 2 && (selectedForCompare.length > 0 || showCompareHint) && (
+        <div className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 ${showCompareHint && selectedForCompare.length === 0 ? 'animate-in slide-in-from-bottom-4' : ''}`}>
           <div className="bg-white px-6 py-3 rounded-full shadow-2xl border border-slate-200 flex items-center gap-4">
             {selectedForCompare.length === 0 ? (
               <>
@@ -808,6 +828,16 @@ function HomeContent() {
                 <span className="text-slate-500">
                   Use checkboxes to select sources for comparison
                 </span>
+                <button
+                  onClick={() => {
+                    setShowCompareHint(false);
+                    sessionStorage.setItem('compareHintDismissed', 'true');
+                  }}
+                  className="ml-1 p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                  aria-label="Dismiss hint"
+                >
+                  <X size={14} />
+                </button>
               </>
             ) : (
               <>
