@@ -1840,8 +1840,12 @@ interface IntelBrief {
   keyDifferences: KeyDifference[] | string;   // Array for differences, string for consensus message
 }
 
-async function synthesizeWithGemini(searchResults: CSEResult[], originalQuery: string): Promise<IntelBrief> {
-  const context = searchResults.map((r, i) => 
+async function synthesizeWithGemini(searchResults: CSEResult[], originalQuery: string, timeoutMs: number = 18000): Promise<IntelBrief | null> {
+  // Limit sources to prevent timeout - use first 10 for synthesis
+  const sourcesForSynthesis = searchResults.slice(0, 10);
+  console.log(`[Gemini] Using ${sourcesForSynthesis.length} of ${searchResults.length} sources for synthesis`);
+
+  const context = sourcesForSynthesis.map((r, i) =>
     `[Source ${i + 1}: ${r.domain}]\nTitle: ${r.title}\nSnippet: ${r.snippet}`
   ).join('\n\n');
 
@@ -1871,19 +1875,31 @@ RULES:
 - keyDifferences: If sources DISAGREE about the PRIMARY EVENT (and it's not just an update), return 1-3 difference objects. If they AGREE, return a consensus string.
 - CONSENSUS VS AGREEMENT: Only claim "consistent narrative" if sources include diverse political perspectives. If sources appear predominantly left-leaning or right-leaning, say "Sources in this sample agree" instead of implying broad consensus.
 - Use simple language
+- Be concise - prioritize speed over length.
 
 FINAL CHECK: Before responding, verify you have not included any "(Source" or "Source 1" text anywhere in your response.`.trim();
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  // Create timeout promise
+  const timeoutPromise = new Promise<null>((resolve) => {
+    setTimeout(() => {
+      console.log(`[Gemini] Request timed out after ${timeoutMs}ms`);
+      resolve(null);
+    }, timeoutMs);
+  });
 
   try {
-    const geminiResponse: any = await genAI.models.generateContent({
-      model: "gemini-2.5-flash",
+    // Race between Gemini call and timeout
+    const geminiPromise = genAI.models.generateContent({
+      model: "gemini-2.0-flash",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
 
-    clearTimeout(timeoutId);
+    const geminiResponse: any = await Promise.race([geminiPromise, timeoutPromise]);
+
+    // Check if timeout won
+    if (geminiResponse === null) {
+      return null; // Timeout - caller handles fallback
+    }
 
     let text: string | undefined;
     if (geminiResponse?.response && typeof geminiResponse.response.text === 'function') {
@@ -1931,13 +1947,8 @@ FINAL CHECK: Before responding, verify you have not included any "(Source" or "S
       keyDifferences,
     };
   } catch (error: any) {
-    clearTimeout(timeoutId);
-    console.error('Gemini synthesis error:', error?.message);
-    return {
-      summary: `We found **${searchResults.length} sources** covering this story. Click any source below to read their coverage.`,
-      commonGround: [],
-      keyDifferences: '',
-    };
+    console.error('[Gemini] Synthesis error:', error?.message);
+    return null; // Return null so caller can handle fallback
   }
 }
 
@@ -2253,7 +2264,6 @@ export async function POST(req: NextRequest) {
     // 6. STEP 2: THE BRAIN - Synthesize with Gemini
     console.log(`[Gemini] Synthesizing ${diverseResults.length} sources...`);
     const intelBrief = await synthesizeWithGemini(diverseResults, searchQuery);
-    console.log(`[Gemini] Synthesis complete`);
 
     // 7. STEP 3: Process results with badges + transparency
     const alternatives = processSearchResults(diverseResults);
@@ -2262,7 +2272,32 @@ export async function POST(req: NextRequest) {
     const diversityAnalysis = analyzePoliticalDiversity(alternatives);
     console.log(`[Diversity] Left: ${diversityAnalysis.leftCount}, Center: ${diversityAnalysis.centerCount}, Right: ${diversityAnalysis.rightCount}, Balanced: ${diversityAnalysis.isBalanced}`);
 
-    // 9. Override consensus language if diversity warning is triggered
+    // 9. Handle Gemini timeout - return fallback response
+    if (!intelBrief) {
+      console.log('[Gemini] Timeout or error - returning fallback response');
+      const response = NextResponse.json({
+        summary: `Found **${alternatives.length} sources** covering this story. AI synthesis timed out - please review the sources below.`,
+        commonGround: [{ label: 'Coverage', value: `${alternatives.length} sources found covering this topic.` }],
+        keyDifferences: 'AI analysis unavailable due to timeout. Compare sources manually.',
+        alternatives,
+        isPaywalled,
+        usage: usageInfo,
+        diversityAnalysis: {
+          isBalanced: diversityAnalysis.isBalanced,
+          leftCount: diversityAnalysis.leftCount,
+          centerCount: diversityAnalysis.centerCount,
+          rightCount: diversityAnalysis.rightCount,
+          warning: diversityAnalysis.warning,
+        },
+        timedOut: true,
+      }, { headers: corsHeaders });
+      response.cookies.set(COOKIE_OPTIONS.name, cookieValue, COOKIE_OPTIONS);
+      return response;
+    }
+
+    console.log(`[Gemini] Synthesis complete`);
+
+    // 10. Override consensus language if diversity warning is triggered
     let finalKeyDifferences: KeyDifference[] | string = intelBrief.keyDifferences;
     if (diversityAnalysis.warning && typeof finalKeyDifferences === 'string') {
       const consensusPhrases = ['consistent narrative', 'sources agree', 'consensus'];
@@ -2274,7 +2309,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 10. Build Response
+    // 11. Build Response
     const response = NextResponse.json({
       summary: intelBrief.summary,
       commonGround: intelBrief.commonGround || null,
