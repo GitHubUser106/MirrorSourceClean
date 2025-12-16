@@ -1,10 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-
-export const metadata = {
-  title: "Our Sources | MirrorSource",
-  description: "MirrorSource aggregates 65+ news sources across the political spectrum. See our full source list with transparency data on ownership and editorial perspective.",
-};
+import ReviewRequestModal from "@/components/ReviewRequestModal";
 
 // Source data organized by political lean
 const sourcesByLean = {
@@ -117,6 +116,7 @@ function getFaviconUrl(domain: string): string {
 
 export default function SourcesPage() {
   const totalSources = Object.values(sourcesByLean).flat().length;
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -208,9 +208,21 @@ export default function SourcesPage() {
             Our political labels are informed by independent rating systems like AllSides and Ad Fontes.
             We also tag sources based on who owns them—so you always know if a story is coming from a corporation, a government, or a nonprofit.
             We regularly review our database to keep it balanced and up to date.
+            {" "}
+            <button
+              onClick={() => setIsReviewModalOpen(true)}
+              className="text-[#2563eb] hover:underline font-medium"
+            >
+              News outlets may request a review
+            </button>.
           </p>
         </div>
       </main>
+
+      <ReviewRequestModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+      />
 
       {/* Footer */}
       <footer className="py-6 px-4 border-t border-slate-200 bg-white mt-auto">
