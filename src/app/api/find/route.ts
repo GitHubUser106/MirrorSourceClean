@@ -1903,33 +1903,106 @@ async function searchWithBrave(query: string): Promise<CSEResult[]> {
 
 // Filter out low-quality results (index pages, irrelevant content)
 function filterQualityResults(results: CSEResult[], searchQuery: string): CSEResult[] {
-  // Defensive null checks
   if (!results || !Array.isArray(results)) return [];
   if (!searchQuery || typeof searchQuery !== 'string') return results;
 
-  const queryWords = searchQuery.toLowerCase().split(/\s+/).filter(w => w && w.length > 3);
+  // Extract meaningful keywords (skip short common words)
+  const queryWords = searchQuery
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(w => w.length > 3)
+    .filter(w => !['this', 'that', 'with', 'from', 'have', 'been', 'were', 'they', 'their', 'about', 'which', 'would', 'could', 'should', 'there', 'where', 'when', 'what'].includes(w));
 
-  return results.filter(result => {
-    if (!result || !result.url) return false;
-    // 1. Structural Filter (Keep rejecting index pages)
+  if (queryWords.length === 0) return results;
+
+  const scored = results.map(result => {
+    if (!result || !result.url) return { result, score: 0, dominated: false };
+
+    // Structural filter - reject index pages
     try {
       const path = new URL(result.url).pathname;
       const segments = path.split('/').filter(s => s.length > 0);
-      if (segments.length < 2) return false;
-      if (path.endsWith('/') && segments.length < 3) return false;
-      if (/\/(world|news|business|politics|tech|opinion)\/?$/.test(path)) return false;
-    } catch { return false; }
+      if (segments.length < 2) return { result, score: 0, dominated: false };
+      if (path.endsWith('/') && segments.length < 3) return { result, score: 0, dominated: false };
+      if (/\/(world|news|business|politics|tech|opinion)\/?$/.test(path)) return { result, score: 0, dominated: false };
+    } catch { return { result, score: 0, dominated: false }; }
 
-    // 2. Relevance Filter (The "Rule of 2")
-    const combinedText = (result.title + ' ' + result.snippet).toLowerCase();
-    const matchCount = queryWords.filter(word => combinedText.includes(word)).length;
+    const title = (result.title || '').toLowerCase();
+    const snippet = (result.snippet || '').toLowerCase();
 
-    // Restore the "Goldilocks" threshold:
-    // Long query (3+ words)? Need 2 matches. Short query? Need 1.
-    const minRequired = queryWords.length >= 3 ? 2 : 1;
+    // Count matches with weighting: title matches worth 2x
+    let titleMatches = 0;
+    let snippetMatches = 0;
 
-    return matchCount >= minRequired;
+    for (const word of queryWords) {
+      if (title.includes(word)) titleMatches++;
+      if (snippet.includes(word)) snippetMatches++;
+    }
+
+    // STRICT RULE: Must have at least 1 title match for queries with 2+ keywords
+    if (queryWords.length >= 2 && titleMatches === 0) {
+      return { result, score: 0, dominated: false };
+    }
+
+    // Score: title matches weighted 2x
+    const score = (titleMatches * 2) + snippetMatches;
+
+    // Minimum threshold based on query length
+    const minScore = queryWords.length >= 4 ? 3 : queryWords.length >= 2 ? 2 : 1;
+
+    if (score < minScore) {
+      return { result, score: 0, dominated: false };
+    }
+
+    return { result, score, dominated: false };
   });
+
+  // Filter out zero-score results
+  let passing = scored.filter(s => s.score > 0);
+
+  // TOPIC COHERENCE CHECK: If we have 5+ results, find dominant topic words
+  // and filter out results that don't share them
+  if (passing.length >= 5) {
+    // Count word frequency across all passing titles
+    const wordFreq: Record<string, number> = {};
+    for (const { result } of passing) {
+      const titleWords = (result.title || '').toLowerCase().split(/\s+/).filter(w => w.length > 4);
+      for (const word of titleWords) {
+        wordFreq[word] = (wordFreq[word] || 0) + 1;
+      }
+    }
+
+    // Find topic words that appear in 40%+ of results
+    const threshold = Math.ceil(passing.length * 0.4);
+    const topicWords = Object.entries(wordFreq)
+      .filter(([, count]) => count >= threshold)
+      .map(([word]) => word);
+
+    // If we found topic words, filter out results that don't have ANY of them
+    if (topicWords.length >= 1) {
+      const beforeCoherence = passing.length;
+      passing = passing.filter(({ result }) => {
+        const titleLower = (result.title || '').toLowerCase();
+        const snippetLower = (result.snippet || '').toLowerCase();
+        const combined = titleLower + ' ' + snippetLower;
+        return topicWords.some(tw => combined.includes(tw));
+      });
+
+      // Don't filter too aggressively - keep at least 3 results
+      if (passing.length < 3 && beforeCoherence >= 3) {
+        passing = scored.filter(s => s.score > 0).slice(0, Math.max(3, passing.length));
+      }
+
+      console.log(`[Quality] Topic coherence: ${topicWords.slice(0, 5).join(', ')} | Filtered ${beforeCoherence} -> ${passing.length}`);
+    }
+  }
+
+  // Sort by score descending
+  passing.sort((a, b) => b.score - a.score);
+
+  console.log(`[Quality] ${results.length} -> ${passing.length} results (query: "${searchQuery.slice(0, 50)}")`);
+
+  return passing.map(s => s.result);
 }
 
 // Diversify results by source type using round-robin
