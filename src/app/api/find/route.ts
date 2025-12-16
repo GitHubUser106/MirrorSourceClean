@@ -1815,6 +1815,7 @@ RULES:
 - Bold publisher names in keyDifferences using **markdown**.
 - commonGround: 2-4 fact objects.
 - keyDifferences: If sources DISAGREE about the PRIMARY EVENT (and it's not just an update), return 1-3 difference objects. If they AGREE, return a consensus string.
+- CONSENSUS VS AGREEMENT: Only claim "consistent narrative" if sources include diverse political perspectives. If sources appear predominantly left-leaning or right-leaning, say "Sources in this sample agree" instead of implying broad consensus.
 - Use simple language
 
 FINAL CHECK: Before responding, verify you have not included any "(Source" or "Source 1" text anywhere in your response.`.trim();
@@ -2196,11 +2197,23 @@ export async function POST(req: NextRequest) {
     const diversityAnalysis = analyzePoliticalDiversity(alternatives);
     console.log(`[Diversity] Left: ${diversityAnalysis.leftCount}, Center: ${diversityAnalysis.centerCount}, Right: ${diversityAnalysis.rightCount}, Balanced: ${diversityAnalysis.isBalanced}`);
 
-    // 9. Build Response
+    // 9. Override consensus language if diversity warning is triggered
+    let finalKeyDifferences: KeyDifference[] | string = intelBrief.keyDifferences;
+    if (diversityAnalysis.warning && typeof finalKeyDifferences === 'string') {
+      const consensusPhrases = ['consistent narrative', 'sources agree', 'consensus'];
+      const kdLower = (finalKeyDifferences as string).toLowerCase();
+      const hasConsensusLanguage = consensusPhrases.some(phrase => kdLower.includes(phrase));
+      if (hasConsensusLanguage) {
+        finalKeyDifferences = 'Sources in this sample agree. Note: This sample may not include all political perspectives.';
+        console.log(`[Diversity] Overrode consensus language due to imbalanced sources`);
+      }
+    }
+
+    // 10. Build Response
     const response = NextResponse.json({
       summary: intelBrief.summary,
       commonGround: intelBrief.commonGround || null,
-      keyDifferences: intelBrief.keyDifferences || null,
+      keyDifferences: finalKeyDifferences || null,
       alternatives,
       isPaywalled,
       usage: usageInfo,
