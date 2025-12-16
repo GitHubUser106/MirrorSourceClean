@@ -411,11 +411,11 @@ const sources: Record<string, SourceInfo> = {
     funding: { model: 'Advertising, cable carriage fees & CNN+ subscriptions' },
   },
   'foxnews.com': {
-    displayName: 'FOX NEWS',
+    displayName: 'Fox News',
     type: 'corporate',
     countryCode: 'US',
-    ownership: { owner: 'Fox Corporation', type: 'public_traded', note: 'NASDAQ (FOXA/FOX). Murdoch family controls ~40% voting power via Family Trust' },
-    funding: { model: 'Advertising & cable carriage fees (most profitable cable news network)' },
+    ownership: { owner: 'Fox Corporation', parent: 'Fox Corporation', type: 'public_traded', note: 'Owned by Murdoch family via Fox Corp (NASDAQ: FOX)' },
+    funding: { model: 'Advertising, cable fees', note: 'Largest US cable news network by viewership' },
   },
   'nbcnews.com': {
     displayName: 'NBC NEWS',
@@ -537,6 +537,108 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Axios Media', parent: 'Cox Enterprises', type: 'private', note: 'Cox Enterprises acquired Axios in 2022 for $525M. Founded by Politico alumni' },
     funding: { model: 'Newsletters, advertising & Axios Pro subscriptions' },
+  },
+
+  // ===========================================================================
+  // US CONSERVATIVE / RIGHT-LEANING
+  // ===========================================================================
+  'nypost.com': {
+    displayName: 'New York Post',
+    type: 'national',
+    countryCode: 'US',
+    ownership: { owner: 'News Corp', parent: 'News Corp', type: 'public_traded', note: 'Owned by Rupert Murdoch\'s News Corp (NASDAQ: NWSA)' },
+    funding: { model: 'Advertising, subscriptions', note: 'Tabloid format, conservative editorial stance' },
+  },
+  'washingtonexaminer.com': {
+    displayName: 'Washington Examiner',
+    type: 'national',
+    countryCode: 'US',
+    ownership: { owner: 'Clarity Media Group', parent: 'Anschutz Corporation', type: 'private', note: 'Owned by billionaire Philip Anschutz' },
+    funding: { model: 'Advertising, subscriptions', note: 'Conservative news and opinion' },
+  },
+  'washingtontimes.com': {
+    displayName: 'Washington Times',
+    type: 'national',
+    countryCode: 'US',
+    ownership: { owner: 'Operations Holdings', parent: 'Unification Church affiliates', type: 'private', note: 'Founded by Sun Myung Moon, now independent' },
+    funding: { model: 'Advertising, subscriptions', note: 'Conservative daily newspaper' },
+  },
+  'dailywire.com': {
+    displayName: 'Daily Wire',
+    type: 'corporate',
+    countryCode: 'US',
+    ownership: { owner: 'Daily Wire LLC', parent: 'Bentkey Ventures', type: 'private', note: 'Co-founded by Ben Shapiro and Jeremy Boreing' },
+    funding: { model: 'Subscriptions, advertising', note: 'Conservative media and entertainment company' },
+  },
+  'newsmax.com': {
+    displayName: 'Newsmax',
+    type: 'corporate',
+    countryCode: 'US',
+    ownership: { owner: 'Newsmax Media Inc', parent: 'Newsmax Media Inc', type: 'private', note: 'Founded by Christopher Ruddy' },
+    funding: { model: 'Advertising, cable fees', note: 'Conservative cable and digital news' },
+  },
+  'breitbart.com': {
+    displayName: 'Breitbart',
+    type: 'corporate',
+    countryCode: 'US',
+    ownership: { owner: 'Breitbart News Network', parent: 'Breitbart News Network', type: 'private', note: 'Founded by Andrew Breitbart, previously chaired by Steve Bannon' },
+    funding: { model: 'Advertising', note: 'Right-wing news and opinion' },
+  },
+  'nationalreview.com': {
+    displayName: 'National Review',
+    type: 'magazine',
+    countryCode: 'US',
+    ownership: { owner: 'National Review Inc', parent: 'National Review Inc', type: 'nonprofit', note: 'Founded by William F. Buckley Jr. in 1955' },
+    funding: { model: 'Subscriptions, donations', note: 'Conservative intellectual magazine' },
+  },
+  'dailycaller.com': {
+    displayName: 'Daily Caller',
+    type: 'corporate',
+    countryCode: 'US',
+    ownership: { owner: 'Daily Caller Inc', parent: 'Daily Caller Inc', type: 'private', note: 'Co-founded by Tucker Carlson and Neil Patel' },
+    funding: { model: 'Advertising', note: 'Conservative news and opinion website' },
+  },
+  'theblaze.com': {
+    displayName: 'The Blaze',
+    type: 'corporate',
+    countryCode: 'US',
+    ownership: { owner: 'Blaze Media', parent: 'Blaze Media', type: 'private', note: 'Founded by Glenn Beck, merged with CRTV' },
+    funding: { model: 'Subscriptions, advertising', note: 'Conservative multimedia network' },
+  },
+  'freebeacon.com': {
+    displayName: 'Washington Free Beacon',
+    type: 'analysis',
+    countryCode: 'US',
+    ownership: { owner: 'Center for American Freedom', parent: 'Center for American Freedom', type: 'nonprofit', note: 'Conservative nonprofit news organization' },
+    funding: { model: 'Donations', note: 'Investigative journalism, conservative perspective' },
+  },
+  'townhall.com': {
+    displayName: 'Townhall',
+    type: 'corporate',
+    countryCode: 'US',
+    ownership: { owner: 'Salem Communications', parent: 'Salem Communications', type: 'public_traded', note: 'Part of Salem Media Group (NASDAQ: SALM)' },
+    funding: { model: 'Advertising', note: 'Conservative news and commentary' },
+  },
+  'redstate.com': {
+    displayName: 'RedState',
+    type: 'corporate',
+    countryCode: 'US',
+    ownership: { owner: 'Salem Communications', parent: 'Salem Communications', type: 'public_traded', note: 'Part of Salem Media Group (NASDAQ: SALM)' },
+    funding: { model: 'Advertising', note: 'Conservative blog and news' },
+  },
+  'thefederalist.com': {
+    displayName: 'The Federalist',
+    type: 'magazine',
+    countryCode: 'US',
+    ownership: { owner: 'FDRLST Media', parent: 'FDRLST Media', type: 'private', note: 'Co-founded by Ben Domenech and Sean Davis' },
+    funding: { model: 'Advertising, donations', note: 'Conservative online magazine' },
+  },
+  'spectator.org': {
+    displayName: 'The American Spectator',
+    type: 'magazine',
+    countryCode: 'US',
+    ownership: { owner: 'American Spectator Foundation', parent: 'American Spectator Foundation', type: 'nonprofit', note: 'Founded in 1924, conservative publication' },
+    funding: { model: 'Subscriptions, donations', note: 'Conservative monthly magazine' },
   },
 
   // ===========================================================================
