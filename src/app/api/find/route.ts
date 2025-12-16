@@ -1487,57 +1487,46 @@ function quoteProperNouns(query: string): string {
 
 // --- URL to Keywords Extraction ---
 function extractKeywordsFromUrl(url: string): string | null {
-  if (!url || typeof url !== 'string') return null;
-
   try {
     const urlObj = new URL(url);
     const path = urlObj.pathname;
+    const segments = path.split('/').filter(s => s.length > 0);
 
-    if (!path || typeof path !== 'string') return null;
-
-    // Extract the slug (last meaningful path segment)
-    const segments = path.split('/').filter(s => s && s.length > 0);
-    if (!segments || segments.length === 0) return null;
-
-    // Try last segment, fallback to second-to-last if empty
-    let slug = segments[segments.length - 1] || '';
-    if (!slug && segments.length > 1) {
-      slug = segments[segments.length - 2] || '';
-    }
-    if (!slug) return null;
-
-    // Common URL noise words
     const noiseWords = new Set([
       'article', 'articles', 'news', 'story', 'stories', 'post', 'posts',
       'content', 'index', 'page', 'html', 'htm', 'php', 'aspx', 'amp',
       'live', 'video', 'watch', 'read', 'the', 'and', 'for', 'with',
       'from', 'that', 'this', 'have', 'has', 'are', 'was', 'were',
       'been', 'will', 'would', 'could', 'should', 'into', 'over',
-      'after', 'before', 'catch', 'catches', 'scramble', 'scrambles'
+      'after', 'before', 'id', 'newsfront'
     ]);
 
-    // Important short words to KEEP (country codes, key terms)
-    const keepShortWords = new Set(['us', 'uk', 'eu', 'un', 'ai', 'nyc', 'la', 'dc']);
+    // Find best slug
+    let bestSlug = '';
+    for (const segment of segments) {
+      if (/^\d+$/.test(segment)) continue;
+      if (/^\d{2,4}$/.test(segment)) continue;
+      if (noiseWords.has(segment.toLowerCase())) continue;
+      if (segment.toLowerCase() === 'us' || segment.toLowerCase() === 'uk') continue;
 
-    // Process words - keep natural order from URL, just filter noise
-    const words = slug.toLowerCase()
-      .split(/[-_.]/)
-      .filter(word => {
-        if (!word || word.length < 2) return false;
-        if (/^[0-9a-f]+$/i.test(word) && word.length > 6) return false; // UUIDs
-        if (/^\d+$/.test(word)) return false; // Pure numbers
-        if (noiseWords.has(word)) return false;
-        // Keep short important words
-        if (word.length <= 2 && !keepShortWords.has(word)) return false;
-        return true;
-      });
+      if (segment.includes('-') && segment.length > bestSlug.length) {
+        bestSlug = segment;
+      }
+    }
 
-    if (words.length < 2) return null;
+    if (!bestSlug) return null;
 
-    // Keep natural order, just take first 6 meaningful terms
-    // No quotes, no sorting - let Google handle matching
-    return words.slice(0, 6).join(' ');
-  } catch { return null; }
+    const words = bestSlug
+      .toLowerCase()
+      .split(/[-_]/)
+      .filter(w => w.length > 2)
+      .filter(w => !noiseWords.has(w))
+      .slice(0, 6);
+
+    return words.length >= 2 ? words.join(' ') : null;
+  } catch {
+    return null;
+  }
 }
 
 // --- Helpers ---
