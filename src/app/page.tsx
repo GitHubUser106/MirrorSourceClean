@@ -350,7 +350,22 @@ function HomeContent() {
   useEffect(() => {
     refreshUsage();
 
-    // Check for saved results from sessionStorage (for back navigation)
+    const urlParam = searchParams.get('url');
+
+    // URL parameter takes priority - clear any stale sessionStorage
+    if (urlParam) {
+      console.log('[Init] URL from params:', urlParam);
+      sessionStorage.removeItem('mirrorSourceResults'); // Clear stale data
+      setCurrentUrl(urlParam);
+      // Trigger search with this URL
+      if (!hasAutoSearched) {
+        setHasAutoSearched(true);
+        setTimeout(() => handleSearchWithUrl(urlParam), 100);
+      }
+      return; // Don't check sessionStorage
+    }
+
+    // Only use sessionStorage if NO URL parameter
     const saved = sessionStorage.getItem('mirrorSourceResults');
     if (saved && !hasAutoSearched) {
       try {
@@ -363,17 +378,9 @@ function HomeContent() {
         setIsPaywalled(data.isPaywalled || false);
         setDiversityWarning(data.diversityWarning || null);
         setHasAutoSearched(true);
-        return; // Don't proceed with URL param search if we restored from session
       } catch (e) {
         console.error('Failed to restore results:', e);
       }
-    }
-
-    const urlParam = searchParams.get('url');
-    if (urlParam && !hasAutoSearched) {
-      setCurrentUrl(urlParam);
-      setHasAutoSearched(true);
-      setTimeout(() => handleSearchWithUrl(urlParam), 100);
     }
   }, [searchParams, hasAutoSearched]);
 
