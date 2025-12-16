@@ -957,6 +957,46 @@ const sources: Record<string, SourceInfo> = {
     funding: { model: 'Subscriptions', note: 'Socialist perspective on politics and economics' },
     lean: 'left',
   },
+  'vox.com': {
+    displayName: 'Vox',
+    type: 'corporate',
+    countryCode: 'US',
+    ownership: { owner: 'Vox Media', type: 'private', note: 'Digital media company founded 2005' },
+    funding: { model: 'Advertising, sponsored content' },
+    lean: 'left',
+  },
+  'slate.com': {
+    displayName: 'Slate',
+    type: 'magazine',
+    countryCode: 'US',
+    ownership: { owner: 'The Slate Group', parent: 'Graham Holdings', type: 'public_traded', note: 'Online magazine founded 1996' },
+    funding: { model: 'Advertising, Slate Plus subscriptions' },
+    lean: 'left',
+  },
+  'huffpost.com': {
+    displayName: 'HuffPost',
+    type: 'corporate',
+    countryCode: 'US',
+    ownership: { owner: 'BuzzFeed', type: 'public_traded', note: 'Acquired by BuzzFeed in 2021' },
+    funding: { model: 'Advertising' },
+    lean: 'left',
+  },
+  'thenation.com': {
+    displayName: 'The Nation',
+    type: 'magazine',
+    countryCode: 'US',
+    ownership: { owner: 'The Nation Company', type: 'private', note: 'Oldest continuously published weekly magazine in US (1865)' },
+    funding: { model: 'Subscriptions, donations' },
+    lean: 'left',
+  },
+  'democracynow.org': {
+    displayName: 'Democracy Now',
+    type: 'nonprofit',
+    countryCode: 'US',
+    ownership: { owner: 'Democracy Now! Productions', type: 'nonprofit', note: 'Independent news program since 1996' },
+    funding: { model: 'Viewer donations, foundation grants' },
+    lean: 'left',
+  },
 
   // ===========================================================================
   // CENTER-RIGHT MEDIA
@@ -1644,9 +1684,9 @@ function diversifyResults(results: CSEResult[], maxResults: number = 15): CSERes
     byLean[lean].push(result);
   }
 
-  // Round-robin from each lean category (center first for neutrality)
+  // Round-robin from each lean category across the political spectrum
   const diverse: CSEResult[] = [];
-  const leans = ['center', 'right', 'left', 'center-right', 'center-left', 'unknown'];
+  const leans = ['left', 'center-left', 'center', 'center-right', 'right', 'unknown'];
   let added = true;
   let round = 0;
 
