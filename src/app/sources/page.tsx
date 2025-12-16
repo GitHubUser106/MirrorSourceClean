@@ -163,13 +163,11 @@ export default function SourcesPage() {
                     className="bg-white rounded-lg p-3 shadow-sm border border-slate-100 hover:shadow-md transition-shadow"
                   >
                     <div className="flex items-center gap-2 mb-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={getFaviconUrl(source.domain)}
                         alt=""
                         className="w-4 h-4 rounded"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
                       />
                       <span className="font-medium text-slate-800 text-sm leading-tight">
                         {source.name}
