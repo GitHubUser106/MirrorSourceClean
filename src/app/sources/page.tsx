@@ -140,9 +140,9 @@ export default function SourcesPage() {
         {/* Title Section */}
         <div className="text-center mb-10">
           <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-3">Our Sources</h1>
-          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+          <p className="text-lg text-slate-600 max-w-3xl mx-auto">
             MirrorSource aggregates <span className="font-semibold">{totalSources}+ news sources</span> across the political spectrum,
-            giving you a complete picture of how stories are covered.
+            categorizing every outlet by editorial perspective and ownership type so you can see the whole story with full transparency.
           </p>
         </div>
 
@@ -204,9 +204,9 @@ export default function SourcesPage() {
 
         {/* Methodology Note */}
         <div className="mt-8 text-center">
-          <p className="text-sm text-slate-500 max-w-2xl mx-auto">
-            Political lean classifications are based on AllSides Media Bias Ratings and Ad Fontes Media Bias Chart.
-            Source types reflect ownership structure and funding model. We continuously review and update our source database.
+          <p className="text-sm text-slate-500 max-w-3xl mx-auto">
+            Our political labels come from independent watchdogs like AllSides and the Ad Fontes Media Bias Chart.
+            We also tag sources based on who owns them—so you always know if a story is coming from a corporation, a government, or a nonprofit.
           </p>
         </div>
       </main>
