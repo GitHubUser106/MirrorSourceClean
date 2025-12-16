@@ -1,3 +1,5 @@
+"use client";
+
 import { ExternalLink, Link2, Check, Clock } from 'lucide-react';
 import { useState } from 'react';
 
