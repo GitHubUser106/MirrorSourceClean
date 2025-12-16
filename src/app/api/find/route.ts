@@ -9,6 +9,7 @@ export const maxDuration = 30;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GOOGLE_CSE_API_KEY = process.env.GOOGLE_CSE_API_KEY;
 const GOOGLE_CSE_ID = process.env.GOOGLE_CSE_ID;
+const BRAVE_API_KEY = process.env.BRAVE_API_KEY;
 
 const genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY || "" });
 
@@ -1575,6 +1576,7 @@ interface CSEResult {
   title: string;
   snippet: string;
   domain: string;
+  source?: 'google' | 'brave';
 }
 
 async function searchWithCSE(query: string, start: number = 1): Promise<CSEResult[]> {
@@ -1605,18 +1607,76 @@ async function searchWithCSE(query: string, start: number = 1): Promise<CSEResul
     return data.items.map((item: any) => {
       let domain = '';
       try { domain = new URL(item.link).hostname.replace(/^www\./, ''); } catch {}
-      
+
       return {
         url: item.link,
         title: decodeHtmlEntities(item.title || ''),
         snippet: decodeHtmlEntities(item.snippet || ''),
         domain,
+        source: 'google' as const,
       };
     });
   } catch (error: any) {
     clearTimeout(timeoutId);
     if (error.name === 'AbortError') throw new Error('Search timeout');
     throw error;
+  }
+}
+
+// =============================================================================
+// BRAVE SEARCH - Secondary search source for political diversity
+// =============================================================================
+async function searchWithBrave(query: string): Promise<CSEResult[]> {
+  if (!BRAVE_API_KEY) {
+    console.log('[Brave] No API key configured, skipping');
+    return [];
+  }
+
+  try {
+    const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=10&search_lang=en&country=us&freshness=pw`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'X-Subscription-Token': BRAVE_API_KEY,
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      console.log('[Brave] API error:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+
+    const results: CSEResult[] = (data.web?.results || []).map((item: any) => {
+      let domain = '';
+      try { domain = new URL(item.url).hostname.replace(/^www\./, ''); } catch {}
+
+      return {
+        url: item.url,
+        title: item.title || '',
+        snippet: item.description || '',
+        domain,
+        source: 'brave' as const,
+      };
+    });
+
+    console.log('[Brave] Found', results.length, 'results');
+    return results;
+
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.log('[Brave] Search timeout');
+    } else {
+      console.error('[Brave] Search error:', error);
+    }
+    return [];
   }
 }
 
@@ -2049,25 +2109,33 @@ export async function POST(req: NextRequest) {
     // 4. Increment Usage
     const { info: usageInfo, cookieValue } = await incrementUsage(req);
 
-    // 5. STEP 1: THE EYES - Search with CSE (fetch 20 results in parallel)
-    console.log(`[CSE] Final search query: "${searchQuery}"`);
-    console.log('[DEBUG] searchQuery type:', typeof searchQuery);
-    console.log('[DEBUG] searchQuery length:', searchQuery?.length);
-    console.log('[DEBUG] About to call CSE with query:', searchQuery);
-    const [page1, page2] = await Promise.all([
+    // 5. STEP 1: THE EYES - Search with Google CSE + Brave in parallel
+    console.log(`[Search] Query: "${searchQuery}"`);
+    const [cseResults1, cseResults2, braveResults] = await Promise.all([
       searchWithCSE(searchQuery, 1),
       searchWithCSE(searchQuery, 11),
+      searchWithBrave(searchQuery),
     ]);
-    const cseResults = [...page1, ...page2];
-    console.log('[DEBUG] CSE returned', cseResults?.length, 'results');
-    console.log(`[CSE] Raw results from Google: ${cseResults.length}`);
+
+    // Combine all results
+    const allResults = [...cseResults1, ...cseResults2, ...braveResults];
+    console.log(`[Search] Total raw: ${allResults.length} (CSE: ${cseResults1.length + cseResults2.length}, Brave: ${braveResults.length})`);
+
+    // Deduplicate by domain (keep first occurrence - Google takes priority)
+    const seenDomains = new Set<string>();
+    const deduped = allResults.filter(result => {
+      if (!result.domain || seenDomains.has(result.domain)) return false;
+      seenDomains.add(result.domain);
+      return true;
+    });
+    console.log(`[Search] After deduplication: ${deduped.length}`);
 
     // Filter out low-quality results (index pages, irrelevant content)
-    let qualityFiltered = filterQualityResults(cseResults, searchQuery);
-    console.log(`[CSE] After quality filter: ${qualityFiltered.length} of ${cseResults.length} passed`);
+    let qualityFiltered = filterQualityResults(deduped, searchQuery);
+    console.log(`[Search] After quality filter: ${qualityFiltered.length} of ${deduped.length} passed`);
 
-    // FALLBACK: If quality filter returns 0 but CSE had results, retry with broader keywords
-    if (qualityFiltered.length === 0 && cseResults.length > 0) {
+    // FALLBACK: If quality filter returns 0 but we had results, retry with broader keywords
+    if (qualityFiltered.length === 0 && allResults.length > 0) {
       console.log(`[CSE Fallback] Quality filter returned 0. Trying broader search...`);
 
       // Take first 3 keywords for broader search
