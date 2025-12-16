@@ -44,6 +44,7 @@ export type SourceType =
 export interface GroundingSource {
   uri: string;
   title: string;
+  snippet: string;
   displayName: string;
   sourceDomain: string;
   sourceType: SourceType;

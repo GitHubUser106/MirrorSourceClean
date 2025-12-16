@@ -13,6 +13,8 @@ interface SourceData {
   url: string;
   domain: string;
   countryCode?: string;
+  title?: string;
+  snippet?: string;
   headline?: string;
   keyPoints?: string[];
   tone?: string;
@@ -75,6 +77,7 @@ function CompareContent() {
   const [showTypeInfo, setShowTypeInfo] = useState<string | null>(null);
   const [analyses, setAnalyses] = useState<Record<string, any>>({});
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [storyContext, setStoryContext] = useState<string>('');
 
   // Load sources from URL params or localStorage
   useEffect(() => {
@@ -96,6 +99,14 @@ function CompareContent() {
     setLoading(false);
   }, [searchParams]);
 
+  // Extract story context from URL params
+  useEffect(() => {
+    const contextParam = searchParams.get('context');
+    if (contextParam) {
+      setStoryContext(decodeURIComponent(contextParam));
+    }
+  }, [searchParams]);
+
   // Batch analyze selected sources
   useEffect(() => {
     async function fetchAnalyses() {
@@ -111,7 +122,7 @@ function CompareContent() {
         const res = await fetch('/api/compare', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sources: selectedSources }),
+          body: JSON.stringify({ sources: selectedSources, storyContext }),
         });
         const data = await res.json();
 
@@ -130,7 +141,7 @@ function CompareContent() {
     }
 
     fetchAnalyses();
-  }, [selectedIds, sources]);
+  }, [selectedIds, sources, storyContext]);
 
   const selectedSources = sources.filter(s => selectedIds.includes(s.id));
   const availableSources = sources.filter(s => !selectedIds.includes(s.id));
@@ -302,6 +313,12 @@ function CompareContent() {
                     </div>
                   ) : analyses[source.id] ? (
                     <div className="space-y-4">
+                      {/* Inferred badge */}
+                      {analyses[source.id].isInferred && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
+                          Based on search preview - full article not fetched
+                        </div>
+                      )}
                       {/* Headline */}
                       <div>
                         <p className="font-semibold text-slate-900 leading-snug">

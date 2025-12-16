@@ -2125,6 +2125,7 @@ FINAL CHECK: Before responding, verify you have not included any "(Source" or "S
 interface ProcessedSource {
   uri: string;
   title: string;
+  snippet: string;
   displayName: string;
   sourceDomain: string;
   sourceType: SourceType;
@@ -2227,6 +2228,7 @@ function processSearchResults(cseResults: CSEResult[]): ProcessedSource[] {
     processed.push({
       uri: result.url,
       title: result.title,
+      snippet: result.snippet || '',
       displayName: sourceInfo.displayName,
       sourceDomain: result.domain,
       sourceType: sourceInfo.type,

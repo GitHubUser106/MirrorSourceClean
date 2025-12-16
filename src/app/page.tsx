@@ -896,8 +896,10 @@ function HomeContent() {
                           url: r.uri,
                           domain: r.sourceDomain || '',
                           countryCode: r.countryCode || 'US',
+                          title: r.title || '',
+                          snippet: r.snippet || '',
                         }))
-                    ))}`}
+                    ))}&context=${encodeURIComponent(summary || '')}`}
                     className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white px-5 py-2 rounded-full font-semibold transition-colors flex items-center gap-2"
                   >
                     Compare Coverage
