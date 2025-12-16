@@ -205,8 +205,9 @@ export default function SourcesPage() {
         {/* Methodology Note */}
         <div className="mt-8 text-center">
           <p className="text-sm text-slate-500 max-w-3xl mx-auto">
-            Our political labels come from independent watchdogs like AllSides and the Ad Fontes Media Bias Chart.
+            Our political labels are informed by independent rating systems like AllSides and Ad Fontes.
             We also tag sources based on who owns them—so you always know if a story is coming from a corporation, a government, or a nonprofit.
+            We regularly review our database to keep it balanced and up to date.
           </p>
         </div>
       </main>
