@@ -2015,8 +2015,12 @@ export async function POST(req: NextRequest) {
         // FALLBACK: Extract from URL slug
         console.log(`[Query] Title fetch failed, falling back to URL extraction`);
         const extractedKeywords = extractKeywordsFromUrl(url);
+        console.log('[DEBUG] URL extraction result:', extractedKeywords);
+        console.log('[DEBUG] extractedKeywords type:', typeof extractedKeywords);
+        console.log('[DEBUG] extractedKeywords length:', extractedKeywords?.length);
 
         if (!extractedKeywords) {
+          console.log('[DEBUG] EARLY EXIT: extractedKeywords is null/empty');
           return NextResponse.json({
             summary: null,
             commonGround: null,
@@ -2036,7 +2040,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Final safeguard: ensure searchQuery is valid
+    console.log('[DEBUG] Final safeguard check - searchQuery:', searchQuery);
+    console.log('[DEBUG] Final safeguard - type:', typeof searchQuery, 'length:', searchQuery?.trim()?.length);
     if (!searchQuery || typeof searchQuery !== 'string' || searchQuery.trim().length < 2) {
+      console.log('[DEBUG] EARLY EXIT: searchQuery invalid at final safeguard');
       return NextResponse.json({
         summary: null,
         commonGround: null,
@@ -2055,11 +2062,15 @@ export async function POST(req: NextRequest) {
 
     // 5. STEP 1: THE EYES - Search with CSE (fetch 20 results in parallel)
     console.log(`[CSE] Final search query: "${searchQuery}"`);
+    console.log('[DEBUG] searchQuery type:', typeof searchQuery);
+    console.log('[DEBUG] searchQuery length:', searchQuery?.length);
+    console.log('[DEBUG] About to call CSE with query:', searchQuery);
     const [page1, page2] = await Promise.all([
       searchWithCSE(searchQuery, 1),
       searchWithCSE(searchQuery, 11),
     ]);
     const cseResults = [...page1, ...page2];
+    console.log('[DEBUG] CSE returned', cseResults?.length, 'results');
     console.log(`[CSE] Raw results from Google: ${cseResults.length}`);
 
     // Filter out low-quality results (index pages, irrelevant content)
