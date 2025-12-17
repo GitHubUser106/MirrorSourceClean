@@ -7,8 +7,6 @@ export const maxDuration = 30;
 
 // API Keys
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GOOGLE_CSE_API_KEY = process.env.GOOGLE_CSE_API_KEY;
-const GOOGLE_CSE_ID = process.env.GOOGLE_CSE_ID;
 const BRAVE_API_KEY = process.env.BRAVE_API_KEY;
 
 const genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY || "" });
@@ -1678,35 +1676,6 @@ async function fetchArticleTitle(url: string): Promise<string | null> {
   }
 }
 
-// --- Quote Proper Nouns for Exact Match ---
-function quoteProperNouns(query: string): string {
-  const words = query.split(/\s+/);
-  const processed: string[] = [];
-  let i = 0;
-
-  while (i < words.length) {
-    // Check for multi-word proper noun sequences (e.g., "Bondi Beach", "New York")
-    if (/^[A-Z]/.test(words[i])) {
-      let properNounSequence = [words[i]];
-      let j = i + 1;
-      while (j < words.length && /^[A-Z]/.test(words[j])) {
-        properNounSequence.push(words[j]);
-        j++;
-      }
-      if (properNounSequence.length >= 2) {
-        // Multi-word proper noun: quote it
-        processed.push(`"${properNounSequence.join(' ')}"`);
-        i = j;
-        continue;
-      }
-    }
-    processed.push(words[i]);
-    i++;
-  }
-
-  return processed.join(' ');
-}
-
 // --- URL to Keywords Extraction ---
 function extractKeywordsFromUrl(url: string): string | null {
   try {
@@ -1752,15 +1721,6 @@ function extractKeywordsFromUrl(url: string): string | null {
 }
 
 // --- Helpers ---
-function decodeHtmlEntities(text: string): string {
-  if (!text) return text;
-  return text
-    .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-    .replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>').replace(/&apos;/g, "'").replace(/&nbsp;/g, ' ');
-}
-
 function extractJson(text: string): any {
   let cleaned = text.trim().replace(/^```[a-z]*\s*/i, '').replace(/```$/, '').trim();
   try { return JSON.parse(cleaned); } catch {}
@@ -1800,52 +1760,8 @@ interface CSEResult {
   source?: 'google' | 'brave';
 }
 
-async function searchWithCSE(query: string, start: number = 1): Promise<CSEResult[]> {
-  if (!GOOGLE_CSE_API_KEY || !GOOGLE_CSE_ID) {
-    console.error('Missing CSE credentials');
-    throw new Error('Search configuration error');
-  }
-
-  const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_CSE_API_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&num=10&start=${start}`;
-  
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('CSE API error:', response.status, errorData);
-      throw new Error(`CSE API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    if (!data.items || data.items.length === 0) return [];
-
-    return data.items.map((item: any) => {
-      let domain = '';
-      try { domain = new URL(item.link).hostname.replace(/^www\./, ''); } catch {}
-
-      return {
-        url: item.link,
-        title: decodeHtmlEntities(item.title || ''),
-        snippet: decodeHtmlEntities(item.snippet || ''),
-        domain,
-        source: 'google' as const,
-      };
-    });
-  } catch (error: any) {
-    clearTimeout(timeoutId);
-    if (error.name === 'AbortError') throw new Error('Search timeout');
-    throw error;
-  }
-}
-
 // =============================================================================
-// BRAVE SEARCH - Secondary search source for political diversity
+// BRAVE SEARCH - Primary search engine
 // =============================================================================
 async function searchWithBrave(query: string): Promise<CSEResult[]> {
   if (!BRAVE_API_KEY) {
@@ -2456,24 +2372,14 @@ export async function POST(req: NextRequest) {
     // 5. Increment Usage (only for non-cached requests)
     const { info: usageInfo, cookieValue } = await incrementUsage(req);
 
-    // 6. STEP 1: THE EYES - Search with Brave (CSE disabled for cost test)
+    // 6. STEP 1: THE EYES - Search with Brave
     console.log(`[Search] Query: "${searchQuery}"`);
-    // BRAVE-ONLY TEST - CSE disabled to evaluate cost savings
-    // const [cseResults, braveResults] = await Promise.all([
-    //   searchWithCSE(searchQuery, 1),
-    //   searchWithBrave(searchQuery),
-    // ]);
-    const cseResults: CSEResult[] = []; // CSE disabled for test
-    const braveResults = await searchWithBrave(searchQuery);
-    console.log(`[BRAVE-ONLY TEST] Brave returned ${braveResults.length} results, CSE disabled`);
+    const searchResults = await searchWithBrave(searchQuery);
+    console.log(`[Search] Brave returned ${searchResults.length} results`);
 
-    // Combine all results
-    const allResults = [...cseResults, ...braveResults];
-    console.log(`[Search] Total raw: ${allResults.length} (CSE: ${cseResults.length}, Brave: ${braveResults.length})`);
-
-    // Deduplicate by domain (keep first occurrence - Google takes priority)
+    // Deduplicate by domain
     const seenDomains = new Set<string>();
-    const deduped = allResults.filter(result => {
+    const deduped = searchResults.filter(result => {
       if (!result.domain || seenDomains.has(result.domain)) return false;
       seenDomains.add(result.domain);
       return true;
@@ -2485,18 +2391,17 @@ export async function POST(req: NextRequest) {
     console.log(`[Search] After quality filter: ${qualityFiltered.length} of ${deduped.length} passed`);
 
     // FALLBACK: If quality filter returns 0 but we had results, retry with broader keywords
-    if (qualityFiltered.length === 0 && allResults.length > 0) {
-      console.log(`[CSE Fallback] Quality filter returned 0. Trying broader search...`);
+    if (qualityFiltered.length === 0 && searchResults.length > 0) {
+      console.log(`[Fallback] Quality filter returned 0. Trying broader search...`);
 
       // Take first 3 keywords for broader search
       const words = searchQuery.split(/\s+/).filter(w => w.length > 2);
       const broaderQuery = words.slice(0, 3).join(' ');
 
       if (broaderQuery && broaderQuery !== searchQuery) {
-        console.log(`[Brave Fallback] Broader query: "${broaderQuery}"`);
-        // BRAVE-ONLY TEST - Use Brave for fallback instead of CSE
+        console.log(`[Fallback] Broader query: "${broaderQuery}"`);
         const fallbackResults = await searchWithBrave(broaderQuery);
-        console.log(`[Brave Fallback] Got ${fallbackResults.length} results`);
+        console.log(`[Fallback] Got ${fallbackResults.length} results`);
 
         // Use relaxed quality filter (only structural, skip relevance)
         qualityFiltered = fallbackResults.filter(result => {
@@ -2510,13 +2415,13 @@ export async function POST(req: NextRequest) {
             return true;
           } catch { return false; }
         });
-        console.log(`[CSE Fallback] After relaxed filter: ${qualityFiltered.length} passed`);
+        console.log(`[Fallback] After relaxed filter: ${qualityFiltered.length} passed`);
       }
     }
 
     // Diversify by source type using round-robin
     const diverseResults = diversifyResults(qualityFiltered, 15);
-    console.log(`[CSE] After diversity: ${diverseResults.length} results`);
+    console.log(`[Search] After diversity: ${diverseResults.length} results`);
 
     if (diverseResults.length === 0) {
       const response = NextResponse.json({
