@@ -1907,6 +1907,25 @@ function filterQualityResults(results: CSEResult[], searchQuery: string): CSERes
   if (!searchQuery || typeof searchQuery !== 'string') return results;
 
   const stopWords = ['this', 'that', 'with', 'from', 'have', 'been', 'were', 'they', 'their', 'about', 'which', 'would', 'could', 'should', 'there', 'where', 'when', 'what', 'news', 'report', 'story'];
+
+  const SPAM_KEYWORDS = [
+    'crossword', 'puzzle', 'clue', 'wordle', 'answer key', 'cheat',
+    'coupon', 'promo code', 'discount code',
+    'essay', 'homework help',
+    'lyrics', 'chords', 'tabs',
+    'horoscope', 'zodiac',
+    'recipe', 'calories'
+  ];
+
+  const SPAM_DOMAINS = [
+    'tryhardguides.com', 'progameguides.com', 'gamerjournalist.com',
+    'attackofthefanboy.com', 'gamerant.com', 'screenrant.com',
+    'quizlet.com', 'brainly.com', 'chegg.com', 'coursehero.com',
+    'genius.com', 'azlyrics.com',
+    'allrecipes.com', 'food.com', 'delish.com',
+    'pinterest.com', 'etsy.com', 'amazon.com'
+  ];
+
   const queryWords = searchQuery
     .toLowerCase()
     .split(/\s+/)
@@ -1917,6 +1936,22 @@ function filterQualityResults(results: CSEResult[], searchQuery: string): CSERes
 
   const scored = results.map(result => {
     if (!result || !result.url) return { result, score: 0, passed: false };
+
+    const urlLower = (result.url || '').toLowerCase();
+    const titleLower = (result.title || '').toLowerCase();
+    const snippetLower = (result.snippet || '').toLowerCase();
+
+    // Block known spam domains
+    if (SPAM_DOMAINS.some(d => urlLower.includes(d))) {
+      console.log(`[Spam Filter] Blocked domain: ${result.url}`);
+      return { result, score: 0, passed: false };
+    }
+
+    // Block spam content types by title/snippet keywords
+    if (SPAM_KEYWORDS.some(k => titleLower.includes(k) || snippetLower.includes(k))) {
+      console.log(`[Spam Filter] Blocked keyword in: ${result.title}`);
+      return { result, score: 0, passed: false };
+    }
 
     try {
       const path = new URL(result.url).pathname;
@@ -1941,7 +1976,6 @@ function filterQualityResults(results: CSEResult[], searchQuery: string): CSERes
       passed = matchRatio >= 0.4;
     }
 
-    const titleLower = (result.title || '').toLowerCase();
     const titleHasMatch = queryWords.some(w => titleLower.includes(w));
     if (queryWords.length > 1 && !titleHasMatch) {
       passed = false;
