@@ -2067,8 +2067,14 @@ RULES:
 - CITATION STYLE: Refer to sources by their Publisher Name as written in the text (e.g., "**Reuters**", "**CNN**", "**Al Jazeera**").
 - Bold publisher names in keyDifferences using **markdown**.
 - commonGround: 2-4 fact objects.
-- keyDifferences: If sources DISAGREE about the PRIMARY EVENT (and it's not just an update), return 1-3 difference objects. If they AGREE, return a consensus string.
-- CONSENSUS VS AGREEMENT: Only claim "consistent narrative" if sources include diverse political perspectives. If sources appear predominantly left-leaning or right-leaning, say "Sources in this sample agree" instead of implying broad consensus.
+- keyDifferences: Look for differences in FACTS, FRAMING, and TONE across sources. Do NOT just check factual agreement.
+  * Factual difference: Source A says "9 killed", Source B says "15 killed" → KEY DIFFERENCE
+  * Framing difference: Source A says "Politician defends policy", Source B says "Politician under fire for policy" → KEY DIFFERENCE
+  * Tone difference: Source A uses "crisis" framing, Source B uses "routine" framing → KEY DIFFERENCE
+  * Omission difference: Source A mentions the cost, Source B omits it entirely → KEY DIFFERENCE
+  Return 1-3 difference objects highlighting the most significant divergences. Keep each "value" under 25 words.
+  ONLY return a consensus string if tone, framing, AND facts are nearly identical across ALL sources. This should be rare.
+- CONSENSUS RULE: Only return a consensus string when there are genuinely NO meaningful differences in framing or tone. If you identified ANY keyDifferences, do NOT also claim consensus. Default to finding differences - consensus should be rare.
 - Use simple language
 - Be concise - prioritize speed over length.
 
