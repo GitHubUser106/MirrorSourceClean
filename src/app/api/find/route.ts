@@ -1854,7 +1854,7 @@ async function searchWithBrave(query: string): Promise<CSEResult[]> {
   }
 
   try {
-    const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=10&search_lang=en&country=us&freshness=pw`;
+    const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=20&search_lang=en&country=us&freshness=pw`;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -2422,12 +2422,16 @@ export async function POST(req: NextRequest) {
     // 5. Increment Usage (only for non-cached requests)
     const { info: usageInfo, cookieValue } = await incrementUsage(req);
 
-    // 6. STEP 1: THE EYES - Search with Google CSE + Brave in parallel
+    // 6. STEP 1: THE EYES - Search with Brave (CSE disabled for cost test)
     console.log(`[Search] Query: "${searchQuery}"`);
-    const [cseResults, braveResults] = await Promise.all([
-      searchWithCSE(searchQuery, 1),  // Only 10 results from Google (cost reduction)
-      searchWithBrave(searchQuery),   // 10 results from Brave
-    ]);
+    // BRAVE-ONLY TEST - CSE disabled to evaluate cost savings
+    // const [cseResults, braveResults] = await Promise.all([
+    //   searchWithCSE(searchQuery, 1),
+    //   searchWithBrave(searchQuery),
+    // ]);
+    const cseResults: CSEResult[] = []; // CSE disabled for test
+    const braveResults = await searchWithBrave(searchQuery);
+    console.log(`[BRAVE-ONLY TEST] Brave returned ${braveResults.length} results, CSE disabled`);
 
     // Combine all results
     const allResults = [...cseResults, ...braveResults];
@@ -2455,13 +2459,10 @@ export async function POST(req: NextRequest) {
       const broaderQuery = words.slice(0, 3).join(' ');
 
       if (broaderQuery && broaderQuery !== searchQuery) {
-        console.log(`[CSE Fallback] Broader query: "${broaderQuery}"`);
-        const [fallback1, fallback2] = await Promise.all([
-          searchWithCSE(broaderQuery, 1),
-          searchWithCSE(broaderQuery, 11),
-        ]);
-        const fallbackResults = [...fallback1, ...fallback2];
-        console.log(`[CSE Fallback] Got ${fallbackResults.length} results`);
+        console.log(`[Brave Fallback] Broader query: "${broaderQuery}"`);
+        // BRAVE-ONLY TEST - Use Brave for fallback instead of CSE
+        const fallbackResults = await searchWithBrave(broaderQuery);
+        console.log(`[Brave Fallback] Got ${fallbackResults.length} results`);
 
         // Use relaxed quality filter (only structural, skip relevance)
         qualityFiltered = fallbackResults.filter(result => {
