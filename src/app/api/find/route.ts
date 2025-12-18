@@ -1834,12 +1834,20 @@ function filterQualityResults(results: CSEResult[], searchQuery: string): CSERes
   ];
 
   const SPAM_DOMAINS = [
+    // Gaming guides & walkthroughs
     'tryhardguides.com', 'progameguides.com', 'gamerjournalist.com',
     'attackofthefanboy.com', 'gamerant.com', 'screenrant.com',
+    // Gaming & entertainment (not news)
+    'fandomwire.com', 'fandom.com', 'gosugamers.net', 'biztoc.com',
+    'cbr.com', 'polygon.com', 'kotaku.com', 'ign.com', 'pcgamer.com',
+    // Homework & reference
     'quizlet.com', 'brainly.com', 'chegg.com', 'coursehero.com',
     'genius.com', 'azlyrics.com',
+    // Recipes & lifestyle
     'allrecipes.com', 'food.com', 'delish.com',
+    // Shopping & social
     'pinterest.com', 'etsy.com', 'amazon.com',
+    // Reference (not news)
     'wikipedia.org', 'en.wikipedia.org', 'britannica.com',
     'merriam-webster.com', 'investopedia.com'
   ];

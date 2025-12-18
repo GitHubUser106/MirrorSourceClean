@@ -1324,6 +1324,29 @@ function HomeContent() {
                     onToggleSelect={handleToggleCompare}
                   />
                   <div className="mt-6 pt-6 border-t border-slate-100">
+                    {/* Compare Selected Button */}
+                    {selectedForCompare.length >= 2 && (
+                      <div className="mb-4">
+                        <Link
+                          href={`/compare?sources=${encodeURIComponent(JSON.stringify(
+                            results
+                              .filter(r => selectedForCompare.includes(r.uri))
+                              .slice(0, 5)
+                              .map((r, i) => ({
+                                id: `source-${i}`,
+                                name: r.displayName || r.sourceDomain?.split('.')[0].toUpperCase(),
+                                type: r.sourceType || 'unknown',
+                                url: r.uri,
+                                title: r.title || '',
+                                snippet: r.snippet || ''
+                              }))
+                          ))}&context=${encodeURIComponent(summary || '')}`}
+                          className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition"
+                        >
+                          Compare {selectedForCompare.length} Sources →
+                        </Link>
+                      </div>
+                    )}
                     <p className="text-sm text-slate-500 text-center mb-3">Results may vary. Try again for different sources.</p>
                     <button onClick={() => handleSearchWithUrl(lastSubmittedUrl)} disabled={loading} className="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 disabled:bg-slate-50 text-slate-700 font-medium py-3 px-6 rounded-full transition-colors border border-slate-200">
                       <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
