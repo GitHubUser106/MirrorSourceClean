@@ -1154,10 +1154,10 @@ function HomeContent() {
         </div>
       </footer>
 
-      {/* Floating Compare Bar */}
+      {/* Floating Compare Bar - Fixed to viewport bottom */}
       {results.length >= 2 && (selectedForCompare.length > 0 || showCompareHint) && (
-        <div className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 ${showCompareHint && selectedForCompare.length === 0 ? 'animate-in slide-in-from-bottom-4' : ''}`}>
-          <div className="bg-white px-6 py-3 rounded-full shadow-2xl border border-slate-200 flex items-center gap-4">
+        <div className={`fixed bottom-0 left-0 right-0 z-50 pb-4 pt-2 px-4 bg-gradient-to-t from-slate-50 via-slate-50 to-transparent pointer-events-none transition-all duration-300 ${showCompareHint && selectedForCompare.length === 0 ? 'animate-in slide-in-from-bottom-4' : ''}`}>
+          <div className="max-w-fit mx-auto bg-white px-6 py-3 rounded-full shadow-2xl border border-slate-200 flex items-center gap-4 pointer-events-auto">
             {selectedForCompare.length === 0 ? (
               <>
                 <div className="w-5 h-5 rounded border-2 border-slate-300 flex items-center justify-center">
