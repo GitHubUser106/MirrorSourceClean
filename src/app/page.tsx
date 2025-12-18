@@ -1008,19 +1008,19 @@ function HomeContent() {
                     return (
                       <div key={idx} className="border border-slate-200 rounded-xl p-5 bg-slate-50 hover:shadow-md transition-shadow">
                         {/* Source Header */}
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between gap-2 mb-3">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
                             <img
                               src={`https://www.google.com/s2/favicons?domain=${source?.sourceDomain}&sz=32`}
                               alt=""
-                              className="w-5 h-5 rounded"
+                              className="w-5 h-5 rounded flex-shrink-0"
                             />
-                            <span className="font-semibold text-slate-900">{sourceName}</span>
+                            <span className="font-semibold text-slate-900 truncate">{sourceName}</span>
                             {source?.countryCode && (
-                              <span className="text-xs">{source.countryCode === 'US' ? '🇺🇸' : source.countryCode === 'GB' ? '🇬🇧' : source.countryCode === 'CA' ? '🇨🇦' : '🌍'}</span>
+                              <span className="text-xs flex-shrink-0">{source.countryCode === 'US' ? '🇺🇸' : source.countryCode === 'GB' ? '🇬🇧' : source.countryCode === 'CA' ? '🇨🇦' : '🌍'}</span>
                             )}
                           </div>
-                          <span className="text-xs px-2 py-1 bg-slate-200 rounded text-slate-600 font-medium">{sourceType}</span>
+                          <span className="text-xs px-2 py-1 bg-slate-200 rounded text-slate-600 font-medium flex-shrink-0 ml-1">{sourceType}</span>
                         </div>
 
                         <a href={source?.uri} target="_blank" rel="noopener noreferrer"
