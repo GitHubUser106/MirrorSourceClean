@@ -41,6 +41,30 @@ const scannerIcons = [
   { domain: "forbes.com", name: "Forbes" },
 ];
 
+const FEATURED_STORIES = [
+  {
+    headline: "New Epstein Files Released: Trump & Clinton Named",
+    topic: "Politics & Accountability",
+    url: "https://www.nytimes.com/2025/12/18/us/jeffrey-epstein-donald-trump.html"
+  },
+  {
+    headline: "HHS Proposes Ban on Gender Care Funding",
+    topic: "Healthcare Policy",
+    url: "https://www.nytimes.com/2025/12/18/health/trump-gender-affirming-care-funding.html"
+  },
+  {
+    headline: "Fed Holds Rates Steady Amid Inflation Concerns",
+    topic: "Economy & Markets",
+    url: "https://www.nytimes.com/2025/12/18/business/economy/inflation-cpi-interest-rates.html"
+  }
+];
+
+// Rotate story daily based on date
+const getDailyStory = () => {
+  const dayIndex = Math.floor(Date.now() / 86400000);
+  return FEATURED_STORIES[dayIndex % FEATURED_STORIES.length];
+};
+
 function parseMarkdownBold(text: string, variant: 'summary' | 'intel' = 'summary'): React.ReactNode[] {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return parts.map((part, index) => {
@@ -611,6 +635,7 @@ function HomeContent() {
   const hasContent = summary || results.length > 0;
   const isActive = loading || hasContent;
   const currentScannerIcon = scannerIcons[scannerIconIndex];
+  const todaysStory = getDailyStory();
 
   return (
     <main className="min-h-screen bg-slate-50 flex flex-col relative">
@@ -667,6 +692,56 @@ function HomeContent() {
               <span className={`w-1.5 h-1.5 rounded-full ${usage.remaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></span>
               {usage.remaining}/{usage.limit} left
             </div>
+          </div>
+        )}
+
+        {/* Story of the Day - Only show on empty homepage */}
+        {!hasContent && !loading && (
+          <div className="mt-12 w-full max-w-2xl mx-auto px-4">
+            <div className="text-center mb-6">
+              <span className="bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                Trending Analysis
+              </span>
+            </div>
+
+            <button
+              onClick={() => {
+                setCurrentUrl(todaysStory.url);
+                handleSearchWithUrl(todaysStory.url);
+              }}
+              className="w-full group relative bg-white hover:bg-slate-50 border-2 border-slate-100 hover:border-blue-100 rounded-2xl p-6 text-left transition-all shadow-sm hover:shadow-md"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-2xl font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">
+                    {todaysStory.headline}
+                  </h3>
+                  <p className="text-slate-500 font-medium flex items-center gap-2">
+                    <span className="text-lg">⚡️</span>
+                    Topic: {todaysStory.topic}
+                  </p>
+                </div>
+                <div className="bg-blue-100 text-blue-600 rounded-full p-3 group-hover:scale-110 transition-transform">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-between text-sm border-t border-slate-100 pt-4">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <span className="flex -space-x-1">
+                    <div className="w-5 h-5 rounded-full bg-blue-200 ring-2 ring-white"></div>
+                    <div className="w-5 h-5 rounded-full bg-gray-300 ring-2 ring-white"></div>
+                    <div className="w-5 h-5 rounded-full bg-red-200 ring-2 ring-white"></div>
+                  </span>
+                  <span>Left, Center & Right perspectives</span>
+                </div>
+                <span className="font-semibold text-blue-600 group-hover:underline flex items-center gap-1">
+                  See the breakdown →
+                </span>
+              </div>
+            </button>
           </div>
         )}
 
