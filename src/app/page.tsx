@@ -120,6 +120,8 @@ function HomeContent() {
   const [keywords, setKeywords] = useState("");
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
   const [showCompareHint, setShowCompareHint] = useState(false);
+  const [inlineComparison, setInlineComparison] = useState<any>(null);
+  const [loadingComparison, setLoadingComparison] = useState(false);
 
   // Auto-select divergent trio (Left + Center + Right) when results load
   useEffect(() => {
@@ -128,6 +130,47 @@ function HomeContent() {
       setSelectedForCompare(autoSelected);
     }
   }, [results]);
+
+  // Auto-fetch inline comparison when trio is selected
+  useEffect(() => {
+    async function fetchInlineComparison() {
+      if (selectedForCompare.length >= 3 && results.length > 0) {
+        setLoadingComparison(true);
+        setInlineComparison(null);
+        try {
+          const selectedSources = results
+            .filter(r => selectedForCompare.includes(r.uri))
+            .slice(0, 3)
+            .map((r, i) => ({
+              id: `source-${i}`,
+              name: r.displayName || r.sourceDomain,
+              type: r.sourceType || 'unknown',
+              url: r.uri,
+              domain: r.sourceDomain,
+              title: r.title || '',
+              snippet: r.snippet || '',
+            }));
+
+          const res = await fetch('/api/compare', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sources: selectedSources, storyContext: summary || '' }),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            setInlineComparison(data);
+          }
+        } catch (err) {
+          console.error('Inline comparison failed:', err);
+        } finally {
+          setLoadingComparison(false);
+        }
+      }
+    }
+
+    fetchInlineComparison();
+  }, [selectedForCompare, results, summary]);
 
   // Auto-show and auto-hide compare hint (disabled since we auto-select now)
   useEffect(() => {
@@ -863,6 +906,76 @@ function HomeContent() {
                       Find different sources
                     </button>
                   </div>
+
+                  {/* Inline Comparison Preview */}
+                  {loadingComparison && (
+                    <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <RefreshCw size={16} className="animate-spin text-slate-400" />
+                        <p className="text-slate-500">Analyzing coverage differences...</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {inlineComparison && inlineComparison.analyses && inlineComparison.analyses.length > 0 && (
+                    <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 via-slate-50 to-orange-50 rounded-xl border border-slate-200">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Scale size={18} className="text-slate-600" />
+                        <h3 className="font-semibold text-slate-900">Quick Comparison</h3>
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Auto-selected</span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {inlineComparison.analyses.slice(0, 3).map((analysis: any, idx: number) => {
+                          const source = results.find(r => selectedForCompare[idx] === r.uri);
+                          return (
+                            <div key={idx} className="bg-white p-3 rounded-lg shadow-sm border border-slate-100">
+                              <div className="flex items-center gap-2 mb-2">
+                                <img
+                                  src={`https://www.google.com/s2/favicons?domain=${source?.sourceDomain}&sz=32`}
+                                  alt=""
+                                  className="w-4 h-4 rounded"
+                                />
+                                <p className="font-medium text-sm text-slate-800 truncate">{source?.displayName || 'Source'}</p>
+                              </div>
+                              <p className="text-xs text-slate-600 line-clamp-2 mb-2">"{analysis.headline}"</p>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                  analysis.tone?.toLowerCase().includes('critical') ? 'bg-red-100 text-red-700' :
+                                  analysis.tone?.toLowerCase().includes('support') ? 'bg-green-100 text-green-700' :
+                                  analysis.tone?.toLowerCase().includes('urgent') ? 'bg-amber-100 text-amber-700' :
+                                  'bg-slate-100 text-slate-600'
+                                }`}>
+                                  {analysis.tone}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="text-center mt-4">
+                        <Link
+                          href={`/compare?sources=${encodeURIComponent(JSON.stringify(
+                            results
+                              .filter(r => selectedForCompare.includes(r.uri))
+                              .map((r, i) => ({
+                                id: `source-${i}`,
+                                name: r.displayName || r.sourceDomain,
+                                type: r.sourceType || 'Corporate',
+                                url: r.uri,
+                                domain: r.sourceDomain || '',
+                                countryCode: r.countryCode || 'US',
+                                title: r.title || '',
+                                snippet: r.snippet || '',
+                              }))
+                          ))}&context=${encodeURIComponent(summary || '')}`}
+                          className="text-blue-600 hover:text-blue-700 text-sm font-medium inline-flex items-center gap-1"
+                        >
+                          See full analysis
+                          <ArrowRight size={14} />
+                        </Link>
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="space-y-4">
