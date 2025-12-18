@@ -883,12 +883,131 @@ function HomeContent() {
               </div>
             )}
 
-            {/* Alternative Sources */}
+            {/* Inline Comparison Cards - The "Zing" */}
+            {loadingComparison && (
+              <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8">
+                <div className="flex items-center justify-center gap-3">
+                  <RefreshCw size={20} className="animate-spin text-blue-500" />
+                  <p className="text-slate-600 font-medium">Analyzing how each source covers this story...</p>
+                </div>
+              </div>
+            )}
+
+            {inlineComparison && inlineComparison.analyses && inlineComparison.analyses.length > 0 && (
+              <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8 lg:p-10">
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Scale size={22} className="text-blue-600" />
+                    <h2 className="text-xl md:text-2xl font-bold text-slate-900">Compare Coverage</h2>
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Auto-selected</span>
+                  </div>
+                  <p className="text-slate-500 text-sm">See how different sources cover the same story</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {inlineComparison.analyses.slice(0, 3).map((analysis: any, idx: number) => {
+                    const source = results.find(r => selectedForCompare[idx] === r.uri);
+                    const sourceName = source?.displayName || source?.sourceDomain?.split('.')[0].toUpperCase() || 'Source';
+                    const sourceType = source?.sourceType || 'News';
+
+                    return (
+                      <div key={idx} className="border border-slate-200 rounded-xl p-5 bg-slate-50 hover:shadow-md transition-shadow">
+                        {/* Source Header */}
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <img
+                              src={`https://www.google.com/s2/favicons?domain=${source?.sourceDomain}&sz=32`}
+                              alt=""
+                              className="w-5 h-5 rounded"
+                            />
+                            <span className="font-semibold text-slate-900">{sourceName}</span>
+                            {source?.countryCode && (
+                              <span className="text-xs">{source.countryCode === 'US' ? '🇺🇸' : source.countryCode === 'GB' ? '🇬🇧' : source.countryCode === 'CA' ? '🇨🇦' : '🌍'}</span>
+                            )}
+                          </div>
+                          <span className="text-xs px-2 py-1 bg-slate-200 rounded text-slate-600 font-medium">{sourceType}</span>
+                        </div>
+
+                        <a href={source?.uri} target="_blank" rel="noopener noreferrer"
+                           className="text-blue-600 text-sm hover:underline inline-flex items-center gap-1">
+                          Read full article <ArrowRight size={12} />
+                        </a>
+
+                        {/* Headline */}
+                        <p className="font-medium mt-4 text-slate-900 leading-snug">"{analysis.headline}"</p>
+
+                        {/* Tone Badge */}
+                        <div className="mt-4">
+                          <span className="text-xs text-slate-500 uppercase tracking-wide font-medium">Tone</span>
+                          <span className={`ml-2 text-sm px-2.5 py-0.5 rounded-full font-medium ${
+                            ['Critical', 'Alarming', 'Concerned', 'Skeptical', 'Warning'].some(t => analysis.tone?.includes(t))
+                              ? 'bg-red-100 text-red-700'
+                              : ['Supportive', 'Approving', 'Optimistic', 'Positive'].some(t => analysis.tone?.includes(t))
+                              ? 'bg-green-100 text-green-700'
+                              : ['Urgent', 'Alert'].some(t => analysis.tone?.includes(t))
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {analysis.tone}
+                          </span>
+                        </div>
+
+                        {/* Focus */}
+                        <div className="mt-4">
+                          <span className="text-xs text-slate-500 uppercase tracking-wide font-medium block mb-1">Focus</span>
+                          <p className="text-sm text-slate-700 leading-relaxed">{analysis.focus}</p>
+                        </div>
+
+                        {/* Unique Angle */}
+                        <div className="mt-4">
+                          <span className="text-xs text-slate-500 uppercase tracking-wide font-medium block mb-1">Unique Angle</span>
+                          <p className="text-sm text-slate-700 leading-relaxed">{analysis.uniqueAngle}</p>
+                        </div>
+
+                        {/* Not Covered */}
+                        {analysis.notCovered && (
+                          <div className="mt-4">
+                            <span className="text-xs text-red-500 uppercase tracking-wide font-medium block mb-1">Not Covered</span>
+                            <p className="text-sm text-slate-600 italic leading-relaxed">{analysis.notCovered}</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Link to full compare page */}
+                <div className="mt-6 pt-4 border-t border-slate-100 text-center">
+                  <Link
+                    href={`/compare?sources=${encodeURIComponent(JSON.stringify(
+                      results
+                        .filter(r => selectedForCompare.includes(r.uri))
+                        .map((r, i) => ({
+                          id: `source-${i}`,
+                          name: r.displayName || r.sourceDomain,
+                          type: r.sourceType || 'Corporate',
+                          url: r.uri,
+                          domain: r.sourceDomain || '',
+                          countryCode: r.countryCode || 'US',
+                          title: r.title || '',
+                          snippet: r.snippet || '',
+                        }))
+                    ))}&context=${encodeURIComponent(summary || '')}`}
+                    className="text-blue-600 hover:text-blue-700 font-medium inline-flex items-center gap-1.5 text-sm"
+                  >
+                    View full comparison with more sources
+                    <ArrowRight size={16} />
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {/* More Sources */}
             <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8 lg:p-10">
               <div className="flex items-center justify-between mb-5">
                 <div>
-                  <h2 className="text-xl md:text-2xl font-bold text-slate-900">Alternative Sources</h2>
-                  <p className="text-sm text-slate-500 mt-1">Select sources to compare side-by-side</p>
+                  <h2 className="text-xl md:text-2xl font-bold text-slate-900">More Sources</h2>
+                  <p className="text-sm text-slate-500 mt-1">Select different sources to compare</p>
                 </div>
               </div>
 
@@ -906,76 +1025,6 @@ function HomeContent() {
                       Find different sources
                     </button>
                   </div>
-
-                  {/* Inline Comparison Preview */}
-                  {loadingComparison && (
-                    <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <RefreshCw size={16} className="animate-spin text-slate-400" />
-                        <p className="text-slate-500">Analyzing coverage differences...</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {inlineComparison && inlineComparison.analyses && inlineComparison.analyses.length > 0 && (
-                    <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 via-slate-50 to-orange-50 rounded-xl border border-slate-200">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Scale size={18} className="text-slate-600" />
-                        <h3 className="font-semibold text-slate-900">Quick Comparison</h3>
-                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Auto-selected</span>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {inlineComparison.analyses.slice(0, 3).map((analysis: any, idx: number) => {
-                          const source = results.find(r => selectedForCompare[idx] === r.uri);
-                          return (
-                            <div key={idx} className="bg-white p-3 rounded-lg shadow-sm border border-slate-100">
-                              <div className="flex items-center gap-2 mb-2">
-                                <img
-                                  src={`https://www.google.com/s2/favicons?domain=${source?.sourceDomain}&sz=32`}
-                                  alt=""
-                                  className="w-4 h-4 rounded"
-                                />
-                                <p className="font-medium text-sm text-slate-800 truncate">{source?.displayName || 'Source'}</p>
-                              </div>
-                              <p className="text-xs text-slate-600 line-clamp-2 mb-2">"{analysis.headline}"</p>
-                              <div className="flex items-center gap-2">
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                  analysis.tone?.toLowerCase().includes('critical') ? 'bg-red-100 text-red-700' :
-                                  analysis.tone?.toLowerCase().includes('support') ? 'bg-green-100 text-green-700' :
-                                  analysis.tone?.toLowerCase().includes('urgent') ? 'bg-amber-100 text-amber-700' :
-                                  'bg-slate-100 text-slate-600'
-                                }`}>
-                                  {analysis.tone}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <div className="text-center mt-4">
-                        <Link
-                          href={`/compare?sources=${encodeURIComponent(JSON.stringify(
-                            results
-                              .filter(r => selectedForCompare.includes(r.uri))
-                              .map((r, i) => ({
-                                id: `source-${i}`,
-                                name: r.displayName || r.sourceDomain,
-                                type: r.sourceType || 'Corporate',
-                                url: r.uri,
-                                domain: r.sourceDomain || '',
-                                countryCode: r.countryCode || 'US',
-                                title: r.title || '',
-                                snippet: r.snippet || '',
-                              }))
-                          ))}&context=${encodeURIComponent(summary || '')}`}
-                          className="text-blue-600 hover:text-blue-700 text-sm font-medium inline-flex items-center gap-1"
-                        >
-                          See full analysis
-                          <ArrowRight size={14} />
-                        </Link>
-                      </div>
-                    </div>
-                  )}
                 </>
               ) : (
                 <div className="space-y-4">
