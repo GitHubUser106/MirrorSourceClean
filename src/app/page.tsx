@@ -1074,10 +1074,7 @@ function HomeContent() {
                 {/* Share & Full Compare */}
                 <div className="mt-6 pt-4 border-t border-slate-100">
                   {/* Share Buttons */}
-                  <div className="flex items-center justify-center gap-2 mb-4">
-                    <span className="text-xs text-slate-400 mr-1">Share:</span>
-
-                    {/* Copy Link */}
+                  <div className="flex items-center justify-center gap-3 mb-4">
                     <button
                       onClick={async () => {
                         const shareUrl = `${window.location.origin}/compare?sources=${encodeURIComponent(JSON.stringify(
@@ -1096,13 +1093,13 @@ function HomeContent() {
                         btn.innerHTML = '✓ Copied!';
                         setTimeout(() => { btn.innerHTML = original; }, 2000);
                       }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                      className="text-xs text-slate-500 hover:text-slate-700 transition-colors"
                     >
-                      <Copy size={12} />
-                      Copy Link
+                      🔗 Copy
                     </button>
 
-                    {/* Share to X/Twitter */}
+                    <span className="text-slate-300">|</span>
+
                     <button
                       onClick={() => {
                         const headlines = inlineComparison.analyses.slice(0, 3).map((a: any, i: number) => {
@@ -1126,67 +1123,44 @@ function HomeContent() {
                           'width=550,height=420'
                         );
                       }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                      className="text-xs text-slate-500 hover:text-slate-700 transition-colors"
                     >
-                      <span className="font-bold">𝕏</span>
-                      Post
+                      𝕏 Tweet
                     </button>
 
-                    {/* Native Share (mobile) */}
                     {typeof navigator !== 'undefined' && 'share' in navigator && (
-                      <button
-                        onClick={() => {
-                          const headlines = inlineComparison.analyses.slice(0, 3).map((a: any, i: number) => {
-                            const src = results.find(r => selectedForCompare[i] === r.uri);
-                            return `${src?.displayName || 'Source'}: "${a.headline}"`;
-                          }).join('\n');
-                          const shareUrl = `${window.location.origin}/compare?sources=${encodeURIComponent(JSON.stringify(
-                            results
-                              .filter(r => selectedForCompare.includes(r.uri))
-                              .map((r, i) => ({
-                                id: `source-${i}`,
-                                name: r.displayName || r.sourceDomain,
-                                type: r.sourceType || 'Corporate',
-                                url: r.uri,
-                              }))
-                          ))}&context=${encodeURIComponent(summary || '')}`;
-                          navigator.share({
-                            title: 'Compare News Coverage - MirrorSource',
-                            text: `See how different sources cover this story:\n${headlines}`,
-                            url: shareUrl
-                          });
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-                      >
-                        <Share2 size={12} />
-                        Share
-                      </button>
+                      <>
+                        <span className="text-slate-300">|</span>
+                        <button
+                          onClick={() => {
+                            const headlines = inlineComparison.analyses.slice(0, 3).map((a: any, i: number) => {
+                              const src = results.find(r => selectedForCompare[i] === r.uri);
+                              return `${src?.displayName || 'Source'}: "${a.headline}"`;
+                            }).join('\n');
+                            const shareUrl = `${window.location.origin}/compare?sources=${encodeURIComponent(JSON.stringify(
+                              results
+                                .filter(r => selectedForCompare.includes(r.uri))
+                                .map((r, i) => ({
+                                  id: `source-${i}`,
+                                  name: r.displayName || r.sourceDomain,
+                                  type: r.sourceType || 'Corporate',
+                                  url: r.uri,
+                                }))
+                            ))}&context=${encodeURIComponent(summary || '')}`;
+                            navigator.share({
+                              title: 'Compare News Coverage - MirrorSource',
+                              text: `See how different sources cover this story:\n${headlines}`,
+                              url: shareUrl
+                            });
+                          }}
+                          className="text-xs text-slate-500 hover:text-slate-700 transition-colors"
+                        >
+                          📤 Share
+                        </button>
+                      </>
                     )}
                   </div>
 
-                  {/* Link to full compare page */}
-                  <div className="text-center">
-                    <Link
-                      href={`/compare?sources=${encodeURIComponent(JSON.stringify(
-                        results
-                          .filter(r => selectedForCompare.includes(r.uri))
-                          .map((r, i) => ({
-                            id: `source-${i}`,
-                            name: r.displayName || r.sourceDomain,
-                            type: r.sourceType || 'Corporate',
-                            url: r.uri,
-                            domain: r.sourceDomain || '',
-                            countryCode: r.countryCode || 'US',
-                            title: r.title || '',
-                            snippet: r.snippet || '',
-                          }))
-                      ))}&context=${encodeURIComponent(summary || '')}`}
-                      className="text-blue-600 hover:text-blue-700 font-medium inline-flex items-center gap-1.5 text-sm"
-                    >
-                      View full comparison with more sources
-                      <ArrowRight size={16} />
-                    </Link>
-                  </div>
                 </div>
               </div>
             )}

@@ -1839,7 +1839,9 @@ function filterQualityResults(results: CSEResult[], searchQuery: string): CSERes
     'quizlet.com', 'brainly.com', 'chegg.com', 'coursehero.com',
     'genius.com', 'azlyrics.com',
     'allrecipes.com', 'food.com', 'delish.com',
-    'pinterest.com', 'etsy.com', 'amazon.com'
+    'pinterest.com', 'etsy.com', 'amazon.com',
+    'wikipedia.org', 'en.wikipedia.org', 'britannica.com',
+    'merriam-webster.com', 'investopedia.com'
   ];
 
   const queryWords = searchQuery
