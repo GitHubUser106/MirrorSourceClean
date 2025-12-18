@@ -2118,6 +2118,8 @@ interface ProcessedSource {
   // NEW: Transparency data
   ownership?: OwnershipInfo;
   funding?: FundingInfo;
+  // Political lean for comparison feature
+  politicalLean?: PoliticalLean;
 }
 
 // Detect opinion-laden or characterization language in search query
@@ -2221,6 +2223,7 @@ function processSearchResults(cseResults: CSEResult[]): ProcessedSource[] {
       // Include transparency data
       ownership: sourceInfo.ownership,
       funding: sourceInfo.funding,
+      politicalLean: sourceInfo.lean,
     });
   }
 

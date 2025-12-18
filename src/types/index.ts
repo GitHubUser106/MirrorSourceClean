@@ -40,6 +40,9 @@ export type SourceType =
   | 'syndication' 
   | 'platform';
 
+// Political lean type
+export type PoliticalLean = 'left' | 'center-left' | 'center' | 'center-right' | 'right';
+
 // Main source interface returned from the API
 export interface GroundingSource {
   uri: string;
@@ -53,6 +56,8 @@ export interface GroundingSource {
   // NEW in 3.0 - Transparency data
   ownership?: OwnershipInfo;
   funding?: FundingInfo;
+  // Political lean for comparison feature
+  politicalLean?: PoliticalLean;
 }
 
 // API Response structure

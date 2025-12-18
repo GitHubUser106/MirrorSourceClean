@@ -63,6 +63,38 @@ function getFaviconUrl(domain: string): string {
   return `https://www.google.com/s2/favicons?domain=${domain.replace(/^www\./, '')}&sz=64`;
 }
 
+// Find the most divergent trio: 1 Left + 1 Center + 1 Right for comparison
+function getDivergentTrio(results: GroundingSource[]): string[] {
+  if (!results || results.length < 3) return results?.slice(0, 3).map(r => r.uri) || [];
+
+  const leftLeans = ['left', 'center-left'];
+  const centerLeans = ['center'];
+  const rightLeans = ['center-right', 'right'];
+
+  const left = results.find(r => leftLeans.includes(r.politicalLean || ''));
+  const center = results.find(r => centerLeans.includes(r.politicalLean || ''));
+  const right = results.find(r => rightLeans.includes(r.politicalLean || ''));
+
+  // Build trio prioritizing diversity
+  const trio: string[] = [];
+
+  if (left) trio.push(left.uri);
+  if (center) trio.push(center.uri);
+  if (right) trio.push(right.uri);
+
+  // Fill remaining slots if we don't have full L/C/R
+  if (trio.length < 3) {
+    for (const r of results) {
+      if (!trio.includes(r.uri)) {
+        trio.push(r.uri);
+        if (trio.length >= 3) break;
+      }
+    }
+  }
+
+  return trio.slice(0, 3);
+}
+
 function HomeContent() {
   const searchParams = useSearchParams();
   const [loading, setIsLoading] = useState(false);
@@ -89,8 +121,17 @@ function HomeContent() {
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
   const [showCompareHint, setShowCompareHint] = useState(false);
 
-  // Auto-show and auto-hide compare hint
+  // Auto-select divergent trio (Left + Center + Right) when results load
   useEffect(() => {
+    if (results && results.length >= 3) {
+      const autoSelected = getDivergentTrio(results);
+      setSelectedForCompare(autoSelected);
+    }
+  }, [results]);
+
+  // Auto-show and auto-hide compare hint (disabled since we auto-select now)
+  useEffect(() => {
+    // With auto-selection, the hint is less necessary but keep for edge cases
     if (results.length >= 2 && selectedForCompare.length === 0) {
       // Check if already dismissed this session
       if (sessionStorage.getItem('compareHintDismissed')) {
