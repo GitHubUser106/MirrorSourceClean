@@ -827,7 +827,7 @@ function HomeContent() {
 
       {/* Results */}
       {!loading && hasContent && (
-        <div className="flex-1 bg-slate-50 px-4 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="flex-1 bg-slate-50 px-4 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="max-w-4xl mx-auto space-y-6">
 
             {/* Source Icons with Transparency Cards */}
