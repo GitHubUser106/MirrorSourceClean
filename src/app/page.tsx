@@ -63,6 +63,36 @@ function getFaviconUrl(domain: string): string {
   return `https://www.google.com/s2/favicons?domain=${domain.replace(/^www\./, '')}&sz=64`;
 }
 
+// Divergence level indicator for Intel Brief
+function getDivergenceLevel(keyDifferences: KeyDifference[] | string | null): { level: string; color: string; bg: string; icon: string; description: string } {
+  if (Array.isArray(keyDifferences)) {
+    if (keyDifferences.length >= 2) {
+      return {
+        level: 'High',
+        color: 'text-red-700',
+        bg: 'bg-red-100',
+        icon: '🔴',
+        description: 'Sources disagree on key facts or framing'
+      };
+    } else if (keyDifferences.length === 1) {
+      return {
+        level: 'Moderate',
+        color: 'text-yellow-700',
+        bg: 'bg-yellow-100',
+        icon: '🟡',
+        description: 'Sources agree on facts but differ in framing'
+      };
+    }
+  }
+  return {
+    level: 'Low',
+    color: 'text-green-700',
+    bg: 'bg-green-100',
+    icon: '🟢',
+    description: 'Sources largely agree on facts and framing'
+  };
+}
+
 // Find the most divergent trio: strictly 1 Left + 1 Right + 1 Center for max diversity
 function getDivergentTrio(results: GroundingSource[]): string[] {
   if (!results || results.length < 3) {
@@ -857,10 +887,22 @@ function HomeContent() {
             {/* Intel Brief */}
             {(commonGround || keyDifferences) && (
               <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8 lg:p-10">
-                <div className="flex items-center gap-2 mb-6">
+                <div className="flex items-center gap-2 mb-4">
                   <svg className="w-5 h-5 md:w-6 md:h-6 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></svg>
                   <h2 className="text-xl md:text-2xl font-bold text-slate-900">Intel Brief</h2>
                 </div>
+
+                {/* Divergence Meter */}
+                <div className={`mb-6 px-4 py-2.5 rounded-lg ${getDivergenceLevel(keyDifferences).bg} flex items-center gap-2 flex-wrap`}>
+                  <span className="text-lg">{getDivergenceLevel(keyDifferences).icon}</span>
+                  <span className={`font-semibold ${getDivergenceLevel(keyDifferences).color}`}>
+                    {getDivergenceLevel(keyDifferences).level} Divergence
+                  </span>
+                  <span className="text-slate-600 text-sm">
+                    — {getDivergenceLevel(keyDifferences).description}
+                  </span>
+                </div>
+
                 <div className="grid md:grid-cols-2 gap-5">
                   {commonGround && (Array.isArray(commonGround) ? commonGround.length > 0 : commonGround) && (
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
