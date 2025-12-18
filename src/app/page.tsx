@@ -63,34 +63,87 @@ function getFaviconUrl(domain: string): string {
   return `https://www.google.com/s2/favicons?domain=${domain.replace(/^www\./, '')}&sz=64`;
 }
 
-// Find the most divergent trio: 1 Left + 1 Center + 1 Right for comparison
+// Find the most divergent trio: strictly 1 Left + 1 Right + 1 Center for max diversity
 function getDivergentTrio(results: GroundingSource[]): string[] {
-  if (!results || results.length < 3) return results?.slice(0, 3).map(r => r.uri) || [];
+  if (!results || results.length < 3) {
+    return results?.slice(0, 3).map(r => r.uri) || [];
+  }
 
-  const leftLeans = ['left', 'center-left'];
-  const centerLeans = ['center'];
-  const rightLeans = ['center-right', 'right'];
+  // Define lean buckets - be explicit about what counts as what
+  const leftLeans = ['left', 'left-center'];
+  const centerLeans = ['center', 'allsides-center', 'neutral'];
+  const rightLeans = ['right-center', 'right'];
 
-  const left = results.find(r => leftLeans.includes(r.politicalLean || ''));
-  const center = results.find(r => centerLeans.includes(r.politicalLean || ''));
-  const right = results.find(r => rightLeans.includes(r.politicalLean || ''));
+  // Separate into buckets
+  const leftSources = results.filter(r =>
+    leftLeans.includes(r.politicalLean?.toLowerCase() || '')
+  );
+  const centerSources = results.filter(r =>
+    centerLeans.includes(r.politicalLean?.toLowerCase() || '')
+  );
+  const rightSources = results.filter(r =>
+    rightLeans.includes(r.politicalLean?.toLowerCase() || '')
+  );
 
-  // Build trio prioritizing diversity
+  // Unknown lean sources as fallback
+  const unknownSources = results.filter(r =>
+    !r.politicalLean ||
+    ![...leftLeans, ...centerLeans, ...rightLeans].includes(r.politicalLean?.toLowerCase() || '')
+  );
+
   const trio: string[] = [];
+  const usedUris = new Set<string>();
 
-  if (left) trio.push(left.uri);
-  if (center) trio.push(center.uri);
-  if (right) trio.push(right.uri);
+  // Helper to pick first unused source from a bucket
+  const pickFrom = (bucket: GroundingSource[]): string | null => {
+    for (const source of bucket) {
+      if (!usedUris.has(source.uri)) {
+        usedUris.add(source.uri);
+        return source.uri;
+      }
+    }
+    return null;
+  };
 
-  // Fill remaining slots if we don't have full L/C/R
+  // STRICT ORDER: Left first, then Right, then Center
+  // This maximizes the "clash" feeling in the preview
+  const leftPick = pickFrom(leftSources);
+  if (leftPick) trio.push(leftPick);
+
+  const rightPick = pickFrom(rightSources);
+  if (rightPick) trio.push(rightPick);
+
+  const centerPick = pickFrom(centerSources);
+  if (centerPick) trio.push(centerPick);
+
+  // Fill remaining slots from whatever's available (prefer unknown over doubling)
+  if (trio.length < 3) {
+    const fallbackOrder = [unknownSources, centerSources, leftSources, rightSources];
+    for (const bucket of fallbackOrder) {
+      const pick = pickFrom(bucket);
+      if (pick) {
+        trio.push(pick);
+        if (trio.length >= 3) break;
+      }
+    }
+  }
+
+  // Final fallback: just take first 3 results
   if (trio.length < 3) {
     for (const r of results) {
-      if (!trio.includes(r.uri)) {
+      if (!usedUris.has(r.uri)) {
         trio.push(r.uri);
         if (trio.length >= 3) break;
       }
     }
   }
+
+  console.log('[Divergent Trio]', {
+    left: leftSources.map(s => s.displayName),
+    center: centerSources.map(s => s.displayName),
+    right: rightSources.map(s => s.displayName),
+    selected: trio
+  });
 
   return trio.slice(0, 3);
 }
