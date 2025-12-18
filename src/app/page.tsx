@@ -636,6 +636,8 @@ function HomeContent() {
     setShowKeywordFallback(false);
     setKeywords("");
     setSelectedForCompare([]);
+    setInlineComparison(null);
+    hasAutoSelected.current = false;
     window.history.pushState({}, '', '/');
   }
 
