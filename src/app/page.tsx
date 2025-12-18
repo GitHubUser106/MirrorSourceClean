@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -249,12 +249,14 @@ function HomeContent() {
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
   const [inlineComparison, setInlineComparison] = useState<any>(null);
   const [loadingComparison, setLoadingComparison] = useState(false);
+  const hasAutoSelected = useRef(false);
 
-  // Auto-select divergent trio (Left + Center + Right) when results load
+  // Auto-select divergent trio (Left + Center + Right) when results load - only once per search
   useEffect(() => {
-    if (results && results.length >= 3) {
+    if (results && results.length >= 3 && !hasAutoSelected.current) {
       const autoSelected = getDivergentTrio(results);
       setSelectedForCompare(autoSelected);
+      hasAutoSelected.current = true;
     }
   }, [results]);
 
@@ -405,6 +407,7 @@ function HomeContent() {
     setShowKeywordFallback(false);
     setKeywords("");
     setSelectedForCompare([]);
+    hasAutoSelected.current = false;
 
     // Check for opaque URLs (FT, Bloomberg, etc. with UUIDs)
     if (isOpaqueUrl(url)) {
@@ -487,6 +490,7 @@ function HomeContent() {
     setVisibleIcons(0);
     setShowKeywordFallback(false);
     setSelectedForCompare([]);
+    hasAutoSelected.current = false;
 
     try {
       setIsLoading(true);
@@ -1083,20 +1087,18 @@ function HomeContent() {
                     return (
                       <div key={idx} className="border border-slate-200 rounded-xl p-5 bg-slate-50 hover:shadow-md transition-shadow">
                         {/* Source Header */}
-                        <div className="flex items-center justify-between gap-2 mb-3">
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <img
-                              src={`https://www.google.com/s2/favicons?domain=${source?.sourceDomain}&sz=32`}
-                              alt=""
-                              className="w-5 h-5 rounded flex-shrink-0"
-                            />
-                            <span className="font-semibold text-slate-900 truncate">{sourceName}</span>
-                            {source?.countryCode && (
-                              <span className="text-xs flex-shrink-0">{source.countryCode === 'US' ? '🇺🇸' : source.countryCode === 'GB' ? '🇬🇧' : source.countryCode === 'CA' ? '🇨🇦' : '🌍'}</span>
-                            )}
-                          </div>
-                          <span className="text-xs px-2 py-1 bg-slate-200 rounded text-slate-600 font-medium flex-shrink-0 ml-1">{sourceType}</span>
+                        <div className="flex items-center gap-2 mb-2">
+                          <img
+                            src={`https://www.google.com/s2/favicons?domain=${source?.sourceDomain}&sz=32`}
+                            alt=""
+                            className="w-5 h-5 rounded flex-shrink-0"
+                          />
+                          <span className="font-semibold text-slate-900">{sourceName}</span>
+                          {source?.countryCode && (
+                            <span className="text-xs flex-shrink-0">{source.countryCode === 'US' ? '🇺🇸' : source.countryCode === 'GB' ? '🇬🇧' : source.countryCode === 'CA' ? '🇨🇦' : '🌍'}</span>
+                          )}
                         </div>
+                        <span className="inline-block text-xs px-2 py-0.5 bg-slate-200 text-slate-600 rounded mb-2">{sourceType}</span>
 
                         <a href={source?.uri} target="_blank" rel="noopener noreferrer"
                            className="text-blue-600 text-sm hover:underline inline-flex items-center gap-1">
