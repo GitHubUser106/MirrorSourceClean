@@ -45,16 +45,19 @@ const FEATURED_STORIES = [
   {
     headline: "New Epstein Files Released: Trump & Clinton Named",
     topic: "Politics & Accountability",
+    icon: "⚖️",
     url: "https://www.nytimes.com/2025/12/18/us/jeffrey-epstein-donald-trump.html"
   },
   {
     headline: "HHS Proposes Ban on Gender Care Funding",
     topic: "Healthcare Policy",
+    icon: "🏥",
     url: "https://www.nytimes.com/2025/12/18/health/trump-gender-affirming-care-funding.html"
   },
   {
     headline: "Fed Holds Rates Steady Amid Inflation Concerns",
     topic: "Economy & Markets",
+    icon: "📉",
     url: "https://www.nytimes.com/2025/12/18/business/economy/inflation-cpi-interest-rates.html"
   }
 ];
@@ -720,15 +723,12 @@ function HomeContent() {
                   <h3 className="text-2xl font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">
                     {todaysStory.headline}
                   </h3>
-                  <p className="text-slate-500 font-medium flex items-center gap-2">
-                    <span className="text-lg">⚡️</span>
-                    Topic: {todaysStory.topic}
+                  <p className="text-slate-500 font-medium">
+                    {todaysStory.topic}
                   </p>
                 </div>
-                <div className="bg-blue-100 text-blue-600 rounded-full p-3 group-hover:scale-110 transition-transform">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
+                <div className="bg-blue-100 text-3xl h-14 w-14 flex items-center justify-center rounded-full group-hover:scale-110 transition-transform">
+                  {todaysStory.icon}
                 </div>
               </div>
 
