@@ -96,7 +96,7 @@ function getDivergenceLevel(keyDifferences: KeyDifference[] | string | null): { 
     if (keyDifferences.length >= 2) {
       return {
         level: 'High',
-        color: 'text-red-700',
+        color: 'text-red-800',
         bg: 'bg-red-100',
         icon: '🔴',
         description: 'Sources disagree on key facts or framing'
@@ -104,7 +104,7 @@ function getDivergenceLevel(keyDifferences: KeyDifference[] | string | null): { 
     } else if (keyDifferences.length === 1) {
       return {
         level: 'Moderate',
-        color: 'text-yellow-700',
+        color: 'text-yellow-800',
         bg: 'bg-yellow-100',
         icon: '🟡',
         description: 'Sources agree on facts but differ in framing'
@@ -113,7 +113,7 @@ function getDivergenceLevel(keyDifferences: KeyDifference[] | string | null): { 
   }
   return {
     level: 'Low',
-    color: 'text-green-700',
+    color: 'text-green-800',
     bg: 'bg-green-100',
     icon: '🟢',
     description: 'Sources largely agree on facts and framing'
@@ -716,7 +716,7 @@ function HomeContent() {
                 setCurrentUrl(todaysStory.url);
                 handleSearchWithUrl(todaysStory.url);
               }}
-              className="w-full group relative bg-white hover:bg-slate-50 border-2 border-slate-100 hover:border-blue-100 rounded-2xl p-6 text-left transition-all shadow-sm hover:shadow-md"
+              className="w-full group relative bg-white hover:bg-slate-50 border-2 border-slate-100 hover:border-blue-100 rounded-2xl p-6 text-left transition-all duration-200 shadow-sm hover:shadow-lg hover:-translate-y-1"
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -959,7 +959,7 @@ function HomeContent() {
                 )}
               </div>
               <div className="leading-relaxed">
-                {summary ? <p className="text-base md:text-lg leading-7 md:leading-8 text-slate-600">{parseMarkdownBold(summary, 'summary')}</p> : <p className="text-slate-400 italic">No summary available.</p>}
+                {summary ? <p className="text-base md:text-lg leading-7 md:leading-8 text-slate-600 max-w-prose">{parseMarkdownBold(summary, 'summary')}</p> : <p className="text-slate-400 italic">No summary available.</p>}
               </div>
             </div>
 
