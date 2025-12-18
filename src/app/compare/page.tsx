@@ -85,8 +85,13 @@ function CompareContent() {
     if (sourcesParam) {
       try {
         const parsed = JSON.parse(decodeURIComponent(sourcesParam));
+        // Add domain if missing (extract from url)
+        const withDomains = parsed.map((source: any) => ({
+          ...source,
+          domain: source.domain || (source.url ? new URL(source.url).hostname.replace('www.', '') : 'unknown')
+        }));
         // De-duplicate by domain just in case
-        const uniqueSources = parsed.filter((source: SourceData, index: number, self: SourceData[]) =>
+        const uniqueSources = withDomains.filter((source: SourceData, index: number, self: SourceData[]) =>
           index === self.findIndex(s => s.domain === source.domain)
         );
         setSources(uniqueSources);
