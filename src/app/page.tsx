@@ -1331,14 +1331,16 @@ function HomeContent() {
                           href={`/compare?sources=${encodeURIComponent(JSON.stringify(
                             results
                               .filter(r => selectedForCompare.includes(r.uri))
-                              .slice(0, 5)
+                              .slice(0, 3)
                               .map((r, i) => ({
                                 id: `source-${i}`,
                                 name: r.displayName || r.sourceDomain?.split('.')[0].toUpperCase() || 'Unknown',
                                 type: r.sourceType || 'unknown',
-                                url: r.uri
+                                url: r.uri,
+                                title: (r.title || '').slice(0, 100),
+                                snippet: (r.snippet || '').slice(0, 150)
                               }))
-                          ))}&context=${encodeURIComponent(summary || '')}`}
+                          ))}`}
                           className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition"
                         >
                           Compare {selectedForCompare.length} Sources →

@@ -89,6 +89,7 @@ export default function ContactPage() {
           <p>&copy; {new Date().getFullYear()} MirrorSource</p>
           <div className="flex items-center gap-6">
             <Link href="/about" className="hover:text-blue-600 transition-colors">About</Link>
+            <Link href="/sources" className="hover:text-blue-600 transition-colors">Sources</Link>
             <Link href="/legal" className="hover:text-blue-600 transition-colors">Legal</Link>
             <Link href="/contact" className="hover:text-blue-600 transition-colors">Contact</Link>
           </div>
