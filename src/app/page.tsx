@@ -1091,7 +1091,6 @@ function HomeContent() {
                   {inlineComparison.analyses.slice(0, 3).map((analysis: any, idx: number) => {
                     const source = results.find(r => selectedForCompare[idx] === r.uri);
                     const sourceName = source?.displayName || source?.sourceDomain?.split('.')[0].toUpperCase() || 'Source';
-                    const sourceType = source?.sourceType || 'News';
 
                     return (
                       <div key={idx} className="border border-slate-200 rounded-xl p-5 bg-slate-50 hover:shadow-md transition-shadow">
@@ -1107,19 +1106,18 @@ function HomeContent() {
                             <span className="text-xs flex-shrink-0">{source.countryCode === 'US' ? '🇺🇸' : source.countryCode === 'GB' ? '🇬🇧' : source.countryCode === 'CA' ? '🇨🇦' : '🌍'}</span>
                           )}
                         </div>
-                        {/* Political Lean + Source Type Badges */}
-                        <div className="flex items-center gap-2 mb-2">
+                        {/* Political Lean Badge */}
+                        <div className="mb-2">
                           {(() => {
                             const lean = (source?.politicalLean?.toLowerCase() || getPoliticalLean(source?.sourceDomain || '')) as PoliticalLean;
                             const colors = LEAN_COLORS[lean] || LEAN_COLORS['center'];
                             const label = LEAN_LABELS[lean] || 'Center';
                             return (
-                              <span className={`text-xs px-2 py-0.5 rounded ${colors.bg} ${colors.border} border font-medium text-slate-700`}>
+                              <span className={`text-xs px-2 py-0.5 rounded font-medium ${colors.bg} ${colors.text}`}>
                                 {label}
                               </span>
                             );
                           })()}
-                          <span className="text-xs px-2 py-0.5 bg-slate-200 text-slate-600 rounded">{sourceType}</span>
                         </div>
 
                         <a href={source?.uri} target="_blank" rel="noopener noreferrer"

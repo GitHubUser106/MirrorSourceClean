@@ -171,12 +171,12 @@ export function getSourceType(urlOrDomain: string): SourceType | null {
 // UI CONSTANTS - Colors and labels for consistent rendering
 // =============================================================================
 
-export const LEAN_COLORS: Record<PoliticalLean, { bar: string; headerBg: string; bg: string; border: string }> = {
-  'left': { bar: 'bg-blue-600', headerBg: 'bg-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
-  'center-left': { bar: 'bg-cyan-500', headerBg: 'bg-cyan-500', bg: 'bg-cyan-50', border: 'border-cyan-200' },
-  'center': { bar: 'bg-purple-500', headerBg: 'bg-purple-500', bg: 'bg-purple-50', border: 'border-purple-200' },
-  'center-right': { bar: 'bg-orange-500', headerBg: 'bg-orange-500', bg: 'bg-orange-50', border: 'border-orange-200' },
-  'right': { bar: 'bg-red-600', headerBg: 'bg-red-600', bg: 'bg-red-50', border: 'border-red-200' },
+export const LEAN_COLORS: Record<PoliticalLean, { bar: string; headerBg: string; bg: string; border: string; text: string }> = {
+  'left': { bar: 'bg-blue-600', headerBg: 'bg-blue-600', bg: 'bg-blue-100', border: 'border-blue-200', text: 'text-blue-800' },
+  'center-left': { bar: 'bg-cyan-500', headerBg: 'bg-cyan-500', bg: 'bg-cyan-100', border: 'border-cyan-200', text: 'text-cyan-800' },
+  'center': { bar: 'bg-purple-500', headerBg: 'bg-purple-500', bg: 'bg-purple-100', border: 'border-purple-200', text: 'text-purple-800' },
+  'center-right': { bar: 'bg-orange-500', headerBg: 'bg-orange-500', bg: 'bg-orange-100', border: 'border-orange-200', text: 'text-orange-800' },
+  'right': { bar: 'bg-red-600', headerBg: 'bg-red-600', bg: 'bg-red-100', border: 'border-red-200', text: 'text-red-800' },
 };
 
 export const LEAN_LABELS: Record<PoliticalLean, string> = {
