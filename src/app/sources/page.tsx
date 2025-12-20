@@ -101,13 +101,13 @@ const badgeDescriptions: Record<string, string> = {
   Specialized: "Industry-focused or financial news outlets",
 };
 
-// Lean column styling
-const leanStyles: Record<string, { bg: string; border: string; label: string }> = {
-  left: { bg: "bg-blue-50", border: "border-blue-200", label: "Left" },
-  "center-left": { bg: "bg-sky-50", border: "border-sky-200", label: "Center-Left" },
-  center: { bg: "bg-slate-50", border: "border-slate-200", label: "Center" },
-  "center-right": { bg: "bg-amber-50", border: "border-amber-200", label: "Center-Right" },
-  right: { bg: "bg-red-50", border: "border-red-200", label: "Right" },
+// Lean column styling - matches Coverage Distribution colors
+const leanStyles: Record<string, { bg: string; border: string; label: string; headerBg: string }> = {
+  left: { bg: "bg-blue-50", border: "border-blue-200", label: "Left", headerBg: "bg-blue-600" },
+  "center-left": { bg: "bg-cyan-50", border: "border-cyan-200", label: "Center-Left", headerBg: "bg-cyan-500" },
+  center: { bg: "bg-purple-50", border: "border-purple-200", label: "Center", headerBg: "bg-purple-500" },
+  "center-right": { bg: "bg-orange-50", border: "border-orange-200", label: "Center-Right", headerBg: "bg-orange-500" },
+  right: { bg: "bg-red-50", border: "border-red-200", label: "Right", headerBg: "bg-red-600" },
 };
 
 function getFaviconUrl(domain: string): string {
@@ -151,11 +151,12 @@ export default function SourcesPage() {
           {(Object.keys(sourcesByLean) as Array<keyof typeof sourcesByLean>).map((lean) => (
             <div
               key={lean}
-              className={`rounded-xl border ${leanStyles[lean].border} ${leanStyles[lean].bg} p-4`}
+              className={`rounded-xl border ${leanStyles[lean].border} ${leanStyles[lean].bg} overflow-hidden`}
             >
-              <h2 className="text-lg font-bold text-slate-800 mb-4 text-center pb-2 border-b border-slate-200">
+              <h2 className={`text-lg font-bold text-white py-3 text-center ${leanStyles[lean].headerBg}`}>
                 {leanStyles[lean].label}
               </h2>
+              <div className="p-4">
               <div className="space-y-2">
                 {sourcesByLean[lean].map((source) => (
                   <div
@@ -180,6 +181,7 @@ export default function SourcesPage() {
                     </span>
                   </div>
                 ))}
+              </div>
               </div>
             </div>
           ))}

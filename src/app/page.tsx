@@ -120,25 +120,30 @@ function getDivergenceLevel(keyDifferences: KeyDifference[] | string | null): { 
   };
 }
 
-// Coverage distribution helper - shows Left/Center/Right breakdown
-function getCoverageDistribution(results: GroundingSource[]): { left: number; center: number; right: number; unknown: number; total: number } {
-  if (!results || !results.length) return { left: 0, center: 0, right: 0, unknown: 0, total: 0 };
+// Coverage distribution helper - shows 5 political lean categories
+function getCoverageDistribution(results: GroundingSource[]): {
+  left: number;
+  centerLeft: number;
+  center: number;
+  centerRight: number;
+  right: number;
+  total: number;
+} {
+  if (!results || !results.length) return { left: 0, centerLeft: 0, center: 0, centerRight: 0, right: 0, total: 0 };
 
-  const leftLeans = ['left', 'left-center'];
-  const centerLeans = ['center', 'allsides-center', 'neutral'];
-  const rightLeans = ['right-center', 'right'];
-
-  let left = 0, center = 0, right = 0, unknown = 0;
+  let left = 0, centerLeft = 0, center = 0, centerRight = 0, right = 0;
 
   for (const r of results) {
     const lean = r.politicalLean?.toLowerCase() || '';
-    if (leftLeans.includes(lean)) left++;
-    else if (rightLeans.includes(lean)) right++;
-    else if (centerLeans.includes(lean)) center++;
-    else unknown++;
+    if (lean === 'left') left++;
+    else if (lean === 'left-center') centerLeft++;
+    else if (['center', 'allsides-center', 'neutral'].includes(lean)) center++;
+    else if (lean === 'right-center') centerRight++;
+    else if (lean === 'right') right++;
+    else center++; // default unknown to center
   }
 
-  return { left, center, right, unknown, total: results.length };
+  return { left, centerLeft, center, centerRight, right, total: results.length };
 }
 
 // Find the most divergent trio: strictly 1 Left + 1 Right + 1 Center for max diversity
@@ -1256,51 +1261,80 @@ function HomeContent() {
 
                 {(() => {
                   const dist = getCoverageDistribution(results);
-                  const maxCount = Math.max(dist.left, dist.center + dist.unknown, dist.right, 1);
 
                   return (
-                    <div className="space-y-2.5">
-                      {/* Left */}
+                    <div className="space-y-2">
+                      {/* Left - Dark Blue */}
                       <div className="flex items-center gap-3">
-                        <span className="text-xs w-14 text-right text-slate-500 font-medium">Left</span>
-                        <div className="flex-1 bg-slate-100 rounded-full h-3 overflow-hidden">
+                        <span className="w-24 text-sm text-gray-600">Left</span>
+                        <div className="flex-1 bg-gray-100 rounded-full h-3">
                           <div
-                            className="bg-blue-500 h-full rounded-full transition-all duration-500"
-                            style={{ width: `${(dist.left / maxCount) * 100}%` }}
+                            className="bg-blue-600 h-3 rounded-full transition-all"
+                            style={{ width: `${Math.max((dist.left / Math.max(dist.total, 1)) * 100, dist.left > 0 ? 8 : 0)}%` }}
                           />
                         </div>
-                        <span className="text-xs w-5 text-slate-700 font-semibold">{dist.left}</span>
+                        <span className="w-6 text-sm text-gray-500 text-right">{dist.left}</span>
                       </div>
 
-                      {/* Center */}
+                      {/* Center-Left - Cyan */}
                       <div className="flex items-center gap-3">
-                        <span className="text-xs w-14 text-right text-slate-500 font-medium">Center</span>
-                        <div className="flex-1 bg-slate-100 rounded-full h-3 overflow-hidden">
+                        <span className="w-24 text-sm text-gray-600">Center-Left</span>
+                        <div className="flex-1 bg-gray-100 rounded-full h-3">
                           <div
-                            className="bg-slate-400 h-full rounded-full transition-all duration-500"
-                            style={{ width: `${((dist.center + dist.unknown) / maxCount) * 100}%` }}
+                            className="bg-cyan-500 h-3 rounded-full transition-all"
+                            style={{ width: `${Math.max((dist.centerLeft / Math.max(dist.total, 1)) * 100, dist.centerLeft > 0 ? 8 : 0)}%` }}
                           />
                         </div>
-                        <span className="text-xs w-5 text-slate-700 font-semibold">{dist.center + dist.unknown}</span>
+                        <span className="w-6 text-sm text-gray-500 text-right">{dist.centerLeft}</span>
                       </div>
 
-                      {/* Right */}
+                      {/* Center - Purple */}
                       <div className="flex items-center gap-3">
-                        <span className="text-xs w-14 text-right text-slate-500 font-medium">Right</span>
-                        <div className="flex-1 bg-slate-100 rounded-full h-3 overflow-hidden">
+                        <span className="w-24 text-sm text-gray-600">Center</span>
+                        <div className="flex-1 bg-gray-100 rounded-full h-3">
                           <div
-                            className="bg-red-500 h-full rounded-full transition-all duration-500"
-                            style={{ width: `${(dist.right / maxCount) * 100}%` }}
+                            className="bg-purple-500 h-3 rounded-full transition-all"
+                            style={{ width: `${Math.max((dist.center / Math.max(dist.total, 1)) * 100, dist.center > 0 ? 8 : 0)}%` }}
                           />
                         </div>
-                        <span className="text-xs w-5 text-slate-700 font-semibold">{dist.right}</span>
+                        <span className="w-6 text-sm text-gray-500 text-right">{dist.center}</span>
                       </div>
 
-                      {/* Gap Warning */}
-                      {(dist.left === 0 || dist.right === 0) && dist.total >= 3 && (
-                        <p className="text-xs text-amber-600 mt-3 flex items-center gap-1.5">
-                          <AlertTriangle className="w-3.5 h-3.5" />
-                          Coverage gap: {dist.left === 0 && dist.right === 0 ? 'no left or right-leaning' : dist.left === 0 ? 'no left-leaning' : 'no right-leaning'} sources found
+                      {/* Center-Right - Orange */}
+                      <div className="flex items-center gap-3">
+                        <span className="w-24 text-sm text-gray-600">Center-Right</span>
+                        <div className="flex-1 bg-gray-100 rounded-full h-3">
+                          <div
+                            className="bg-orange-500 h-3 rounded-full transition-all"
+                            style={{ width: `${Math.max((dist.centerRight / Math.max(dist.total, 1)) * 100, dist.centerRight > 0 ? 8 : 0)}%` }}
+                          />
+                        </div>
+                        <span className="w-6 text-sm text-gray-500 text-right">{dist.centerRight}</span>
+                      </div>
+
+                      {/* Right - Red */}
+                      <div className="flex items-center gap-3">
+                        <span className="w-24 text-sm text-gray-600">Right</span>
+                        <div className="flex-1 bg-gray-100 rounded-full h-3">
+                          <div
+                            className="bg-red-600 h-3 rounded-full transition-all"
+                            style={{ width: `${Math.max((dist.right / Math.max(dist.total, 1)) * 100, dist.right > 0 ? 8 : 0)}%` }}
+                          />
+                        </div>
+                        <span className="w-6 text-sm text-gray-500 text-right">{dist.right}</span>
+                      </div>
+
+                      {/* Gap warnings */}
+                      {(dist.left + dist.centerLeft === 0) && dist.total > 0 && (
+                        <p className="mt-3 text-sm text-orange-600 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4" />
+                          Coverage gap: no left-leaning sources found
+                        </p>
+                      )}
+                      {(dist.right + dist.centerRight === 0) && dist.total > 0 && (
+                        <p className="mt-3 text-sm text-orange-600 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4" />
+                          Coverage gap: no right-leaning sources found
                         </p>
                       )}
                     </div>
