@@ -2,6 +2,7 @@
 
 import { ExternalLink, Link2, Check, Clock } from 'lucide-react';
 import { useState } from 'react';
+import { getPoliticalLean, LEAN_COLORS, LEAN_LABELS, type PoliticalLean } from '@/lib/sourceData';
 
 type SourceType =
   | 'wire'
@@ -31,6 +32,7 @@ interface SourceResult {
   countryCode?: string;
   publishedAt?: string; // ISO date string
   isSyndicated?: boolean;
+  politicalLean?: string;
 }
 
 interface ResultsDisplayProps {
@@ -256,19 +258,32 @@ export default function ResultsDisplay({ results, selectedIds = [], onToggleSele
                   </span>
                 </div>
                 
-                {/* Badge row: Type + Freshness */}
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${badge.className}`}>
+                {/* Badge row: Political Lean (primary) + Type (secondary) + Freshness */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Political Lean Badge - PRIMARY */}
+                  {(() => {
+                    const lean = (item.politicalLean?.toLowerCase() || getPoliticalLean(sourceDomain)) as PoliticalLean;
+                    const colors = LEAN_COLORS[lean] || LEAN_COLORS['center'];
+                    const label = LEAN_LABELS[lean] || 'Center';
+                    return (
+                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${colors.bg} ${colors.text}`}>
+                        {label}
+                      </span>
+                    );
+                  })()}
+
+                  {/* Source Type Badge - SECONDARY (gray) */}
+                  <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">
                     {badge.label}
                   </span>
-                  
+
                   {freshness && (
                     <span className="inline-flex items-center gap-1 text-xs text-slate-400">
                       <Clock size={11} />
                       {freshness}
                     </span>
                   )}
-                  
+
                   {item.isSyndicated && (
                     <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-emerald-50 text-emerald-600 border-emerald-200">
                       Free

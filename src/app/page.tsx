@@ -123,32 +123,49 @@ function getDivergenceLevel(keyDifferences: KeyDifference[] | string | null): { 
 
 // Coverage distribution helper - shows 5 political lean categories
 // Uses shared getPoliticalLean as fallback for consistent categorization
-function getCoverageDistribution(results: GroundingSource[]): {
+// Includes the input source URL if provided
+function getCoverageDistribution(results: GroundingSource[], inputUrl?: string): {
   left: number;
   centerLeft: number;
   center: number;
   centerRight: number;
   right: number;
   total: number;
+  inputLean?: PoliticalLean;
 } {
-  if (!results || !results.length) return { left: 0, centerLeft: 0, center: 0, centerRight: 0, right: 0, total: 0 };
-
   let left = 0, centerLeft = 0, center = 0, centerRight = 0, right = 0;
+  let inputLean: PoliticalLean | undefined;
 
-  for (const r of results) {
-    // Use API-provided lean, or fall back to shared source data lookup
-    const lean = (r.politicalLean?.toLowerCase() || getPoliticalLean(r.sourceDomain || r.uri)) as PoliticalLean;
-
-    switch (lean) {
+  // Include the INPUT source first (the URL the user pasted)
+  if (inputUrl) {
+    inputLean = getPoliticalLean(inputUrl);
+    switch (inputLean) {
       case 'left': left++; break;
       case 'center-left': centerLeft++; break;
       case 'center-right': centerRight++; break;
       case 'right': right++; break;
-      default: center++; break; // 'center' and any unknown
+      default: center++; break;
     }
   }
 
-  return { left, centerLeft, center, centerRight, right, total: results.length };
+  // Then count all FOUND sources
+  if (results && results.length) {
+    for (const r of results) {
+      // Use API-provided lean, or fall back to shared source data lookup
+      const lean = (r.politicalLean?.toLowerCase() || getPoliticalLean(r.sourceDomain || r.uri)) as PoliticalLean;
+
+      switch (lean) {
+        case 'left': left++; break;
+        case 'center-left': centerLeft++; break;
+        case 'center-right': centerRight++; break;
+        case 'right': right++; break;
+        default: center++; break; // 'center' and any unknown
+      }
+    }
+  }
+
+  const total = (inputUrl ? 1 : 0) + (results?.length || 0);
+  return { left, centerLeft, center, centerRight, right, total, inputLean };
 }
 
 // Find the most divergent trio: strictly 1 Left + 1 Right + 1 Center for max diversity
@@ -1273,10 +1290,29 @@ function HomeContent() {
                 </div>
 
                 {(() => {
-                  const dist = getCoverageDistribution(results);
+                  const dist = getCoverageDistribution(results, lastSubmittedUrl);
+                  const inputSourceName = (() => {
+                    try {
+                      const hostname = new URL(lastSubmittedUrl).hostname.replace('www.', '');
+                      return hostname.split('.')[0].charAt(0).toUpperCase() + hostname.split('.')[0].slice(1);
+                    } catch {
+                      return null;
+                    }
+                  })();
 
                   return (
                     <div className="space-y-2">
+                      {/* Input source indicator */}
+                      {inputSourceName && dist.inputLean && (
+                        <p className="text-sm text-gray-500 mb-3 flex items-center gap-2 flex-wrap">
+                          <span>📍 Your article:</span>
+                          <span className="font-medium text-slate-700">{inputSourceName}</span>
+                          <span className={`text-xs px-1.5 py-0.5 rounded ${LEAN_COLORS[dist.inputLean].bg} ${LEAN_COLORS[dist.inputLean].text}`}>
+                            {LEAN_LABELS[dist.inputLean]}
+                          </span>
+                        </p>
+                      )}
+
                       {/* Left - Dark Blue */}
                       <div className="flex items-center gap-3">
                         <span className="w-24 text-sm text-gray-600">Left</span>
