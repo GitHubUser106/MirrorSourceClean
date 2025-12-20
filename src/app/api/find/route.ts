@@ -465,6 +465,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'NBCUniversal News Group', parent: 'Comcast Corporation', type: 'public_traded', note: 'Comcast trades on NASDAQ (CMCSA). Largest cable company in US' },
     funding: { model: 'Advertising, cable fees & Peacock streaming' },
+    lean: 'center-left',
   },
   'cbsnews.com': {
     displayName: 'CBS NEWS',
@@ -472,6 +473,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'CBS News and Stations', parent: 'Paramount Global', type: 'public_traded', note: 'Paramount trades NASDAQ (PARA). Shari Redstone controls via National Amusements' },
     funding: { model: 'Advertising, affiliate fees & Paramount+ streaming' },
+    lean: 'center-left',
   },
   'abcnews.go.com': {
     displayName: 'ABC NEWS',
@@ -479,6 +481,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'ABC News', parent: 'The Walt Disney Company', type: 'public_traded', note: 'Disney trades on NYSE (DIS). ABC acquired by Disney in 1996' },
     funding: { model: 'Advertising, affiliate fees & Disney+ streaming' },
+    lean: 'center-left',
   },
   'msnbc.com': {
     displayName: 'MSNBC',
@@ -1189,6 +1192,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'UK',
     ownership: { owner: 'The Economist Group', type: 'private', note: 'Agnelli family (Exor) ~43%, Rothschild family ~21%' },
     funding: { model: 'Subscriptions (primary) & advertising' },
+    lean: 'center',
   },
   'theatlantic.com': {
     displayName: 'THE ATLANTIC',
@@ -1196,6 +1200,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'The Atlantic Monthly Group', parent: 'Emerson Collective (Laurene Powell Jobs)', type: 'private', note: 'Steve Jobs\' widow acquired majority stake in 2017' },
     funding: { model: 'Subscriptions, advertising & events (Atlantic Festival)' },
+    lean: 'center-left',
   },
   'newyorker.com': {
     displayName: 'THE NEW YORKER',
@@ -1203,6 +1208,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'The New Yorker', parent: 'Condé Nast (Advance Publications)', type: 'private', note: 'Advance owned by Newhouse family since 1985' },
     funding: { model: 'Subscriptions & advertising' },
+    lean: 'left',
   },
 
   // ===========================================================================
@@ -1214,6 +1220,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Michael Bloomberg', parent: 'Bloomberg L.P.', type: 'private', note: 'Michael Bloomberg owns ~88%. Revenue primarily from Terminal (~$10B/year)' },
     funding: { model: 'Bloomberg Terminal subscriptions (primary), news licensing & advertising' },
+    lean: 'center',
   },
   'cnbc.com': {
     displayName: 'CNBC',
@@ -1221,6 +1228,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'NBCUniversal', parent: 'Comcast Corporation', type: 'public_traded', note: 'NASDAQ (CMCSA). Business & financial news network' },
     funding: { model: 'Advertising, cable carriage fees & CNBC Pro subscriptions' },
+    lean: 'center',
   },
   'ft.com': {
     displayName: 'FINANCIAL TIMES',
@@ -1228,6 +1236,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'UK',
     ownership: { owner: 'Nikkei, Inc.', type: 'private', note: 'Japanese media company acquired FT from Pearson in 2015 for $1.3B' },
     funding: { model: 'Subscriptions (1M+ paying readers) & advertising' },
+    lean: 'center',
   },
   'wsj.com': {
     displayName: 'WALL STREET JOURNAL',
@@ -1644,7 +1653,8 @@ function getSourceInfo(domain: string): SourceInfo {
   }
   
   const parts = domain.split('.');
-  return { displayName: parts[0].toUpperCase(), type, countryCode };
+  // Default unknown sources to 'center' lean
+  return { displayName: parts[0].toUpperCase(), type, countryCode, lean: 'center' as PoliticalLean };
 }
 
 // --- Fetch Article Title from URL ---

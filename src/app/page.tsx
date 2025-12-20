@@ -136,9 +136,9 @@ function getCoverageDistribution(results: GroundingSource[]): {
   for (const r of results) {
     const lean = r.politicalLean?.toLowerCase() || '';
     if (lean === 'left') left++;
-    else if (lean === 'left-center') centerLeft++;
+    else if (lean === 'center-left' || lean === 'left-center') centerLeft++;
     else if (['center', 'allsides-center', 'neutral'].includes(lean)) center++;
-    else if (lean === 'right-center') centerRight++;
+    else if (lean === 'center-right' || lean === 'right-center') centerRight++;
     else if (lean === 'right') right++;
     else center++; // default unknown to center
   }
