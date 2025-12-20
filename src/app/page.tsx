@@ -9,6 +9,7 @@ import ResultsDisplay from "@/components/ResultsDisplay";
 import TransparencyCard from "@/components/TransparencyCard";
 import type { GroundingSource } from "@/types";
 import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, ArrowRight } from "lucide-react";
+import { getPoliticalLean, type PoliticalLean } from "@/lib/sourceData";
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
 type CommonGroundFact = { label: string; value: string };
@@ -121,6 +122,7 @@ function getDivergenceLevel(keyDifferences: KeyDifference[] | string | null): { 
 }
 
 // Coverage distribution helper - shows 5 political lean categories
+// Uses shared getPoliticalLean as fallback for consistent categorization
 function getCoverageDistribution(results: GroundingSource[]): {
   left: number;
   centerLeft: number;
@@ -134,45 +136,45 @@ function getCoverageDistribution(results: GroundingSource[]): {
   let left = 0, centerLeft = 0, center = 0, centerRight = 0, right = 0;
 
   for (const r of results) {
-    const lean = r.politicalLean?.toLowerCase() || '';
-    if (lean === 'left') left++;
-    else if (lean === 'center-left' || lean === 'left-center') centerLeft++;
-    else if (['center', 'allsides-center', 'neutral'].includes(lean)) center++;
-    else if (lean === 'center-right' || lean === 'right-center') centerRight++;
-    else if (lean === 'right') right++;
-    else center++; // default unknown to center
+    // Use API-provided lean, or fall back to shared source data lookup
+    const lean = (r.politicalLean?.toLowerCase() || getPoliticalLean(r.sourceDomain || r.uri)) as PoliticalLean;
+
+    switch (lean) {
+      case 'left': left++; break;
+      case 'center-left': centerLeft++; break;
+      case 'center-right': centerRight++; break;
+      case 'right': right++; break;
+      default: center++; break; // 'center' and any unknown
+    }
   }
 
   return { left, centerLeft, center, centerRight, right, total: results.length };
 }
 
 // Find the most divergent trio: strictly 1 Left + 1 Right + 1 Center for max diversity
+// Uses shared getPoliticalLean for consistent categorization
 function getDivergentTrio(results: GroundingSource[]): string[] {
   if (!results || results.length < 3) {
     return results?.slice(0, 3).map(r => r.uri) || [];
   }
 
-  // Define lean buckets - be explicit about what counts as what
-  const leftLeans = ['left', 'left-center'];
-  const centerLeans = ['center', 'allsides-center', 'neutral'];
-  const rightLeans = ['right-center', 'right'];
+  // Helper to get lean with fallback to shared source data
+  const getLean = (r: GroundingSource): PoliticalLean =>
+    (r.politicalLean?.toLowerCase() || getPoliticalLean(r.sourceDomain || r.uri)) as PoliticalLean;
 
-  // Separate into buckets
-  const leftSources = results.filter(r =>
-    leftLeans.includes(r.politicalLean?.toLowerCase() || '')
-  );
-  const centerSources = results.filter(r =>
-    centerLeans.includes(r.politicalLean?.toLowerCase() || '')
-  );
-  const rightSources = results.filter(r =>
-    rightLeans.includes(r.politicalLean?.toLowerCase() || '')
-  );
-
-  // Unknown lean sources as fallback
-  const unknownSources = results.filter(r =>
-    !r.politicalLean ||
-    ![...leftLeans, ...centerLeans, ...rightLeans].includes(r.politicalLean?.toLowerCase() || '')
-  );
+  // Separate into buckets using consistent lean values
+  const leftSources = results.filter(r => {
+    const lean = getLean(r);
+    return lean === 'left' || lean === 'center-left';
+  });
+  const centerSources = results.filter(r => {
+    const lean = getLean(r);
+    return lean === 'center';
+  });
+  const rightSources = results.filter(r => {
+    const lean = getLean(r);
+    return lean === 'right' || lean === 'center-right';
+  });
 
   const trio: string[] = [];
   const usedUris = new Set<string>();
@@ -199,9 +201,9 @@ function getDivergentTrio(results: GroundingSource[]): string[] {
   const centerPick = pickFrom(centerSources);
   if (centerPick) trio.push(centerPick);
 
-  // Fill remaining slots from whatever's available (prefer unknown over doubling)
+  // Fill remaining slots from whatever's available (prefer center over doubling sides)
   if (trio.length < 3) {
-    const fallbackOrder = [unknownSources, centerSources, leftSources, rightSources];
+    const fallbackOrder = [centerSources, leftSources, rightSources];
     for (const bucket of fallbackOrder) {
       const pick = pickFrom(bucket);
       if (pick) {

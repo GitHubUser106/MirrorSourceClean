@@ -4,73 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import ReviewRequestModal from "@/components/ReviewRequestModal";
+import { getSourcesByLean, LEAN_COLORS, LEAN_LABELS, type PoliticalLean } from "@/lib/sourceData";
 
-// Source data organized by political lean
-const sourcesByLean = {
-  left: [
-    { name: "CNN", domain: "cnn.com", type: "Corporate" },
-    { name: "MSNBC", domain: "msnbc.com", type: "Corporate" },
-    { name: "The Guardian", domain: "theguardian.com", type: "International" },
-    { name: "ProPublica", domain: "propublica.org", type: "Nonprofit" },
-    { name: "The Intercept", domain: "theintercept.com", type: "Nonprofit" },
-    { name: "Mother Jones", domain: "motherjones.com", type: "Nonprofit" },
-    { name: "The New Republic", domain: "newrepublic.com", type: "Magazine" },
-    { name: "Jacobin", domain: "jacobin.com", type: "Magazine" },
-    { name: "Boston Globe", domain: "bostonglobe.com", type: "National" },
-  ],
-  "center-left": [
-    { name: "NPR", domain: "npr.org", type: "Public-Trust" },
-    { name: "Politico", domain: "politico.com", type: "Analysis" },
-    { name: "New York Times", domain: "nytimes.com", type: "National" },
-    { name: "Washington Post", domain: "washingtonpost.com", type: "National" },
-    { name: "The Atlantic", domain: "theatlantic.com", type: "Magazine" },
-    { name: "Vox", domain: "vox.com", type: "Corporate" },
-    { name: "NBC News", domain: "nbcnews.com", type: "Corporate" },
-    { name: "ABC News", domain: "abcnews.go.com", type: "Corporate" },
-    { name: "CBS News", domain: "cbsnews.com", type: "Corporate" },
-  ],
-  center: [
-    { name: "AP News", domain: "apnews.com", type: "Wire" },
-    { name: "Reuters", domain: "reuters.com", type: "Wire" },
-    { name: "AFP", domain: "afp.com", type: "Wire" },
-    { name: "PBS", domain: "pbs.org", type: "Public-Trust" },
-    { name: "BBC", domain: "bbc.com", type: "Public-Trust" },
-    { name: "Al Jazeera", domain: "aljazeera.com", type: "State-Funded" },
-    { name: "USA Today", domain: "usatoday.com", type: "National" },
-    { name: "Axios", domain: "axios.com", type: "National" },
-    { name: "The Hill", domain: "thehill.com", type: "Analysis" },
-    { name: "ABC Australia", domain: "abc.net.au", type: "Public-Trust" },
-    { name: "CBC", domain: "cbc.ca", type: "Public-Trust" },
-    { name: "Foreign Policy", domain: "foreignpolicy.com", type: "Analysis" },
-    { name: "Foreign Affairs", domain: "foreignaffairs.com", type: "Analysis" },
-  ],
-  "center-right": [
-    { name: "Wall Street Journal", domain: "wsj.com", type: "Specialized" },
-    { name: "The Dispatch", domain: "thedispatch.com", type: "Magazine" },
-    { name: "The Bulwark", domain: "thebulwark.com", type: "Magazine" },
-    { name: "The Telegraph", domain: "telegraph.co.uk", type: "International" },
-    { name: "The Economist", domain: "economist.com", type: "Magazine" },
-    { name: "Financial Times", domain: "ft.com", type: "Specialized" },
-    { name: "Bloomberg", domain: "bloomberg.com", type: "Specialized" },
-  ],
-  right: [
-    { name: "Fox News", domain: "foxnews.com", type: "Corporate" },
-    { name: "New York Post", domain: "nypost.com", type: "National" },
-    { name: "Washington Examiner", domain: "washingtonexaminer.com", type: "National" },
-    { name: "Washington Times", domain: "washingtontimes.com", type: "National" },
-    { name: "Daily Wire", domain: "dailywire.com", type: "Corporate" },
-    { name: "Newsmax", domain: "newsmax.com", type: "Corporate" },
-    { name: "Breitbart", domain: "breitbart.com", type: "Corporate" },
-    { name: "National Review", domain: "nationalreview.com", type: "Magazine" },
-    { name: "Daily Caller", domain: "dailycaller.com", type: "Corporate" },
-    { name: "The Blaze", domain: "theblaze.com", type: "Corporate" },
-    { name: "Free Beacon", domain: "freebeacon.com", type: "Analysis" },
-    { name: "Townhall", domain: "townhall.com", type: "Corporate" },
-    { name: "RedState", domain: "redstate.com", type: "Corporate" },
-    { name: "The Federalist", domain: "thefederalist.com", type: "Magazine" },
-    { name: "American Spectator", domain: "spectator.org", type: "Magazine" },
-  ],
-};
+// Get sources grouped by lean from single source of truth
+const sourcesByLean = getSourcesByLean();
 
 // Badge colors matching the app's taxonomy
 const badgeColors: Record<string, string> = {
@@ -101,14 +38,7 @@ const badgeDescriptions: Record<string, string> = {
   Specialized: "Industry-focused or financial news outlets",
 };
 
-// Lean column styling - matches Coverage Distribution colors
-const leanStyles: Record<string, { bg: string; border: string; label: string; headerBg: string }> = {
-  left: { bg: "bg-blue-50", border: "border-blue-200", label: "Left", headerBg: "bg-blue-600" },
-  "center-left": { bg: "bg-cyan-50", border: "border-cyan-200", label: "Center-Left", headerBg: "bg-cyan-500" },
-  center: { bg: "bg-purple-50", border: "border-purple-200", label: "Center", headerBg: "bg-purple-500" },
-  "center-right": { bg: "bg-orange-50", border: "border-orange-200", label: "Center-Right", headerBg: "bg-orange-500" },
-  right: { bg: "bg-red-50", border: "border-red-200", label: "Right", headerBg: "bg-red-600" },
-};
+// Lean column styling - uses shared LEAN_COLORS from sourceData.ts
 
 function getFaviconUrl(domain: string): string {
   return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
@@ -148,13 +78,13 @@ export default function SourcesPage() {
 
         {/* Sources Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-12">
-          {(Object.keys(sourcesByLean) as Array<keyof typeof sourcesByLean>).map((lean) => (
+          {(Object.keys(sourcesByLean) as PoliticalLean[]).map((lean) => (
             <div
               key={lean}
-              className={`rounded-xl border ${leanStyles[lean].border} ${leanStyles[lean].bg} overflow-hidden`}
+              className={`rounded-xl border ${LEAN_COLORS[lean].border} ${LEAN_COLORS[lean].bg} overflow-hidden`}
             >
-              <h2 className={`text-lg font-bold text-white py-3 text-center ${leanStyles[lean].headerBg}`}>
-                {leanStyles[lean].label}
+              <h2 className={`text-lg font-bold text-white py-3 text-center ${LEAN_COLORS[lean].headerBg}`}>
+                {LEAN_LABELS[lean]}
               </h2>
               <div className="p-4">
               <div className="space-y-2">

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { checkRateLimit, incrementUsage, COOKIE_OPTIONS } from "@/lib/rate-limiter";
+import { getPoliticalLean } from "@/lib/sourceData";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -1653,8 +1654,8 @@ function getSourceInfo(domain: string): SourceInfo {
   }
   
   const parts = domain.split('.');
-  // Default unknown sources to 'center' lean
-  return { displayName: parts[0].toUpperCase(), type, countryCode, lean: 'center' as PoliticalLean };
+  // Use shared source data for political lean (falls back to 'center' if unknown)
+  return { displayName: parts[0].toUpperCase(), type, countryCode, lean: getPoliticalLean(domain) };
 }
 
 // --- Fetch Article Title from URL ---
