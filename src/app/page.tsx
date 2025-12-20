@@ -9,7 +9,7 @@ import ResultsDisplay from "@/components/ResultsDisplay";
 import TransparencyCard from "@/components/TransparencyCard";
 import type { GroundingSource } from "@/types";
 import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, ArrowRight } from "lucide-react";
-import { getPoliticalLean, type PoliticalLean } from "@/lib/sourceData";
+import { getPoliticalLean, LEAN_COLORS, LEAN_LABELS, type PoliticalLean } from "@/lib/sourceData";
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
 type CommonGroundFact = { label: string; value: string };
@@ -1107,7 +1107,20 @@ function HomeContent() {
                             <span className="text-xs flex-shrink-0">{source.countryCode === 'US' ? '🇺🇸' : source.countryCode === 'GB' ? '🇬🇧' : source.countryCode === 'CA' ? '🇨🇦' : '🌍'}</span>
                           )}
                         </div>
-                        <span className="inline-block text-xs px-2 py-0.5 bg-slate-200 text-slate-600 rounded mb-2">{sourceType}</span>
+                        {/* Political Lean + Source Type Badges */}
+                        <div className="flex items-center gap-2 mb-2">
+                          {(() => {
+                            const lean = (source?.politicalLean?.toLowerCase() || getPoliticalLean(source?.sourceDomain || '')) as PoliticalLean;
+                            const colors = LEAN_COLORS[lean] || LEAN_COLORS['center'];
+                            const label = LEAN_LABELS[lean] || 'Center';
+                            return (
+                              <span className={`text-xs px-2 py-0.5 rounded ${colors.bg} ${colors.border} border font-medium text-slate-700`}>
+                                {label}
+                              </span>
+                            );
+                          })()}
+                          <span className="text-xs px-2 py-0.5 bg-slate-200 text-slate-600 rounded">{sourceType}</span>
+                        </div>
 
                         <a href={source?.uri} target="_blank" rel="noopener noreferrer"
                            className="text-blue-600 text-sm hover:underline inline-flex items-center gap-1">
