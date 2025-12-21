@@ -272,6 +272,7 @@ function HomeContent() {
   const [lastSubmittedUrl, setLastSubmittedUrl] = useState("");
   const [visibleIcons, setVisibleIcons] = useState(0);
   const [showKeywordFallback, setShowKeywordFallback] = useState(false);
+  const [keywordFallbackType, setKeywordFallbackType] = useState<'share' | 'premium' | null>(null);
   const [keywords, setKeywords] = useState("");
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
   const [inlineComparison, setInlineComparison] = useState<any>(null);
@@ -389,27 +390,48 @@ function HomeContent() {
     } catch {}
   }
 
-  // Helper to detect URLs with no readable keywords (UUIDs, numbers only)
-  function isOpaqueUrl(url: string): boolean {
+  // Helper to detect URLs with no readable keywords (UUIDs, shorteners, etc.)
+  // Returns: 'share' for share links, 'premium' for paywalled sites, null if OK
+  function getOpaqueUrlType(url: string): 'share' | 'premium' | null {
     try {
       const urlObj = new URL(url);
       const hostname = urlObj.hostname.toLowerCase();
       const path = urlObj.pathname.toLowerCase();
-      
-      // Known sites that typically use UUID/opaque URLs
+
+      // URL shorteners and share services - these NEVER have readable keywords
+      const shortenerDomains = [
+        'share.google',      // Google News share links
+        'goo.gl',            // Google URL shortener
+        'bit.ly',            // Bitly
+        't.co',              // Twitter
+        'tinyurl.com',       // TinyURL
+        'ow.ly',             // Hootsuite
+        'buff.ly',           // Buffer
+        'news.google.com',   // Google News (often redirects)
+        'apple.news',        // Apple News
+        'flipboard.com',     // Flipboard shares
+        'smartnews.link',    // SmartNews
+        'ground.news',       // Ground News shares
+      ];
+
+      if (shortenerDomains.some(domain => hostname.includes(domain))) {
+        return 'share';
+      }
+
+      // Known sites that typically use UUID/opaque URLs (paywalled)
       const opaqueUrlDomains = ['ft.com', 'bloomberg.com', 'economist.com'];
       const isKnownOpaqueSite = opaqueUrlDomains.some(domain => hostname.includes(domain));
-      
+
       // For FT, Bloomberg, Economist: check if URL ends with UUID pattern
       if (isKnownOpaqueSite) {
         // UUID pattern: 8-4-4-4-12 hex chars, or just long hex string
         const uuidPattern = /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i;
         const longHexPattern = /\/[a-f0-9\-]{20,}$/i;
         if (uuidPattern.test(path) || longHexPattern.test(path)) {
-          return true;
+          return 'premium';
         }
       }
-      
+
       // For all sites: Extract words from path and check if readable
       const words = path
         .split(/[\/\-_.]/)
@@ -418,10 +440,10 @@ function HomeContent() {
         .filter(segment => !/^\d+$/.test(segment)) // Remove pure numbers
         .filter(segment => /[g-z]/i.test(segment)) // Must have non-hex letter
         .filter(segment => !/^(content|article|story|news|post|index|html|htm|php|aspx|world|us|uk|business|tech|opinion|markets)$/i.test(segment));
-      
-      return words.length < 2;
+
+      return words.length < 2 ? 'premium' : null;
     } catch {
-      return false;
+      return null;
     }
   }
 
@@ -432,14 +454,17 @@ function HomeContent() {
     setScannerIconIndex(0);
     setVisibleIcons(0);
     setShowKeywordFallback(false);
+    setKeywordFallbackType(null);
     setKeywords("");
     setSelectedForCompare([]);
     hasAutoSelected.current = false;
 
-    // Check for opaque URLs (FT, Bloomberg, etc. with UUIDs)
-    if (isOpaqueUrl(url)) {
+    // Check for opaque URLs (share links, premium sites with UUIDs)
+    const opaqueType = getOpaqueUrlType(url);
+    if (opaqueType) {
       setError(null);
       setShowKeywordFallback(true);
+      setKeywordFallbackType(opaqueType);
       return;
     }
 
@@ -779,18 +804,37 @@ function HomeContent() {
         {showKeywordFallback && !error && (
           <div className="mt-6 w-full max-w-2xl lg:max-w-3xl bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-200 rounded-xl p-6">
             <div className="text-center mb-4">
-              <div className="inline-flex items-center gap-2 text-slate-500 text-xs font-medium mb-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                PREMIUM LINK DETECTED
-              </div>
-              <p className="text-lg font-semibold text-slate-800 mb-1">
-                Identify the story
-              </p>
-              <p className="text-slate-600 text-sm">
-                Paste the headline or describe the event to triangulate coverage.
-              </p>
+              {keywordFallbackType === 'share' ? (
+                <>
+                  <div className="inline-flex items-center gap-2 text-slate-500 text-xs font-medium mb-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                    SHARED LINK DETECTED
+                  </div>
+                  <p className="text-lg font-semibold text-slate-800 mb-1">
+                    What&apos;s this article about?
+                  </p>
+                  <p className="text-slate-600 text-sm">
+                    Share links hide the original URL. Paste the headline to find other coverage.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="inline-flex items-center gap-2 text-slate-500 text-xs font-medium mb-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    PREMIUM LINK DETECTED
+                  </div>
+                  <p className="text-lg font-semibold text-slate-800 mb-1">
+                    Identify the story
+                  </p>
+                  <p className="text-slate-600 text-sm">
+                    Paste the headline or describe the event to triangulate coverage.
+                  </p>
+                </>
+              )}
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
               <input
@@ -798,7 +842,10 @@ function HomeContent() {
                 value={keywords}
                 onChange={(e) => setKeywords(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleKeywordSearch()}
-                placeholder="e.g., ECB warns AI bubble may burst if rates hold"
+                placeholder={keywordFallbackType === 'share'
+                  ? "e.g., Trump announces new tariffs on China"
+                  : "e.g., ECB warns AI bubble may burst if rates hold"
+                }
                 className="flex-1 px-4 py-3 rounded-full border border-slate-300 bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               />
               <button
@@ -806,7 +853,7 @@ function HomeContent() {
                 disabled={loading || !keywords.trim()}
                 className="inline-flex items-center justify-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-slate-300 text-white font-medium py-3 px-6 rounded-full transition-colors text-sm whitespace-nowrap"
               >
-                Lock on
+                Find coverage
               </button>
             </div>
           </div>
