@@ -717,7 +717,7 @@ function HomeContent() {
   const todaysStory = getDailyStory();
 
   return (
-    <main className="min-h-screen bg-slate-50 flex flex-col relative">
+    <main className="min-h-screen bg-slate-50 flex flex-col relative overflow-x-hidden">
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes popIn {
           0% { transform: scale(0); opacity: 0; }
@@ -958,7 +958,7 @@ function HomeContent() {
           {/* Skeleton preview - shows what's coming */}
           <div className="w-full max-w-4xl space-y-4 opacity-40">
             {/* Skeleton source icons */}
-            <div className="flex justify-center gap-4 py-4">
+            <div className="flex flex-wrap justify-center gap-4 py-4">
               {[1,2,3,4,5].map((i) => (
                 <div key={i} className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-slate-200 animate-pulse" style={{ animationDelay: `${i * 100}ms` }}></div>
               ))}

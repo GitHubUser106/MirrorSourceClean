@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* DEBUG: Uncomment to find overflow elements */
+/* * { outline: 1px solid red !important; } */
+
 
 @keyframes skeleton {
   0%, 100% {
