@@ -534,8 +534,9 @@ function HomeContent() {
     }
   }
 
-  async function handleKeywordSearch() {
-    if (!keywords.trim()) return;
+  async function handleKeywordSearch(keywordsOverride?: string) {
+    const searchTerms = keywordsOverride ?? keywords;
+    if (!searchTerms.trim()) return;
 
     setLoadingFactIndex(0);
     setScannerIconIndex(0);
@@ -557,7 +558,7 @@ function HomeContent() {
       const res = await fetch("/api/find", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keywords: keywords.trim() }),
+        body: JSON.stringify({ keywords: searchTerms.trim() }),
       });
 
       if (!res.ok) {
@@ -603,6 +604,26 @@ function HomeContent() {
     refreshUsage();
 
     const urlParam = searchParams.get('url');
+    const textParam = searchParams.get('text');
+
+    // ANDROID SHARE: Extract headline from shared text (e.g., "Headline here https://share.google...")
+    if (textParam && !hasAutoSearched) {
+      console.log('[Init] Text from Android share:', textParam);
+      sessionStorage.removeItem('mirrorSourceResults');
+
+      // Extract headline: everything before the URL, or the whole text if no URL
+      const urlMatch = textParam.match(/https?:\/\/\S+/);
+      const headline = urlMatch
+        ? textParam.substring(0, urlMatch.index).trim()
+        : textParam.trim();
+
+      if (headline) {
+        console.log('[Init] Extracted headline:', headline);
+        setHasAutoSearched(true);
+        setTimeout(() => handleKeywordSearch(headline), 100);
+        return;
+      }
+    }
 
     // URL parameter takes priority - clear any stale sessionStorage
     if (urlParam) {
@@ -849,7 +870,7 @@ function HomeContent() {
                 className="flex-1 px-4 py-3 rounded-full border border-slate-300 bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               />
               <button
-                onClick={handleKeywordSearch}
+                onClick={() => handleKeywordSearch()}
                 disabled={loading || !keywords.trim()}
                 className="inline-flex items-center justify-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-slate-300 text-white font-medium py-3 px-6 rounded-full transition-colors text-sm whitespace-nowrap"
               >
@@ -879,7 +900,7 @@ function HomeContent() {
                     className="flex-1 px-4 py-3 rounded-full border border-amber-300 bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"
                   />
                   <button
-                    onClick={handleKeywordSearch}
+                    onClick={() => handleKeywordSearch()}
                     disabled={loading || !keywords.trim()}
                     className="inline-flex items-center justify-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-slate-300 text-white font-medium py-3 px-6 rounded-full transition-colors text-sm whitespace-nowrap"
                   >
