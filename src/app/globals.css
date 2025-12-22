@@ -5,6 +5,17 @@
 /* DEBUG: Uncomment to find overflow elements */
 /* * { outline: 1px solid red !important; } */
 
+/* Force-fix overflow to debug mobile zoom issue */
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+main {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
 
 @keyframes skeleton {
   0%, 100% {
