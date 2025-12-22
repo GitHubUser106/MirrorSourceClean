@@ -3,7 +3,9 @@
   "short_name": "MirrorSource",
   "description": "See the whole story. Find alternative sources and perspectives for any news article.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#f8fafc",
   "theme_color": "#2563eb",
   "icons": [
