@@ -2,13 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-/* DEBUG: Uncomment to find overflow elements */
-/* * { outline: 1px solid red !important; } */
-
-/* Force-fix overflow to debug mobile zoom issue */
-html, body {
+/* Force mobile viewport - prevent zoom out */
+html {
+  width: 100vw;
   max-width: 100vw;
   overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  position: relative;
 }
 
 main {
