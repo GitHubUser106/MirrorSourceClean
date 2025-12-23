@@ -2524,6 +2524,7 @@ export async function POST(req: NextRequest) {
     console.log(`[GapFill] Left sources found: ${initialCounts.leftSources.join(', ') || 'none'}`);
 
     // Gap fill for RIGHT-leaning sources if fewer than 2
+    let gapFillRateLimited = false;
     if (initialCounts.rightCount < 2 && qualityFiltered.length > 0) {
       gapFillAttempted.right = true;
       console.log(`[GapFill] Right sources underrepresented (${initialCounts.rightCount}). Running targeted search...`);
@@ -2531,6 +2532,10 @@ export async function POST(req: NextRequest) {
       const siteQuery = RIGHT_LEANING_DOMAINS.slice(0, 6).map(d => `site:${d}`).join(' OR ');
       const targetedQuery = `${searchQuery} (${siteQuery})`;
       console.log(`[GapFill] RIGHT search query: ${targetedQuery}`);
+
+      // Add delay to avoid rate limiting
+      console.log(`[GapFill] Waiting 300ms to avoid rate limit...`);
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       try {
         const rightResults = await searchWithBrave(targetedQuery);
@@ -2549,21 +2554,30 @@ export async function POST(req: NextRequest) {
         gapFillFound.right = newRightResults.length;
         console.log(`[GapFill] Adding ${newRightResults.length} new right-leaning sources: ${newRightResults.map(r => r.domain).join(', ')}`);
         qualityFiltered = [...qualityFiltered, ...newRightResults];
-      } catch (err) {
-        console.log(`[GapFill] Right-targeted search failed:`, err);
+      } catch (err: any) {
+        if (err?.status === 429 || err?.message?.includes('429')) {
+          console.log(`[GapFill] Rate limit hit - continuing with original results`);
+          gapFillRateLimited = true;
+        } else {
+          console.log(`[GapFill] Right-targeted search failed:`, err);
+        }
       }
     } else {
       console.log(`[GapFill] Skipping RIGHT gap fill - already have ${initialCounts.rightCount} right-leaning sources`);
     }
 
     // Gap fill for LEFT-leaning sources if fewer than 2
-    if (initialCounts.leftCount < 2 && qualityFiltered.length > 0) {
+    if (initialCounts.leftCount < 2 && qualityFiltered.length > 0 && !gapFillRateLimited) {
       gapFillAttempted.left = true;
       console.log(`[GapFill] Left sources underrepresented (${initialCounts.leftCount}). Running targeted search...`);
 
       const siteQuery = LEFT_LEANING_DOMAINS.slice(0, 6).map(d => `site:${d}`).join(' OR ');
       const targetedQuery = `${searchQuery} (${siteQuery})`;
       console.log(`[GapFill] LEFT search query: ${targetedQuery}`);
+
+      // Add delay to avoid rate limiting
+      console.log(`[GapFill] Waiting 300ms to avoid rate limit...`);
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       try {
         const leftResults = await searchWithBrave(targetedQuery);
@@ -2582,11 +2596,18 @@ export async function POST(req: NextRequest) {
         gapFillFound.left = newLeftResults.length;
         console.log(`[GapFill] Adding ${newLeftResults.length} new left-leaning sources: ${newLeftResults.map(r => r.domain).join(', ')}`);
         qualityFiltered = [...qualityFiltered, ...newLeftResults];
-      } catch (err) {
-        console.log(`[GapFill] Left-targeted search failed:`, err);
+      } catch (err: any) {
+        if (err?.status === 429 || err?.message?.includes('429')) {
+          console.log(`[GapFill] Rate limit hit - continuing with original results`);
+          gapFillRateLimited = true;
+        } else {
+          console.log(`[GapFill] Left-targeted search failed:`, err);
+        }
       }
-    } else {
+    } else if (initialCounts.leftCount >= 2) {
       console.log(`[GapFill] Skipping LEFT gap fill - already have ${initialCounts.leftCount} left-leaning sources`);
+    } else if (gapFillRateLimited) {
+      console.log(`[GapFill] Skipping LEFT gap fill - rate limited on previous request`);
     }
 
     const finalCounts = countPoliticalLean(qualityFiltered);

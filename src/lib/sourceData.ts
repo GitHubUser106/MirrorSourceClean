@@ -61,7 +61,7 @@ export const SOURCE_DATABASE: Record<string, SourceEntry> = {
   'foreignpolicy.com': { name: 'Foreign Policy', lean: 'center', type: 'Analysis' },
   'foreignaffairs.com': { name: 'Foreign Affairs', lean: 'center', type: 'Analysis' },
 
-  // CENTER-RIGHT
+  // CENTER-RIGHT (AllSides "Lean Right")
   'wsj.com': { name: 'Wall Street Journal', lean: 'center-right', type: 'Specialized' },
   'thedispatch.com': { name: 'The Dispatch', lean: 'center-right', type: 'Magazine' },
   'thebulwark.com': { name: 'The Bulwark', lean: 'center-right', type: 'Magazine' },
@@ -70,23 +70,29 @@ export const SOURCE_DATABASE: Record<string, SourceEntry> = {
   'ft.com': { name: 'Financial Times', lean: 'center-right', type: 'Specialized' },
   'bloomberg.com': { name: 'Bloomberg', lean: 'center-right', type: 'Specialized' },
   'cnbc.com': { name: 'CNBC', lean: 'center-right', type: 'Specialized' },
+  'washingtontimes.com': { name: 'Washington Times', lean: 'center-right', type: 'Corporate' },
+  'washingtonexaminer.com': { name: 'Washington Examiner', lean: 'center-right', type: 'Corporate' },
+  'hotair.com': { name: 'Hot Air', lean: 'center-right', type: 'Corporate' },
 
-  // RIGHT
+  // RIGHT (AllSides/Ad Fontes verified)
   'foxnews.com': { name: 'Fox News', lean: 'right', type: 'Corporate' },
   'nypost.com': { name: 'New York Post', lean: 'right', type: 'National' },
-  'washingtonexaminer.com': { name: 'Washington Examiner', lean: 'right', type: 'National' },
-  'washingtontimes.com': { name: 'Washington Times', lean: 'right', type: 'National' },
   'dailywire.com': { name: 'Daily Wire', lean: 'right', type: 'Corporate' },
   'newsmax.com': { name: 'Newsmax', lean: 'right', type: 'Corporate' },
   'breitbart.com': { name: 'Breitbart', lean: 'right', type: 'Corporate' },
   'nationalreview.com': { name: 'National Review', lean: 'right', type: 'Magazine' },
   'dailycaller.com': { name: 'Daily Caller', lean: 'right', type: 'Corporate' },
   'theblaze.com': { name: 'The Blaze', lean: 'right', type: 'Corporate' },
-  'freebeacon.com': { name: 'Free Beacon', lean: 'right', type: 'Analysis' },
+  'freebeacon.com': { name: 'Washington Free Beacon', lean: 'right', type: 'Nonprofit' },
   'townhall.com': { name: 'Townhall', lean: 'right', type: 'Corporate' },
   'redstate.com': { name: 'RedState', lean: 'right', type: 'Corporate' },
-  'thefederalist.com': { name: 'The Federalist', lean: 'right', type: 'Magazine' },
+  'thefederalist.com': { name: 'The Federalist', lean: 'right', type: 'Corporate' },
   'spectator.org': { name: 'American Spectator', lean: 'right', type: 'Magazine' },
+  'thenewamerican.com': { name: 'The New American', lean: 'right', type: 'Magazine' },
+  'city-journal.org': { name: 'City Journal', lean: 'right', type: 'Magazine' },
+  'oann.com': { name: 'OANN', lean: 'right', type: 'Corporate' },
+  'epochtimes.com': { name: 'The Epoch Times', lean: 'right', type: 'Corporate' },
+  'pjmedia.com': { name: 'PJ Media', lean: 'right', type: 'Corporate' },
 };
 
 // =============================================================================
