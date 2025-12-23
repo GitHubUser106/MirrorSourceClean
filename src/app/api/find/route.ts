@@ -119,6 +119,38 @@ function isPaywalledSource(url: string): boolean {
   } catch { return false; }
 }
 
+// --- Gap Fill Domains for Political Balance ---
+// Used for targeted searches when initial results lack political diversity
+const RIGHT_LEANING_DOMAINS = [
+  'foxnews.com',
+  'nypost.com',
+  'dailywire.com',
+  'nationalreview.com',
+  'breitbart.com',
+  'washingtontimes.com',
+  'washingtonexaminer.com',
+  'thefederalist.com',
+  'dailycaller.com',
+  'newsmax.com',
+  'townhall.com',
+  'hotair.com',
+  'redstate.com',
+  'freebeacon.com',
+];
+
+const LEFT_LEANING_DOMAINS = [
+  'msnbc.com',
+  'huffpost.com',
+  'vox.com',
+  'slate.com',
+  'motherjones.com',
+  'thenation.com',
+  'jacobin.com',
+  'dailykos.com',
+  'commondreams.org',
+  'democracynow.org',
+];
+
 // =============================================================================
 // SOURCE CLASSIFICATION WITH TRANSPARENCY DATA
 // =============================================================================
@@ -2170,7 +2202,11 @@ function detectQueryBias(query: string): string | null {
 }
 
 // Analyze political diversity of results
-function analyzePoliticalDiversity(results: ProcessedSource[]): {
+// gapFillInfo: tells us if we already tried to find underrepresented sources
+function analyzePoliticalDiversity(
+  results: ProcessedSource[],
+  gapFillInfo?: { attempted: { right: boolean; left: boolean }; found: { right: number; left: number } }
+): {
   isBalanced: boolean;
   leftCount: number;
   centerCount: number;
@@ -2208,12 +2244,22 @@ function analyzePoliticalDiversity(results: ProcessedSource[]): {
   let isBalanced = true;
 
   if (leftPct > 0.6 && rightCount < 2) {
-    warning = `Sources lean left (${leftCount}/${total}). Right-leaning perspectives may be underrepresented.`;
     isBalanced = false;
+    // More accurate warning based on whether we tried gap fill
+    if (gapFillInfo?.attempted.right && gapFillInfo.found.right === 0) {
+      warning = `We searched specifically for right-leaning coverage but found none. This story may not be covered by these outlets.`;
+    } else {
+      warning = `Sources lean left (${leftCount}/${total}). Right-leaning perspectives may be underrepresented.`;
+    }
     console.log(`[Diversity] WARNING: ${warning}`);
   } else if (rightPct > 0.6 && leftCount < 2) {
-    warning = `Sources lean right (${rightCount}/${total}). Left-leaning perspectives may be underrepresented.`;
     isBalanced = false;
+    // More accurate warning based on whether we tried gap fill
+    if (gapFillInfo?.attempted.left && gapFillInfo.found.left === 0) {
+      warning = `We searched specifically for left-leaning coverage but found none. This story may not be covered by these outlets.`;
+    } else {
+      warning = `Sources lean right (${rightCount}/${total}). Left-leaning perspectives may be underrepresented.`;
+    }
     console.log(`[Diversity] WARNING: ${warning}`);
   } else {
     console.log(`[Diversity] Sources are balanced - no warning`);
@@ -2443,6 +2489,88 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ==========================================================================
+    // GAP FILL: Actively hunt for underrepresented political perspectives
+    // ==========================================================================
+    let gapFillAttempted = { right: false, left: false };
+    let gapFillFound = { right: 0, left: 0 };
+
+    // Count current political lean distribution
+    const countPoliticalLean = (results: CSEResult[]) => {
+      let rightCount = 0;
+      let leftCount = 0;
+      for (const r of results) {
+        const lean = getPoliticalLean(r.domain || '');
+        if (lean === 'right' || lean === 'center-right') rightCount++;
+        else if (lean === 'left' || lean === 'center-left') leftCount++;
+      }
+      return { rightCount, leftCount };
+    };
+
+    const initialCounts = countPoliticalLean(qualityFiltered);
+    console.log(`[GapFill] Initial counts - Right: ${initialCounts.rightCount}, Left: ${initialCounts.leftCount}`);
+
+    // Gap fill for RIGHT-leaning sources if fewer than 2
+    if (initialCounts.rightCount < 2 && qualityFiltered.length > 0) {
+      gapFillAttempted.right = true;
+      console.log(`[GapFill] Right sources underrepresented (${initialCounts.rightCount}). Running targeted search...`);
+
+      const siteQuery = RIGHT_LEANING_DOMAINS.slice(0, 6).map(d => `site:${d}`).join(' OR ');
+      const targetedQuery = `${searchQuery} (${siteQuery})`;
+
+      try {
+        const rightResults = await searchWithBrave(targetedQuery);
+        console.log(`[GapFill] Right-targeted search returned ${rightResults.length} results`);
+
+        // Filter and dedupe
+        const existingUrls = new Set(qualityFiltered.map(r => r.url));
+        const existingDomains = new Set(qualityFiltered.map(r => r.domain));
+        const newRightResults = rightResults.filter(r =>
+          !existingUrls.has(r.url) &&
+          !existingDomains.has(r.domain) &&
+          RIGHT_LEANING_DOMAINS.some(d => r.domain?.includes(d))
+        );
+
+        gapFillFound.right = newRightResults.length;
+        console.log(`[GapFill] Adding ${newRightResults.length} new right-leaning sources`);
+        qualityFiltered = [...qualityFiltered, ...newRightResults];
+      } catch (err) {
+        console.log(`[GapFill] Right-targeted search failed:`, err);
+      }
+    }
+
+    // Gap fill for LEFT-leaning sources if fewer than 2
+    if (initialCounts.leftCount < 2 && qualityFiltered.length > 0) {
+      gapFillAttempted.left = true;
+      console.log(`[GapFill] Left sources underrepresented (${initialCounts.leftCount}). Running targeted search...`);
+
+      const siteQuery = LEFT_LEANING_DOMAINS.slice(0, 6).map(d => `site:${d}`).join(' OR ');
+      const targetedQuery = `${searchQuery} (${siteQuery})`;
+
+      try {
+        const leftResults = await searchWithBrave(targetedQuery);
+        console.log(`[GapFill] Left-targeted search returned ${leftResults.length} results`);
+
+        // Filter and dedupe
+        const existingUrls = new Set(qualityFiltered.map(r => r.url));
+        const existingDomains = new Set(qualityFiltered.map(r => r.domain));
+        const newLeftResults = leftResults.filter(r =>
+          !existingUrls.has(r.url) &&
+          !existingDomains.has(r.domain) &&
+          LEFT_LEANING_DOMAINS.some(d => r.domain?.includes(d))
+        );
+
+        gapFillFound.left = newLeftResults.length;
+        console.log(`[GapFill] Adding ${newLeftResults.length} new left-leaning sources`);
+        qualityFiltered = [...qualityFiltered, ...newLeftResults];
+      } catch (err) {
+        console.log(`[GapFill] Left-targeted search failed:`, err);
+      }
+    }
+
+    const finalCounts = countPoliticalLean(qualityFiltered);
+    console.log(`[GapFill] Final counts - Right: ${finalCounts.rightCount}, Left: ${finalCounts.leftCount}`);
+
     // Diversify by source type using round-robin
     const diverseResults = diversifyResults(qualityFiltered, 15);
     console.log(`[Search] After diversity: ${diverseResults.length} results`);
@@ -2467,8 +2595,11 @@ export async function POST(req: NextRequest) {
     // 7. STEP 3: Process results with badges + transparency
     const alternatives = processSearchResults(diverseResults);
 
-    // 8. Analyze political diversity + query bias
-    const diversityAnalysis = analyzePoliticalDiversity(alternatives);
+    // 8. Analyze political diversity + query bias (pass gap fill info for accurate warnings)
+    const diversityAnalysis = analyzePoliticalDiversity(alternatives, {
+      attempted: gapFillAttempted,
+      found: gapFillFound,
+    });
     const queryBiasWarning = detectQueryBias(searchQuery);
     console.log(`[Diversity] Left: ${diversityAnalysis.leftCount}, Center: ${diversityAnalysis.centerCount}, Right: ${diversityAnalysis.rightCount}, Balanced: ${diversityAnalysis.isBalanced}`);
     if (queryBiasWarning) console.log(`[QueryBias] Warning: ${queryBiasWarning}`);
