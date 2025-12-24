@@ -10,6 +10,24 @@ import type { GroundingSource } from "@/types";
 import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, ArrowRight } from "lucide-react";
 import { getPoliticalLean, LEAN_COLORS, LEAN_LABELS, type PoliticalLean } from "@/lib/sourceData";
 
+// Political lean spectrum order for sorting (Left → Right)
+const LEAN_ORDER: Record<string, number> = {
+  'left': 1,
+  'center-left': 2,
+  'center': 3,
+  'center-right': 4,
+  'right': 5,
+};
+
+// Border colors for Compare Coverage cards based on political lean
+const LEAN_BORDER_COLORS: Record<string, string> = {
+  'left': 'border-l-4 border-l-blue-500',
+  'center-left': 'border-l-4 border-l-cyan-500',
+  'center': 'border-l-4 border-l-purple-400',
+  'center-right': 'border-l-4 border-l-orange-500',
+  'right': 'border-l-4 border-l-red-500',
+};
+
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
 type CommonGroundFact = { label: string; value: string };
 type KeyDifference = { label: string; value: string };
@@ -407,9 +425,15 @@ function HomeContent() {
         setLoadingComparison(true);
         setInlineComparison(null);
         try {
+          // Get selected sources and sort by political lean (Left → Right)
           const selectedSources = results
             .filter(r => selectedForCompare.includes(r.uri))
             .slice(0, 3)
+            .sort((a, b) => {
+              const leanA = (a.politicalLean?.toLowerCase() || getPoliticalLean(a.sourceDomain || '')) as string;
+              const leanB = (b.politicalLean?.toLowerCase() || getPoliticalLean(b.sourceDomain || '')) as string;
+              return (LEAN_ORDER[leanA] ?? 3) - (LEAN_ORDER[leanB] ?? 3);
+            })
             .map((r, i) => ({
               id: `source-${i}`,
               name: r.displayName || r.sourceDomain,
@@ -418,6 +442,7 @@ function HomeContent() {
               domain: r.sourceDomain,
               title: r.title || '',
               snippet: r.snippet || '',
+              politicalLean: (r.politicalLean?.toLowerCase() || getPoliticalLean(r.sourceDomain || '')) as string,
             }));
 
           const res = await fetch('/api/compare', {
@@ -428,6 +453,8 @@ function HomeContent() {
 
           if (res.ok) {
             const data = await res.json();
+            // Store sorted source URLs with the comparison data
+            data.sortedSourceUrls = selectedSources.map(s => s.url);
             setInlineComparison(data);
           }
         } catch (err) {
@@ -1251,11 +1278,15 @@ function HomeContent() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {inlineComparison.analyses.slice(0, 3).map((analysis: any, idx: number) => {
-                    const source = results.find(r => selectedForCompare[idx] === r.uri);
+                    // Use sorted source URLs from the comparison data
+                    const sourceUrl = inlineComparison.sortedSourceUrls?.[idx] || selectedForCompare[idx];
+                    const source = results.find(r => r.uri === sourceUrl);
                     const sourceName = source?.displayName || source?.sourceDomain?.split('.')[0].toUpperCase() || 'Source';
+                    const lean = (source?.politicalLean?.toLowerCase() || getPoliticalLean(source?.sourceDomain || '')) as string;
+                    const borderClass = LEAN_BORDER_COLORS[lean] || LEAN_BORDER_COLORS['center'];
 
                     return (
-                      <div key={idx} className="border border-slate-200 rounded-xl p-5 bg-slate-50 hover:shadow-md transition-shadow">
+                      <div key={idx} className={`border border-slate-200 rounded-xl p-5 bg-slate-50 hover:shadow-md transition-shadow ${borderClass}`}>
                         {/* Source Header */}
                         <div className="flex items-center gap-2 mb-2">
                           <img
