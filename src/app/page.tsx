@@ -7,7 +7,7 @@ import Link from "next/link";
 import UrlInputForm from "@/components/UrlInputForm";
 import ResultsDisplay from "@/components/ResultsDisplay";
 import type { GroundingSource } from "@/types";
-import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, ArrowRight } from "lucide-react";
+import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, ArrowRight, FileText, BarChart3, Sparkles } from "lucide-react";
 import { getPoliticalLean, LEAN_COLORS, LEAN_LABELS, type PoliticalLean } from "@/lib/sourceData";
 
 // Political lean spectrum order for sorting (Left → Right)
@@ -181,26 +181,34 @@ function getCoverageDistribution(results: GroundingSource[], inputUrl?: string):
   return { left, centerLeft, center, centerRight, right, total, inputLean };
 }
 
-// Animated bar component for Coverage Distribution
-function AnimatedBar({ targetWidth, color, delay }: { targetWidth: number; color: string; delay: number }) {
-  const [width, setWidth] = useState(0);
+// Animated vertical bar for Coverage Distribution
+function AnimatedVerticalBar({ count, maxCount, label, colorClass }: { count: number; maxCount: number; label: string; colorClass: string }) {
+  const [height, setHeight] = useState(0);
+  const targetHeight = maxCount > 0 ? Math.max((count / maxCount) * 100, count > 0 ? 20 : 0) : 0;
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setWidth(targetWidth);
-    }, delay);
+    const timer = setTimeout(() => setHeight(targetHeight), 100);
     return () => clearTimeout(timer);
-  }, [targetWidth, delay]);
+  }, [targetHeight]);
 
   return (
-    <div
-      className={`${color} h-3 rounded-full transition-all duration-700 ease-out`}
-      style={{ width: `${width}%` }}
-    />
+    <div className="text-center flex-1">
+      <div className="h-32 flex items-end justify-center mb-2">
+        <div
+          className={`${colorClass} w-full max-w-12 rounded-lg transition-all duration-700 ease-out flex items-end justify-center pb-2`}
+          style={{ height: `${height}%`, minHeight: count > 0 ? '2rem' : '0' }}
+        >
+          {count > 0 && (
+            <span className="text-white font-semibold text-sm">{count}</span>
+          )}
+        </div>
+      </div>
+      <span className="text-xs text-slate-500">{label}</span>
+    </div>
   );
 }
 
-// Coverage Distribution Chart with animated bars
+// Coverage Distribution Chart with vertical bars (v0 style)
 function CoverageDistributionChart({ results, lastSubmittedUrl }: { results: GroundingSource[]; lastSubmittedUrl: string }) {
   const dist = getCoverageDistribution(results, lastSubmittedUrl);
   const inputSourceName = (() => {
@@ -212,89 +220,48 @@ function CoverageDistributionChart({ results, lastSubmittedUrl }: { results: Gro
     }
   })();
 
-  // Calculate percentages with minimum width for visibility
-  const getBarWidth = (count: number) => Math.max((count / Math.max(dist.total, 1)) * 100, count > 0 ? 8 : 0);
+  const maxCount = Math.max(dist.left, dist.centerLeft, dist.center, dist.centerRight, dist.right, 1);
 
   return (
-    <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl">
-      <div className="flex items-center gap-2 mb-3">
-        <svg className="w-4 h-4 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M18 20V10" /><path d="M12 20V4" /><path d="M6 20v-6" />
-        </svg>
+    <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+      <div className="flex items-center gap-2 mb-4">
+        <BarChart3 className="w-4 h-4 text-slate-600" />
         <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Coverage Distribution</h3>
       </div>
 
-      <div className="space-y-2">
-        {/* Input source indicator */}
-        {inputSourceName && dist.inputLean && (
-          <p className="text-sm text-gray-500 mb-3 flex items-center gap-2 flex-wrap">
-            <span>📍 Your article:</span>
-            <span className="font-medium text-slate-700">{inputSourceName}</span>
-            <span className={`text-xs px-1.5 py-0.5 rounded ${LEAN_COLORS[dist.inputLean].bg} ${LEAN_COLORS[dist.inputLean].text}`}>
-              {LEAN_LABELS[dist.inputLean]}
-            </span>
-          </p>
-        )}
+      {/* Input source indicator */}
+      {inputSourceName && dist.inputLean && (
+        <p className="text-sm text-gray-500 mb-4 flex items-center gap-2 flex-wrap">
+          <span>📍 Your article:</span>
+          <span className="font-medium text-slate-700">{inputSourceName}</span>
+          <span className={`text-xs px-1.5 py-0.5 rounded ${LEAN_COLORS[dist.inputLean].bg} ${LEAN_COLORS[dist.inputLean].text}`}>
+            {LEAN_LABELS[dist.inputLean]}
+          </span>
+        </p>
+      )}
 
-        {/* Left - Dark Blue */}
-        <div className="flex items-center gap-3">
-          <span className="w-24 text-sm text-gray-600">Left</span>
-          <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
-            <AnimatedBar targetWidth={getBarWidth(dist.left)} color="bg-blue-600" delay={0} />
-          </div>
-          <span className="w-6 text-sm text-gray-500 text-right">{dist.left}</span>
-        </div>
-
-        {/* Center-Left - Cyan */}
-        <div className="flex items-center gap-3">
-          <span className="w-24 text-sm text-gray-600">Center-Left</span>
-          <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
-            <AnimatedBar targetWidth={getBarWidth(dist.centerLeft)} color="bg-cyan-500" delay={100} />
-          </div>
-          <span className="w-6 text-sm text-gray-500 text-right">{dist.centerLeft}</span>
-        </div>
-
-        {/* Center - Purple */}
-        <div className="flex items-center gap-3">
-          <span className="w-24 text-sm text-gray-600">Center</span>
-          <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
-            <AnimatedBar targetWidth={getBarWidth(dist.center)} color="bg-purple-500" delay={200} />
-          </div>
-          <span className="w-6 text-sm text-gray-500 text-right">{dist.center}</span>
-        </div>
-
-        {/* Center-Right - Orange */}
-        <div className="flex items-center gap-3">
-          <span className="w-24 text-sm text-gray-600">Center-Right</span>
-          <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
-            <AnimatedBar targetWidth={getBarWidth(dist.centerRight)} color="bg-orange-500" delay={300} />
-          </div>
-          <span className="w-6 text-sm text-gray-500 text-right">{dist.centerRight}</span>
-        </div>
-
-        {/* Right - Red */}
-        <div className="flex items-center gap-3">
-          <span className="w-24 text-sm text-gray-600">Right</span>
-          <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
-            <AnimatedBar targetWidth={getBarWidth(dist.right)} color="bg-red-600" delay={400} />
-          </div>
-          <span className="w-6 text-sm text-gray-500 text-right">{dist.right}</span>
-        </div>
-
-        {/* Gap warnings */}
-        {(dist.left + dist.centerLeft === 0) && dist.total > 0 && (
-          <p className="mt-3 text-sm text-orange-600 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4" />
-            Coverage gap: no left-leaning sources found
-          </p>
-        )}
-        {(dist.right + dist.centerRight === 0) && dist.total > 0 && (
-          <p className="mt-3 text-sm text-orange-600 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4" />
-            Coverage gap: no right-leaning sources found
-          </p>
-        )}
+      {/* Vertical bar chart */}
+      <div className="grid grid-cols-5 gap-3">
+        <AnimatedVerticalBar count={dist.left} maxCount={maxCount} label="Left" colorClass="bg-lean-left" />
+        <AnimatedVerticalBar count={dist.centerLeft} maxCount={maxCount} label="Center-Left" colorClass="bg-lean-center-left" />
+        <AnimatedVerticalBar count={dist.center} maxCount={maxCount} label="Center" colorClass="bg-lean-center" />
+        <AnimatedVerticalBar count={dist.centerRight} maxCount={maxCount} label="Center-Right" colorClass="bg-lean-center-right" />
+        <AnimatedVerticalBar count={dist.right} maxCount={maxCount} label="Right" colorClass="bg-lean-right" />
       </div>
+
+      {/* Gap warnings */}
+      {(dist.left + dist.centerLeft === 0) && dist.total > 0 && (
+        <p className="mt-4 text-sm text-orange-600 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4" />
+          Coverage gap: no left-leaning sources found
+        </p>
+      )}
+      {(dist.right + dist.centerRight === 0) && dist.total > 0 && (
+        <p className="mt-4 text-sm text-orange-600 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4" />
+          Coverage gap: no right-leaning sources found
+        </p>
+      )}
     </div>
   );
 }
@@ -872,79 +839,119 @@ function HomeContent() {
         </div>
       )}
 
-      {/* Header */}
-      <div className={`transition-all duration-500 flex flex-col items-center px-4 ${isActive ? 'pt-8 pb-4' : 'justify-center min-h-[80vh]'}`}>
-        <button onClick={handleLogoClick} className="mb-6 hover:opacity-90 transition-opacity cursor-pointer bg-transparent border-none p-0" type="button">
-          <Image src="/logo.png" alt="MirrorSource Logo" width={300} height={75} priority className="w-48 sm:w-64 h-auto" />
-        </button>
+      {/* Hero Section */}
+      <section className={`transition-all duration-500 flex flex-col items-center px-4 ${isActive ? 'pt-8 pb-4' : 'pt-16 md:pt-24 pb-16 md:pb-20'}`}>
+        <div className="max-w-4xl mx-auto text-center">
+          {/* Logo */}
+          <button onClick={handleLogoClick} className="mb-8 hover:opacity-90 transition-opacity cursor-pointer bg-transparent border-none p-0" type="button">
+            <Image src="/logo.png" alt="MirrorSource Logo" width={300} height={75} priority className="w-48 sm:w-64 h-auto" />
+          </button>
 
-        <div className="text-center max-w-2xl space-y-4 mb-8">
-          <h1 className="text-4xl md:text-5xl lg:text-[56px] font-extrabold text-slate-900 tracking-tight md:whitespace-nowrap">See the whole story.</h1>
-          <p className="text-lg md:text-xl text-slate-600 leading-relaxed">One story. Multiple sources. Zero friction.</p>
-        </div>
+          {/* Headline */}
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 text-slate-900">
+            See the whole story.
+          </h1>
+          <p className="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+            Compare how different sources cover the same news. Get AI-powered summaries and see the full political spectrum.
+          </p>
 
-        <div className="w-full max-w-2xl lg:max-w-3xl relative z-20">
-          <UrlInputForm onSubmit={handleSubmit} isLoading={loading} value={currentUrl} onChange={setCurrentUrl} buttonLabel={loading ? "Searching..." : "Look for other sources"} />
-        </div>
-
-        {usage && !hasContent && !loading && (
-          <div className="md:hidden mt-6">
-            <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-slate-200 text-xs text-slate-500">
-              <span className={`w-1.5 h-1.5 rounded-full ${usage.remaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></span>
-              {usage.remaining}/{usage.limit} left
+          {/* Card-based URL Input */}
+          <div className="max-w-2xl mx-auto mb-6">
+            <div className="bg-white border-2 border-slate-200 rounded-lg shadow-lg p-6">
+              <UrlInputForm onSubmit={handleSubmit} isLoading={loading} value={currentUrl} onChange={setCurrentUrl} buttonLabel={loading ? "Analyzing..." : "Analyze"} />
             </div>
           </div>
-        )}
 
-        {/* Story of the Day - Only show on empty homepage */}
-        {!hasContent && !loading && (
-          <div className="mt-12 w-full max-w-2xl mx-auto px-4">
-            <div className="text-center mb-6">
-              <span className="bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                Trending Analysis
-              </span>
+          {/* Try an example link */}
+          {!hasContent && !loading && (
+            <p className="text-sm text-slate-500">
+              Try an example:{' '}
+              <button
+                onClick={() => {
+                  setCurrentUrl(todaysStory.url);
+                  handleSearchWithUrl(todaysStory.url);
+                }}
+                className="text-[color:var(--primary)] hover:underline font-medium"
+              >
+                {todaysStory.topic} Article
+              </button>
+            </p>
+          )}
+
+          {/* Usage indicator */}
+          {usage && !hasContent && !loading && (
+            <div className="mt-6 flex justify-center">
+              <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-500">
+                <span className={`w-1.5 h-1.5 rounded-full ${usage.remaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                {usage.remaining}/{usage.limit} free searches remaining
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Features Grid - Only show on empty homepage */}
+      {!hasContent && !loading && (
+        <section className="container mx-auto px-4 pb-16 md:pb-24">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-2xl md:text-3xl font-bold mb-4 tracking-tight text-slate-900">Understanding the full picture</h2>
+              <p className="text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
+                Get comprehensive insights into how stories are covered across the political spectrum
+              </p>
             </div>
 
-            <button
-              onClick={() => {
-                setCurrentUrl(todaysStory.url);
-                handleSearchWithUrl(todaysStory.url);
-              }}
-              className="w-full group relative bg-white hover:bg-slate-50 border-2 border-slate-100 hover:border-blue-100 rounded-2xl p-6 text-left transition-all duration-200 shadow-sm hover:shadow-lg hover:-translate-y-1"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-2xl font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">
-                    {todaysStory.headline}
-                  </h3>
-                  <p className="text-slate-500 font-medium">
-                    {todaysStory.topic}
-                  </p>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Feature 1: Summary */}
+              <div className="bg-white border-2 border-slate-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
+                <div className="w-12 h-12 bg-[color:var(--primary)]/10 rounded-lg flex items-center justify-center mb-4">
+                  <FileText className="w-6 h-6 text-[color:var(--primary)]" />
                 </div>
-                <div className="bg-blue-100 text-3xl h-14 w-14 flex items-center justify-center rounded-full group-hover:scale-110 transition-transform">
-                  {todaysStory.icon}
-                </div>
+                <h3 className="text-xl font-semibold mb-2 text-slate-900">Summary</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  AI-generated overview of the core facts and key points from all sources
+                </p>
               </div>
 
-              <div className="mt-6 flex items-center justify-between text-sm border-t border-slate-100 pt-4">
-                <div className="flex items-center gap-2 text-slate-400">
-                  <span className="flex -space-x-1">
-                    <div className="w-5 h-5 rounded-full bg-blue-200 ring-2 ring-white"></div>
-                    <div className="w-5 h-5 rounded-full bg-gray-300 ring-2 ring-white"></div>
-                    <div className="w-5 h-5 rounded-full bg-red-200 ring-2 ring-white"></div>
-                  </span>
-                  <span>Left, Center & Right perspectives</span>
+              {/* Feature 2: Intel Brief */}
+              <div className="bg-white border-2 border-slate-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
+                <div className="w-12 h-12 bg-[color:var(--primary)]/10 rounded-lg flex items-center justify-center mb-4">
+                  <AlertCircle className="w-6 h-6 text-[color:var(--primary)]" />
                 </div>
-                <span className="font-semibold text-blue-600 group-hover:underline flex items-center gap-1">
-                  See the breakdown →
-                </span>
+                <h3 className="text-xl font-semibold mb-2 text-slate-900">Intel Brief</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Critical divergence points where coverage differs significantly across outlets
+                </p>
               </div>
-            </button>
+
+              {/* Feature 3: Coverage Distribution */}
+              <div className="bg-white border-2 border-slate-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
+                <div className="w-12 h-12 bg-[color:var(--primary)]/10 rounded-lg flex items-center justify-center mb-4">
+                  <BarChart3 className="w-6 h-6 text-[color:var(--primary)]" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2 text-slate-900">Coverage Distribution</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Visual breakdown of source coverage across Left, Center, and Right perspectives
+                </p>
+              </div>
+
+              {/* Feature 4: Source Compare */}
+              <div className="bg-white border-2 border-slate-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
+                <div className="w-12 h-12 bg-[color:var(--primary)]/10 rounded-lg flex items-center justify-center mb-4">
+                  <Sparkles className="w-6 h-6 text-[color:var(--primary)]" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2 text-slate-900">Source Compare</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Side-by-side comparison showing how each outlet frames the narrative
+                </p>
+              </div>
+            </div>
           </div>
-        )}
+        </section>
+      )}
 
-        {/* Opaque URL detected - proactive headline prompt (no error) */}
-        {showKeywordFallback && !error && (
+      {/* Opaque URL detected - proactive headline prompt (no error) */}
+      {showKeywordFallback && !error && (
           <div className="mt-6 w-full max-w-2xl lg:max-w-3xl bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-200 rounded-xl p-6">
             <div className="text-center mb-4">
               {keywordFallbackType === 'share' ? (
@@ -1047,7 +1054,6 @@ function HomeContent() {
             )}
           </div>
         )}
-      </div>
 
       {/* Loading */}
       {loading && (

@@ -28,19 +28,19 @@ export default function UrlInputForm({
         
         <input
           type="url"
-          placeholder="Paste the article URL here..."
-          className="w-full pl-12 lg:pl-14 pr-4 py-4 lg:py-5 rounded-2xl border border-slate-200 shadow-sm focus:border-[#2563eb] focus:ring-2 focus:ring-blue-200 transition-all outline-none text-slate-700 placeholder:text-slate-400 text-base md:text-lg"
+          placeholder="Paste any news article URL..."
+          className="w-full pl-12 lg:pl-14 pr-4 py-3 lg:py-4 rounded-lg border border-slate-200 focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary)]/20 transition-all outline-none text-slate-700 placeholder:text-slate-400 text-base"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           required
         />
       </div>
 
-      {/* BUTTON MOVED BELOW */}
+      {/* BUTTON */}
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full mt-4 bg-[#2563eb] hover:bg-[#1d4ed8] text-white py-3.5 lg:py-4 rounded-xl font-medium text-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm hover:shadow-md active:scale-[0.99]"
+        className="w-full mt-4 bg-[color:var(--primary)] hover:opacity-90 text-white py-3 lg:py-3.5 rounded-lg font-medium text-base transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {isLoading ? (
           "Searching..."
