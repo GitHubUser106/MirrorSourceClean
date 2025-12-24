@@ -16,8 +16,8 @@ export interface SourceEntry {
 // THE SOURCE DATABASE - Single source of truth for all outlet metadata
 // =============================================================================
 export const SOURCE_DATABASE: Record<string, SourceEntry> = {
-  // WIRE SERVICES (Center)
-  'apnews.com': { name: 'AP News', lean: 'center', type: 'Wire' },
+  // WIRE SERVICES
+  'apnews.com': { name: 'AP News', lean: 'left', type: 'Wire' },  // AllSides Dec 2024: Left
   'reuters.com': { name: 'Reuters', lean: 'center', type: 'Wire' },
   'afp.com': { name: 'AFP', lean: 'center', type: 'Wire' },
 
@@ -44,22 +44,29 @@ export const SOURCE_DATABASE: Record<string, SourceEntry> = {
   'bostonglobe.com': { name: 'Boston Globe', lean: 'left', type: 'National' },
   'newyorker.com': { name: 'The New Yorker', lean: 'left', type: 'Magazine' },
 
-  // CENTER-LEFT
-  'politico.com': { name: 'Politico', lean: 'center-left', type: 'Analysis' },
+  // CENTER-LEFT (AllSides "Lean Left")
+  'politico.com': { name: 'Politico', lean: 'center-left', type: 'Analysis' },  // AllSides Dec 2024
   'nytimes.com': { name: 'New York Times', lean: 'center-left', type: 'National' },
   'washingtonpost.com': { name: 'Washington Post', lean: 'center-left', type: 'National' },
   'theatlantic.com': { name: 'The Atlantic', lean: 'center-left', type: 'Magazine' },
   'vox.com': { name: 'Vox', lean: 'center-left', type: 'Corporate' },
   'nbcnews.com': { name: 'NBC News', lean: 'center-left', type: 'Corporate' },
-  'abcnews.go.com': { name: 'ABC News', lean: 'center-left', type: 'Corporate' },
-  'cbsnews.com': { name: 'CBS News', lean: 'center-left', type: 'Corporate' },
+  'abcnews.go.com': { name: 'ABC News', lean: 'center-left', type: 'Corporate' },  // AllSides Dec 2024
+  'cbsnews.com': { name: 'CBS News', lean: 'center-left', type: 'Corporate' },  // AllSides Dec 2024
+  'usatoday.com': { name: 'USA Today', lean: 'center-left', type: 'National' },  // AllSides Dec 2024
+  'bloomberg.com': { name: 'Bloomberg', lean: 'center-left', type: 'Specialized' },  // AllSides Dec 2024
+  'time.com': { name: 'Time', lean: 'center-left', type: 'Magazine' },  // AllSides Dec 2024
+  'semafor.com': { name: 'Semafor', lean: 'center-left', type: 'Corporate' },
 
   // CENTER
-  'usatoday.com': { name: 'USA Today', lean: 'center', type: 'National' },
   'axios.com': { name: 'Axios', lean: 'center', type: 'National' },
   'thehill.com': { name: 'The Hill', lean: 'center', type: 'Analysis' },
   'foreignpolicy.com': { name: 'Foreign Policy', lean: 'center', type: 'Analysis' },
   'foreignaffairs.com': { name: 'Foreign Affairs', lean: 'center', type: 'Analysis' },
+  'straightarrownews.com': { name: 'Straight Arrow News', lean: 'center', type: 'Corporate' },
+  'reason.com': { name: 'Reason', lean: 'center', type: 'Nonprofit' },
+  '1440.com': { name: '1440 Newsletter', lean: 'center', type: 'Corporate' },
+  'readtangle.com': { name: 'Tangle', lean: 'center', type: 'Corporate' },
 
   // CENTER-RIGHT (AllSides "Lean Right")
   'wsj.com': { name: 'Wall Street Journal', lean: 'center-right', type: 'Specialized' },
@@ -68,11 +75,13 @@ export const SOURCE_DATABASE: Record<string, SourceEntry> = {
   'telegraph.co.uk': { name: 'The Telegraph', lean: 'center-right', type: 'International' },
   'economist.com': { name: 'The Economist', lean: 'center-right', type: 'Magazine' },
   'ft.com': { name: 'Financial Times', lean: 'center-right', type: 'Specialized' },
-  'bloomberg.com': { name: 'Bloomberg', lean: 'center-right', type: 'Specialized' },
   'cnbc.com': { name: 'CNBC', lean: 'center-right', type: 'Specialized' },
   'washingtontimes.com': { name: 'Washington Times', lean: 'center-right', type: 'Corporate' },
   'washingtonexaminer.com': { name: 'Washington Examiner', lean: 'center-right', type: 'Corporate' },
   'hotair.com': { name: 'Hot Air', lean: 'center-right', type: 'Corporate' },
+  'thefp.com': { name: 'The Free Press', lean: 'center-right', type: 'Corporate' },
+  'justthenews.com': { name: 'Just the News', lean: 'center-right', type: 'Corporate' },
+  'zerohedge.com': { name: 'ZeroHedge', lean: 'center-right', type: 'Corporate' },
 
   // RIGHT (AllSides/Ad Fontes verified)
   'foxnews.com': { name: 'Fox News', lean: 'right', type: 'Corporate' },
@@ -93,6 +102,7 @@ export const SOURCE_DATABASE: Record<string, SourceEntry> = {
   'oann.com': { name: 'OANN', lean: 'right', type: 'Corporate' },
   'epochtimes.com': { name: 'The Epoch Times', lean: 'right', type: 'Corporate' },
   'pjmedia.com': { name: 'PJ Media', lean: 'right', type: 'Corporate' },
+  'thepostmillennial.com': { name: 'The Post Millennial', lean: 'right', type: 'Corporate' },
 };
 
 // =============================================================================
