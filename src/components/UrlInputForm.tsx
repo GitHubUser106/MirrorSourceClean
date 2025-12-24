@@ -40,7 +40,7 @@ export default function UrlInputForm({
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full mt-4 bg-[#2563eb] hover:bg-[#1d4ed8] text-white py-3.5 lg:py-4 rounded-full font-medium text-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm hover:shadow-md active:scale-[0.99]"
+        className="w-full mt-4 bg-[#2563eb] hover:bg-[#1d4ed8] text-white py-3.5 lg:py-4 rounded-xl font-medium text-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm hover:shadow-md active:scale-[0.99]"
       >
         {isLoading ? (
           "Searching..."

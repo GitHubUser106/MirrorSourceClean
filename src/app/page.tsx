@@ -299,32 +299,32 @@ function CoverageDistributionChart({ results, lastSubmittedUrl }: { results: Gro
   );
 }
 
-// Find the most divergent trio: strictly 1 Left + 1 Right + 1 Center for max diversity
+// Select one source from each of the 5 political lean categories for full spectrum coverage
 // Uses shared getPoliticalLean for consistent categorization
-function getDivergentTrio(results: GroundingSource[]): string[] {
-  if (!results || results.length < 3) {
-    return results?.slice(0, 3).map(r => r.uri) || [];
+function getSpectrumSources(results: GroundingSource[]): string[] {
+  if (!results || results.length === 0) {
+    return [];
   }
 
   // Helper to get lean with fallback to shared source data
   const getLean = (r: GroundingSource): PoliticalLean =>
     (r.politicalLean?.toLowerCase() || getPoliticalLean(r.sourceDomain || r.uri)) as PoliticalLean;
 
-  // Separate into buckets using consistent lean values
-  const leftSources = results.filter(r => {
-    const lean = getLean(r);
-    return lean === 'left' || lean === 'center-left';
-  });
-  const centerSources = results.filter(r => {
-    const lean = getLean(r);
-    return lean === 'center';
-  });
-  const rightSources = results.filter(r => {
-    const lean = getLean(r);
-    return lean === 'right' || lean === 'center-right';
-  });
+  // Separate into 5 distinct buckets - one for each lean category
+  const buckets: Record<PoliticalLean, GroundingSource[]> = {
+    'left': [],
+    'center-left': [],
+    'center': [],
+    'center-right': [],
+    'right': [],
+  };
 
-  const trio: string[] = [];
+  for (const r of results) {
+    const lean = getLean(r);
+    buckets[lean].push(r);
+  }
+
+  const selected: string[] = [];
   const usedUris = new Set<string>();
 
   // Helper to pick first unused source from a bucket
@@ -338,47 +338,34 @@ function getDivergentTrio(results: GroundingSource[]): string[] {
     return null;
   };
 
-  // STRICT ORDER: Left first, then Right, then Center
-  // This maximizes the "clash" feeling in the preview
-  const leftPick = pickFrom(leftSources);
-  if (leftPick) trio.push(leftPick);
-
-  const rightPick = pickFrom(rightSources);
-  if (rightPick) trio.push(rightPick);
-
-  const centerPick = pickFrom(centerSources);
-  if (centerPick) trio.push(centerPick);
-
-  // Fill remaining slots from whatever's available (prefer center over doubling sides)
-  if (trio.length < 3) {
-    const fallbackOrder = [centerSources, leftSources, rightSources];
-    for (const bucket of fallbackOrder) {
-      const pick = pickFrom(bucket);
-      if (pick) {
-        trio.push(pick);
-        if (trio.length >= 3) break;
-      }
-    }
+  // Pick one from each category in spectrum order (Left → Right)
+  const leanOrder: PoliticalLean[] = ['left', 'center-left', 'center', 'center-right', 'right'];
+  for (const lean of leanOrder) {
+    const pick = pickFrom(buckets[lean]);
+    if (pick) selected.push(pick);
   }
 
-  // Final fallback: just take first 3 results
-  if (trio.length < 3) {
+  // If we don't have 5 yet, fill from any remaining sources
+  if (selected.length < 5) {
     for (const r of results) {
       if (!usedUris.has(r.uri)) {
-        trio.push(r.uri);
-        if (trio.length >= 3) break;
+        usedUris.add(r.uri);
+        selected.push(r.uri);
+        if (selected.length >= 5) break;
       }
     }
   }
 
-  console.log('[Divergent Trio]', {
-    left: leftSources.map(s => s.displayName),
-    center: centerSources.map(s => s.displayName),
-    right: rightSources.map(s => s.displayName),
-    selected: trio
+  console.log('[Spectrum Sources]', {
+    left: buckets['left'].map(s => s.displayName),
+    centerLeft: buckets['center-left'].map(s => s.displayName),
+    center: buckets['center'].map(s => s.displayName),
+    centerRight: buckets['center-right'].map(s => s.displayName),
+    right: buckets['right'].map(s => s.displayName),
+    selected
   });
 
-  return trio.slice(0, 3);
+  return selected.slice(0, 5);
 }
 
 function HomeContent() {
@@ -412,23 +399,23 @@ function HomeContent() {
   // Auto-select divergent trio (Left + Center + Right) when results load - only once per search
   useEffect(() => {
     if (results && results.length >= 3 && !hasAutoSelected.current) {
-      const autoSelected = getDivergentTrio(results);
+      const autoSelected = getSpectrumSources(results);
       setSelectedForCompare(autoSelected);
       hasAutoSelected.current = true;
     }
   }, [results]);
 
-  // Auto-fetch inline comparison when trio is selected
+  // Auto-fetch inline comparison when spectrum sources are selected
   useEffect(() => {
     async function fetchInlineComparison() {
-      if (selectedForCompare.length >= 3 && results.length > 0) {
+      if (selectedForCompare.length >= 2 && results.length > 0) {
         setLoadingComparison(true);
         setInlineComparison(null);
         try {
           // Get selected sources and sort by political lean (Left → Right)
           const selectedSources = results
             .filter(r => selectedForCompare.includes(r.uri))
-            .slice(0, 3)
+            .slice(0, 5)
             .sort((a, b) => {
               const leanA = (a.politicalLean?.toLowerCase() || getPoliticalLean(a.sourceDomain || '')) as string;
               const leanB = (b.politicalLean?.toLowerCase() || getPoliticalLean(b.sourceDomain || '')) as string;
@@ -888,7 +875,7 @@ function HomeContent() {
       {/* Header */}
       <div className={`transition-all duration-500 flex flex-col items-center px-4 ${isActive ? 'pt-8 pb-4' : 'justify-center min-h-[80vh]'}`}>
         <button onClick={handleLogoClick} className="mb-6 hover:opacity-90 transition-opacity cursor-pointer bg-transparent border-none p-0" type="button">
-          <Image src="/logo.png" alt="MirrorSource Logo" width={400} height={100} priority className="w-48 sm:w-64 md:w-80 lg:w-[420px] h-auto" />
+          <Image src="/logo.png" alt="MirrorSource Logo" width={300} height={75} priority className="w-48 sm:w-64 h-auto" />
         </button>
 
         <div className="text-center max-w-2xl space-y-4 mb-8">
@@ -1276,8 +1263,8 @@ function HomeContent() {
                   <p className="text-slate-500 text-sm">See how different sources cover the same story</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {inlineComparison.analyses.slice(0, 3).map((analysis: any, idx: number) => {
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                  {inlineComparison.analyses.slice(0, 5).map((analysis: any, idx: number) => {
                     // Use sorted source URLs from the comparison data
                     const sourceUrl = inlineComparison.sortedSourceUrls?.[idx] || selectedForCompare[idx];
                     const source = results.find(r => r.uri === sourceUrl);
@@ -1392,7 +1379,7 @@ function HomeContent() {
 
                     <button
                       onClick={() => {
-                        const headlines = inlineComparison.analyses.slice(0, 3).map((a: any, i: number) => {
+                        const headlines = inlineComparison.analyses.slice(0, 5).map((a: any, i: number) => {
                           const src = results.find(r => selectedForCompare[i] === r.uri);
                           return `${src?.displayName || 'Source'}: "${a.headline}"`;
                         }).join('\n');
@@ -1423,7 +1410,7 @@ function HomeContent() {
                         <span className="text-slate-300">|</span>
                         <button
                           onClick={() => {
-                            const headlines = inlineComparison.analyses.slice(0, 3).map((a: any, i: number) => {
+                            const headlines = inlineComparison.analyses.slice(0, 5).map((a: any, i: number) => {
                               const src = results.find(r => selectedForCompare[i] === r.uri);
                               return `${src?.displayName || 'Source'}: "${a.headline}"`;
                             }).join('\n');
@@ -1479,7 +1466,7 @@ function HomeContent() {
                           href={`/compare?sources=${encodeURIComponent(JSON.stringify(
                             results
                               .filter(r => selectedForCompare.includes(r.uri))
-                              .slice(0, 3)
+                              .slice(0, 5)
                               .map((r, i) => ({
                                 id: `source-${i}`,
                                 name: r.displayName || r.sourceDomain?.split('.')[0].toUpperCase() || 'Unknown',
