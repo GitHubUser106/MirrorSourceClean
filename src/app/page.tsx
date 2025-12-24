@@ -829,24 +829,32 @@ function HomeContent() {
         }
       `}} />
       
-      {/* Usage badge - rate limit only */}
-      {usage && (
-        <div className="hidden md:flex fixed top-4 right-4 z-50">
-          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-md text-sm">
-            <span className={`w-2 h-2 rounded-full ${usage.remaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></span>
-            <span className="font-medium text-slate-600">{usage.remaining}/{usage.limit} left</span>
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <button onClick={handleLogoClick} className="hover:opacity-80 transition-opacity cursor-pointer bg-transparent border-none p-0" type="button">
+              <Image src="/logo.png" alt="MirrorSource" width={160} height={40} priority className="h-9 w-auto" />
+            </button>
+            <div className="flex items-center gap-6">
+              <nav className="hidden md:flex items-center gap-6 text-sm">
+                <Link href="/about" className="text-slate-600 hover:text-blue-600 transition-colors">About</Link>
+                <Link href="/sources" className="text-slate-600 hover:text-blue-600 transition-colors">Sources</Link>
+              </nav>
+              {usage && (
+                <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 text-sm">
+                  <span className={`w-2 h-2 rounded-full ${usage.remaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                  <span className="font-medium text-slate-600">{usage.remaining}/{usage.limit} left</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      )}
+      </header>
 
       {/* Hero Section */}
       <section className={`transition-all duration-500 flex flex-col items-center px-4 ${isActive ? 'pt-8 pb-4' : 'pt-16 md:pt-24 pb-16 md:pb-20'}`}>
         <div className="max-w-4xl mx-auto text-center">
-          {/* Logo */}
-          <button onClick={handleLogoClick} className="mb-8 hover:opacity-90 transition-opacity cursor-pointer bg-transparent border-none p-0" type="button">
-            <Image src="/logo.png" alt="MirrorSource Logo" width={300} height={75} priority className="w-48 sm:w-64 h-auto" />
-          </button>
-
           {/* Headline */}
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 text-slate-900">
             See the whole story.
@@ -878,15 +886,6 @@ function HomeContent() {
             </p>
           )}
 
-          {/* Usage indicator */}
-          {usage && !hasContent && !loading && (
-            <div className="mt-6 flex justify-center">
-              <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-500">
-                <span className={`w-1.5 h-1.5 rounded-full ${usage.remaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                {usage.remaining}/{usage.limit} free searches remaining
-              </div>
-            </div>
-          )}
         </div>
       </section>
 
@@ -1170,9 +1169,6 @@ function HomeContent() {
                   </span>
                 </div>
 
-                {/* Coverage Distribution Chart - Animated */}
-                {results.length > 0 && <CoverageDistributionChart results={results} lastSubmittedUrl={lastSubmittedUrl} />}
-
                 <div className="grid md:grid-cols-2 gap-5">
                   {commonGround && (Array.isArray(commonGround) ? commonGround.length > 0 : commonGround) && (
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
@@ -1445,6 +1441,13 @@ function HomeContent() {
                   </div>
 
                 </div>
+              </div>
+            )}
+
+            {/* Coverage Distribution */}
+            {results.length > 0 && (
+              <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8 lg:p-10">
+                <CoverageDistributionChart results={results} lastSubmittedUrl={lastSubmittedUrl} />
               </div>
             )}
 
