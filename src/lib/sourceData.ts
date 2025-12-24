@@ -1,109 +1,119 @@
-/**
- * SINGLE SOURCE OF TRUTH for all news outlet metadata
- * Used by: Coverage Distribution, Compare Cards, Auto-Select, Sources Page
- */
+// MirrorSource Source Database
+// Political lean ratings verified against AllSides Media Bias Ratings (December 2024)
+// Ownership types: nonprofit, public, family, billionaire, corporate, government, cooperative
 
 export type PoliticalLean = 'left' | 'center-left' | 'center' | 'center-right' | 'right';
-export type SourceType = 'Wire' | 'Public-Trust' | 'State-Funded' | 'Nonprofit' | 'Corporate' | 'National' | 'International' | 'Magazine' | 'Analysis' | 'Specialized' | 'Local';
+export type OwnershipType = 'nonprofit' | 'public' | 'family' | 'billionaire' | 'corporate' | 'government' | 'cooperative';
 
-export interface SourceEntry {
+export interface Source {
+  domain: string;
   name: string;
   lean: PoliticalLean;
-  type: SourceType;
+  type: OwnershipType;
 }
 
-// =============================================================================
-// THE SOURCE DATABASE - Single source of truth for all outlet metadata
-// =============================================================================
-export const SOURCE_DATABASE: Record<string, SourceEntry> = {
-  // WIRE SERVICES
-  'apnews.com': { name: 'AP News', lean: 'left', type: 'Wire' },  // AllSides Dec 2024: Left
-  'reuters.com': { name: 'Reuters', lean: 'center', type: 'Wire' },
-  'afp.com': { name: 'AFP', lean: 'center', type: 'Wire' },
+export const SOURCES: Source[] = [
+  // ============================================
+  // LEFT - AllSides "Left" rating
+  // ============================================
+  { domain: 'msnbc.com', name: 'MSNBC', lean: 'left', type: 'public' },           // Warner Bros Discovery (spinning off)
+  { domain: 'vox.com', name: 'Vox', lean: 'left', type: 'corporate' },            // Vox Media
+  { domain: 'huffpost.com', name: 'HuffPost', lean: 'left', type: 'corporate' },  // BuzzFeed Inc
+  { domain: 'motherjones.com', name: 'Mother Jones', lean: 'left', type: 'nonprofit' },
+  { domain: 'thenation.com', name: 'The Nation', lean: 'left', type: 'nonprofit' },
+  { domain: 'jacobin.com', name: 'Jacobin', lean: 'left', type: 'corporate' },
+  { domain: 'dailykos.com', name: 'Daily Kos', lean: 'left', type: 'corporate' },
+  { domain: 'commondreams.org', name: 'Common Dreams', lean: 'left', type: 'nonprofit' },
+  { domain: 'democracynow.org', name: 'Democracy Now!', lean: 'left', type: 'nonprofit' },
+  { domain: 'theintercept.com', name: 'The Intercept', lean: 'left', type: 'nonprofit' }, // First Look Media (Omidyar)
+  { domain: 'slate.com', name: 'Slate', lean: 'left', type: 'corporate' },        // Graham Holdings
+  { domain: 'salon.com', name: 'Salon', lean: 'left', type: 'corporate' },
+  { domain: 'thedailybeast.com', name: 'The Daily Beast', lean: 'left', type: 'billionaire' }, // Barry Diller/IAC
+  { domain: 'theatlantic.com', name: 'The Atlantic', lean: 'left', type: 'billionaire' },  // Laurene Powell Jobs
+  { domain: 'newyorker.com', name: 'The New Yorker', lean: 'left', type: 'family' },      // Condé Nast/Newhouse
+  { domain: 'apnews.com', name: 'Associated Press', lean: 'left', type: 'cooperative' },  // Member cooperative - UPDATED per AllSides
 
-  // PUBLIC BROADCASTING (Center to Center-Left)
-  'npr.org': { name: 'NPR', lean: 'center-left', type: 'Public-Trust' },
-  'pbs.org': { name: 'PBS', lean: 'center', type: 'Public-Trust' },
-  'bbc.com': { name: 'BBC', lean: 'center', type: 'Public-Trust' },
-  'bbc.co.uk': { name: 'BBC', lean: 'center', type: 'Public-Trust' },
-  'abc.net.au': { name: 'ABC Australia', lean: 'center', type: 'Public-Trust' },
-  'cbc.ca': { name: 'CBC', lean: 'center', type: 'Public-Trust' },
+  // ============================================
+  // CENTER-LEFT - AllSides "Lean Left" rating
+  // ============================================
+  { domain: 'nytimes.com', name: 'The New York Times', lean: 'center-left', type: 'family' },  // Sulzberger family control
+  { domain: 'washingtonpost.com', name: 'The Washington Post', lean: 'center-left', type: 'billionaire' }, // Jeff Bezos
+  { domain: 'cnn.com', name: 'CNN', lean: 'center-left', type: 'public' },        // Warner Bros Discovery
+  { domain: 'npr.org', name: 'NPR', lean: 'center-left', type: 'nonprofit' },     // UPDATED per AllSides
+  { domain: 'pbs.org', name: 'PBS', lean: 'center-left', type: 'nonprofit' },
+  { domain: 'nbcnews.com', name: 'NBC News', lean: 'center-left', type: 'public' },  // Comcast
+  { domain: 'abcnews.go.com', name: 'ABC News', lean: 'center-left', type: 'public' }, // Disney - UPDATED per AllSides
+  { domain: 'cbsnews.com', name: 'CBS News', lean: 'center-left', type: 'public' },   // Paramount - UPDATED per AllSides
+  { domain: 'politico.com', name: 'Politico', lean: 'center-left', type: 'corporate' }, // Axel Springer - UPDATED per AllSides
+  { domain: 'bloomberg.com', name: 'Bloomberg', lean: 'center-left', type: 'billionaire' }, // Michael Bloomberg - UPDATED per AllSides
+  { domain: 'usatoday.com', name: 'USA Today', lean: 'center-left', type: 'public' },   // Gannett - UPDATED per AllSides
+  { domain: 'time.com', name: 'Time', lean: 'center-left', type: 'billionaire' },       // Marc Benioff - UPDATED per AllSides
+  { domain: 'propublica.org', name: 'ProPublica', lean: 'center-left', type: 'nonprofit' },
+  { domain: 'theguardian.com', name: 'The Guardian', lean: 'center-left', type: 'nonprofit' }, // Scott Trust
+  { domain: 'latimes.com', name: 'Los Angeles Times', lean: 'center-left', type: 'billionaire' }, // Patrick Soon-Shiong
+  { domain: 'axios.com', name: 'Axios', lean: 'center-left', type: 'corporate' },   // Cox Enterprises
+  { domain: 'semafor.com', name: 'Semafor', lean: 'center-left', type: 'corporate' }, // NEW per AllSides
+  { domain: 'buzzfeednews.com', name: 'BuzzFeed News', lean: 'center-left', type: 'public' },
 
-  // STATE-FUNDED
-  'aljazeera.com': { name: 'Al Jazeera', lean: 'center', type: 'State-Funded' },
+  // ============================================
+  // CENTER - AllSides "Center" rating
+  // ============================================
+  { domain: 'reuters.com', name: 'Reuters', lean: 'center', type: 'public' },     // Thomson Reuters
+  { domain: 'bbc.com', name: 'BBC', lean: 'center', type: 'government' },         // UK public broadcaster
+  { domain: 'bbc.co.uk', name: 'BBC', lean: 'center', type: 'government' },
+  { domain: 'thehill.com', name: 'The Hill', lean: 'center', type: 'corporate' }, // Nexstar Media
+  { domain: 'wsj.com', name: 'Wall Street Journal', lean: 'center', type: 'family' }, // News Corp/Murdoch (News section)
+  { domain: 'cnbc.com', name: 'CNBC', lean: 'center', type: 'public' },           // Comcast
+  { domain: 'newsweek.com', name: 'Newsweek', lean: 'center', type: 'corporate' },
+  { domain: 'csmonitor.com', name: 'Christian Science Monitor', lean: 'center', type: 'nonprofit' },
+  { domain: 'straightarrownews.com', name: 'Straight Arrow News', lean: 'center', type: 'corporate' }, // NEW - AllSides Certified Balanced
+  { domain: 'reason.com', name: 'Reason', lean: 'center', type: 'nonprofit' },    // Reason Foundation - UPDATED per AllSides (was Lean Right)
+  { domain: '1440.com', name: '1440 Newsletter', lean: 'center', type: 'corporate' }, // NEW per AllSides
+  { domain: 'readtangle.com', name: 'Tangle', lean: 'center', type: 'corporate' },    // NEW per AllSides
+  { domain: 'allsides.com', name: 'AllSides', lean: 'center', type: 'corporate' },
 
-  // LEFT
-  'cnn.com': { name: 'CNN', lean: 'left', type: 'Corporate' },
-  'msnbc.com': { name: 'MSNBC', lean: 'left', type: 'Corporate' },
-  'theguardian.com': { name: 'The Guardian', lean: 'left', type: 'International' },
-  'propublica.org': { name: 'ProPublica', lean: 'left', type: 'Nonprofit' },
-  'theintercept.com': { name: 'The Intercept', lean: 'left', type: 'Nonprofit' },
-  'motherjones.com': { name: 'Mother Jones', lean: 'left', type: 'Nonprofit' },
-  'newrepublic.com': { name: 'The New Republic', lean: 'left', type: 'Magazine' },
-  'jacobin.com': { name: 'Jacobin', lean: 'left', type: 'Magazine' },
-  'bostonglobe.com': { name: 'Boston Globe', lean: 'left', type: 'National' },
-  'newyorker.com': { name: 'The New Yorker', lean: 'left', type: 'Magazine' },
+  // ============================================
+  // CENTER-RIGHT - AllSides "Lean Right" rating
+  // ============================================
+  { domain: 'washingtontimes.com', name: 'Washington Times', lean: 'center-right', type: 'corporate' }, // Operations Holdings
+  { domain: 'washingtonexaminer.com', name: 'Washington Examiner', lean: 'center-right', type: 'billionaire' }, // Philip Anschutz
+  { domain: 'nypost.com', name: 'New York Post', lean: 'center-right', type: 'family' },   // News Corp/Murdoch
+  { domain: 'nationalreview.com', name: 'National Review', lean: 'center-right', type: 'nonprofit' }, // News section
+  { domain: 'hotair.com', name: 'Hot Air', lean: 'center-right', type: 'corporate' },      // Salem Media
+  { domain: 'freebeacon.com', name: 'Washington Free Beacon', lean: 'center-right', type: 'nonprofit' },
+  { domain: 'thefp.com', name: 'The Free Press', lean: 'center-right', type: 'corporate' }, // Bari Weiss - NEW per AllSides
+  { domain: 'justthenews.com', name: 'Just the News', lean: 'center-right', type: 'corporate' }, // NEW per AllSides
+  { domain: 'zerohedge.com', name: 'ZeroHedge', lean: 'center-right', type: 'corporate' }, // NEW per AllSides
+  { domain: 'city-journal.org', name: 'City Journal', lean: 'center-right', type: 'nonprofit' }, // Manhattan Institute
 
-  // CENTER-LEFT (AllSides "Lean Left")
-  'politico.com': { name: 'Politico', lean: 'center-left', type: 'Analysis' },  // AllSides Dec 2024
-  'nytimes.com': { name: 'New York Times', lean: 'center-left', type: 'National' },
-  'washingtonpost.com': { name: 'Washington Post', lean: 'center-left', type: 'National' },
-  'theatlantic.com': { name: 'The Atlantic', lean: 'center-left', type: 'Magazine' },
-  'vox.com': { name: 'Vox', lean: 'center-left', type: 'Corporate' },
-  'nbcnews.com': { name: 'NBC News', lean: 'center-left', type: 'Corporate' },
-  'abcnews.go.com': { name: 'ABC News', lean: 'center-left', type: 'Corporate' },  // AllSides Dec 2024
-  'cbsnews.com': { name: 'CBS News', lean: 'center-left', type: 'Corporate' },  // AllSides Dec 2024
-  'usatoday.com': { name: 'USA Today', lean: 'center-left', type: 'National' },  // AllSides Dec 2024
-  'bloomberg.com': { name: 'Bloomberg', lean: 'center-left', type: 'Specialized' },  // AllSides Dec 2024
-  'time.com': { name: 'Time', lean: 'center-left', type: 'Magazine' },  // AllSides Dec 2024
-  'semafor.com': { name: 'Semafor', lean: 'center-left', type: 'Corporate' },
+  // ============================================
+  // RIGHT - AllSides "Right" rating
+  // ============================================
+  { domain: 'foxnews.com', name: 'Fox News', lean: 'right', type: 'family' },     // Fox Corp/Murdoch
+  { domain: 'breitbart.com', name: 'Breitbart', lean: 'right', type: 'corporate' },
+  { domain: 'dailywire.com', name: 'Daily Wire', lean: 'right', type: 'corporate' },   // Jeremy Boreing, Ben Shapiro
+  { domain: 'newsmax.com', name: 'Newsmax', lean: 'right', type: 'corporate' },
+  { domain: 'oann.com', name: 'OANN', lean: 'right', type: 'family' },            // Herring Networks
+  { domain: 'thefederalist.com', name: 'The Federalist', lean: 'right', type: 'corporate' }, // FDRLST Media
+  { domain: 'dailycaller.com', name: 'Daily Caller', lean: 'right', type: 'corporate' },
+  { domain: 'townhall.com', name: 'Townhall', lean: 'right', type: 'corporate' }, // Salem Media
+  { domain: 'redstate.com', name: 'RedState', lean: 'right', type: 'corporate' }, // Salem Media
+  { domain: 'theblaze.com', name: 'The Blaze', lean: 'right', type: 'corporate' }, // Blaze Media
+  { domain: 'epochtimes.com', name: 'The Epoch Times', lean: 'right', type: 'nonprofit' }, // Epoch Media Group
+  { domain: 'thenewamerican.com', name: 'The New American', lean: 'right', type: 'nonprofit' }, // John Birch Society
+  { domain: 'thepostmillennial.com', name: 'The Post Millennial', lean: 'right', type: 'corporate' }, // NEW per AllSides
 
-  // CENTER
-  'axios.com': { name: 'Axios', lean: 'center', type: 'National' },
-  'thehill.com': { name: 'The Hill', lean: 'center', type: 'Analysis' },
-  'foreignpolicy.com': { name: 'Foreign Policy', lean: 'center', type: 'Analysis' },
-  'foreignaffairs.com': { name: 'Foreign Affairs', lean: 'center', type: 'Analysis' },
-  'straightarrownews.com': { name: 'Straight Arrow News', lean: 'center', type: 'Corporate' },
-  'reason.com': { name: 'Reason', lean: 'center', type: 'Nonprofit' },
-  '1440.com': { name: '1440 Newsletter', lean: 'center', type: 'Corporate' },
-  'readtangle.com': { name: 'Tangle', lean: 'center', type: 'Corporate' },
+  // ============================================
+  // WIRE SERVICES & INTERNATIONAL
+  // ============================================
+  { domain: 'afp.com', name: 'AFP', lean: 'center', type: 'government' },         // French news agency
 
-  // CENTER-RIGHT (AllSides "Lean Right")
-  'wsj.com': { name: 'Wall Street Journal', lean: 'center-right', type: 'Specialized' },
-  'thedispatch.com': { name: 'The Dispatch', lean: 'center-right', type: 'Magazine' },
-  'thebulwark.com': { name: 'The Bulwark', lean: 'center-right', type: 'Magazine' },
-  'telegraph.co.uk': { name: 'The Telegraph', lean: 'center-right', type: 'International' },
-  'economist.com': { name: 'The Economist', lean: 'center-right', type: 'Magazine' },
-  'ft.com': { name: 'Financial Times', lean: 'center-right', type: 'Specialized' },
-  'cnbc.com': { name: 'CNBC', lean: 'center-right', type: 'Specialized' },
-  'washingtontimes.com': { name: 'Washington Times', lean: 'center-right', type: 'Corporate' },
-  'washingtonexaminer.com': { name: 'Washington Examiner', lean: 'center-right', type: 'Corporate' },
-  'hotair.com': { name: 'Hot Air', lean: 'center-right', type: 'Corporate' },
-  'thefp.com': { name: 'The Free Press', lean: 'center-right', type: 'Corporate' },
-  'justthenews.com': { name: 'Just the News', lean: 'center-right', type: 'Corporate' },
-  'zerohedge.com': { name: 'ZeroHedge', lean: 'center-right', type: 'Corporate' },
-
-  // RIGHT (AllSides/Ad Fontes verified)
-  'foxnews.com': { name: 'Fox News', lean: 'right', type: 'Corporate' },
-  'nypost.com': { name: 'New York Post', lean: 'right', type: 'National' },
-  'dailywire.com': { name: 'Daily Wire', lean: 'right', type: 'Corporate' },
-  'newsmax.com': { name: 'Newsmax', lean: 'right', type: 'Corporate' },
-  'breitbart.com': { name: 'Breitbart', lean: 'right', type: 'Corporate' },
-  'nationalreview.com': { name: 'National Review', lean: 'right', type: 'Magazine' },
-  'dailycaller.com': { name: 'Daily Caller', lean: 'right', type: 'Corporate' },
-  'theblaze.com': { name: 'The Blaze', lean: 'right', type: 'Corporate' },
-  'freebeacon.com': { name: 'Washington Free Beacon', lean: 'right', type: 'Nonprofit' },
-  'townhall.com': { name: 'Townhall', lean: 'right', type: 'Corporate' },
-  'redstate.com': { name: 'RedState', lean: 'right', type: 'Corporate' },
-  'thefederalist.com': { name: 'The Federalist', lean: 'right', type: 'Corporate' },
-  'spectator.org': { name: 'American Spectator', lean: 'right', type: 'Magazine' },
-  'thenewamerican.com': { name: 'The New American', lean: 'right', type: 'Magazine' },
-  'city-journal.org': { name: 'City Journal', lean: 'right', type: 'Magazine' },
-  'oann.com': { name: 'OANN', lean: 'right', type: 'Corporate' },
-  'epochtimes.com': { name: 'The Epoch Times', lean: 'right', type: 'Corporate' },
-  'pjmedia.com': { name: 'PJ Media', lean: 'right', type: 'Corporate' },
-  'thepostmillennial.com': { name: 'The Post Millennial', lean: 'right', type: 'Corporate' },
-};
+  // ============================================
+  // STATE-FUNDED (for transparency)
+  // ============================================
+  { domain: 'rt.com', name: 'RT', lean: 'right', type: 'government' },            // Russian state media
+  { domain: 'aljazeera.com', name: 'Al Jazeera', lean: 'center-left', type: 'government' }, // Qatar
+];
 
 // =============================================================================
 // HELPER FUNCTIONS
@@ -117,13 +127,14 @@ function normalizeDomain(domain: string): string {
     .toLowerCase()
     .replace(/^www\./, '')
     .replace(/^m\./, '')
-    .replace(/^amp\./, '');
+    .replace(/^amp\./, '')
+    .replace(/\/$/, '');
 }
 
 /**
- * Get source entry from URL or domain
+ * Get source info from URL or domain
  */
-export function getSourceFromUrl(urlOrDomain: string): SourceEntry | null {
+export function getSourceInfo(urlOrDomain: string): Source | undefined {
   let domain: string;
 
   try {
@@ -140,30 +151,23 @@ export function getSourceFromUrl(urlOrDomain: string): SourceEntry | null {
   const normalized = normalizeDomain(domain);
 
   // Exact match
-  if (SOURCE_DATABASE[normalized]) {
-    return SOURCE_DATABASE[normalized];
-  }
+  const exactMatch = SOURCES.find(s => s.domain === normalized);
+  if (exactMatch) return exactMatch;
 
   // Handle special subdomains (e.g., abcnews.go.com)
   if (normalized.includes('abcnews')) {
-    return SOURCE_DATABASE['abcnews.go.com'];
+    return SOURCES.find(s => s.domain === 'abcnews.go.com');
   }
 
   // Partial match for major domains
-  for (const [key, entry] of Object.entries(SOURCE_DATABASE)) {
-    if (normalized.includes(key) || key.includes(normalized)) {
-      return entry;
-    }
-  }
-
-  return null;
+  return SOURCES.find(s => normalized.includes(s.domain) || s.domain.includes(normalized));
 }
 
 /**
  * Get political lean for a domain (defaults to 'center' if unknown)
  */
 export function getPoliticalLean(urlOrDomain: string): PoliticalLean {
-  const source = getSourceFromUrl(urlOrDomain);
+  const source = getSourceInfo(urlOrDomain);
   return source?.lean ?? 'center';
 }
 
@@ -171,16 +175,32 @@ export function getPoliticalLean(urlOrDomain: string): PoliticalLean {
  * Get display name for a domain
  */
 export function getSourceName(urlOrDomain: string): string | null {
-  const source = getSourceFromUrl(urlOrDomain);
+  const source = getSourceInfo(urlOrDomain);
   return source?.name ?? null;
 }
 
 /**
- * Get source type for a domain
+ * Get ownership type for a domain
  */
-export function getSourceType(urlOrDomain: string): SourceType | null {
-  const source = getSourceFromUrl(urlOrDomain);
+export function getOwnershipType(urlOrDomain: string): OwnershipType | null {
+  const source = getSourceInfo(urlOrDomain);
   return source?.type ?? null;
+}
+
+/**
+ * Get ownership type label for display
+ */
+export function getOwnershipLabel(type: OwnershipType): string {
+  const labels: Record<OwnershipType, string> = {
+    nonprofit: 'Nonprofit',
+    public: 'Public Company',
+    family: 'Family-Controlled',
+    billionaire: 'Billionaire-Owned',
+    corporate: 'Corporate',
+    government: 'State-Funded',
+    cooperative: 'Member Cooperative',
+  };
+  return labels[type];
 }
 
 // =============================================================================
@@ -207,8 +227,8 @@ export const LEAN_LABELS: Record<PoliticalLean, string> = {
 // GROUPED DATA - For Sources page display
 // =============================================================================
 
-export function getSourcesByLean(): Record<PoliticalLean, Array<{ name: string; domain: string; type: SourceType }>> {
-  const grouped: Record<PoliticalLean, Array<{ name: string; domain: string; type: SourceType }>> = {
+export function getSourcesByLean(): Record<PoliticalLean, Array<{ name: string; domain: string; type: OwnershipType }>> {
+  const grouped: Record<PoliticalLean, Array<{ name: string; domain: string; type: OwnershipType }>> = {
     'left': [],
     'center-left': [],
     'center': [],
@@ -216,13 +236,29 @@ export function getSourcesByLean(): Record<PoliticalLean, Array<{ name: string; 
     'right': [],
   };
 
-  for (const [domain, entry] of Object.entries(SOURCE_DATABASE)) {
-    grouped[entry.lean].push({
-      name: entry.name,
-      domain,
-      type: entry.type,
+  for (const source of SOURCES) {
+    grouped[source.lean].push({
+      name: source.name,
+      domain: source.domain,
+      type: source.type,
     });
   }
 
   return grouped;
 }
+
+// =============================================================================
+// DOMAIN LISTS - For Gap Fill targeting
+// =============================================================================
+
+export const RIGHT_LEANING_DOMAINS = SOURCES
+  .filter(s => s.lean === 'right' || s.lean === 'center-right')
+  .map(s => s.domain);
+
+export const LEFT_LEANING_DOMAINS = SOURCES
+  .filter(s => s.lean === 'left' || s.lean === 'center-left')
+  .map(s => s.domain);
+
+export const CENTER_DOMAINS = SOURCES
+  .filter(s => s.lean === 'center')
+  .map(s => s.domain);
