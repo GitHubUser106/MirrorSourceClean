@@ -2203,9 +2203,11 @@ function detectQueryBias(query: string): string | null {
 
 // Analyze political diversity of results
 // gapFillInfo: tells us if we already tried to find underrepresented sources
+// inputUrl: the user's input URL (if provided) - included in coverage calculation
 function analyzePoliticalDiversity(
   results: ProcessedSource[],
-  gapFillInfo?: { attempted: { right: boolean; left: boolean }; found: { right: number; left: number } }
+  gapFillInfo?: { attempted: { right: boolean; left: boolean }; found: { right: number; left: number } },
+  inputUrl?: string
 ): {
   isBalanced: boolean;
   leftCount: number;
@@ -2219,6 +2221,16 @@ function analyzePoliticalDiversity(
 
   console.log(`[Diversity] Analyzing ${results.length} sources...`);
 
+  // Include the INPUT source in the count (the URL the user pasted)
+  let inputLean: PoliticalLean | undefined;
+  if (inputUrl) {
+    inputLean = getPoliticalLean(inputUrl);
+    console.log(`[Diversity] Input source: ${inputUrl} -> lean: ${inputLean}`);
+    if (inputLean === 'left' || inputLean === 'center-left') leftCount++;
+    else if (inputLean === 'right' || inputLean === 'center-right') rightCount++;
+    else centerCount++;
+  }
+
   for (const result of results) {
     const domain = result.sourceDomain || '';
     const info = getSourceInfo(domain);
@@ -2231,13 +2243,14 @@ function analyzePoliticalDiversity(
     else centerCount++;
   }
 
-  const total = results.length;
+  // Total includes input source if provided
+  const total = results.length + (inputUrl ? 1 : 0);
   if (total === 0) return { isBalanced: true, leftCount: 0, centerCount: 0, rightCount: 0, warning: null };
 
   const leftPct = leftCount / total;
   const rightPct = rightCount / total;
 
-  console.log(`[Diversity] Counts - Left: ${leftCount} (${(leftPct * 100).toFixed(0)}%), Center: ${centerCount}, Right: ${rightCount} (${(rightPct * 100).toFixed(0)}%)`);
+  console.log(`[Diversity] Counts - Left: ${leftCount} (${(leftPct * 100).toFixed(0)}%), Center: ${centerCount}, Right: ${rightCount} (${(rightPct * 100).toFixed(0)}%)${inputUrl ? ' (includes input source)' : ''}`);
 
   // Check for imbalance (more than 60% from one side)
   let warning: string | null = null;
@@ -2641,10 +2654,12 @@ export async function POST(req: NextRequest) {
     const alternatives = processSearchResults(diverseResults);
 
     // 8. Analyze political diversity + query bias (pass gap fill info for accurate warnings)
+    // Include input URL in diversity analysis so warnings account for the user's source
+    const inputUrl = hasUrl ? body.url.trim() : undefined;
     const diversityAnalysis = analyzePoliticalDiversity(alternatives, {
       attempted: gapFillAttempted,
       found: gapFillFound,
-    });
+    }, inputUrl);
     const queryBiasWarning = detectQueryBias(searchQuery);
     console.log(`[Diversity] Left: ${diversityAnalysis.leftCount}, Center: ${diversityAnalysis.centerCount}, Right: ${diversityAnalysis.rightCount}, Balanced: ${diversityAnalysis.isBalanced}`);
     if (queryBiasWarning) console.log(`[QueryBias] Warning: ${queryBiasWarning}`);

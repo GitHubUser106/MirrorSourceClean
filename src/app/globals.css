@@ -37,3 +37,15 @@ main {
 .animate-skeleton {
   animation: skeleton 1.5s ease-in-out infinite;
 }
+
+/* Coverage Distribution bar grow animation */
+@keyframes grow {
+  0% {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  100% {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}

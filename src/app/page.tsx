@@ -6,7 +6,6 @@ import Image from "next/image";
 import Link from "next/link";
 import UrlInputForm from "@/components/UrlInputForm";
 import ResultsDisplay from "@/components/ResultsDisplay";
-import TransparencyCard from "@/components/TransparencyCard";
 import type { GroundingSource } from "@/types";
 import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, ArrowRight } from "lucide-react";
 import { getPoliticalLean, LEAN_COLORS, LEAN_LABELS, type PoliticalLean } from "@/lib/sourceData";
@@ -87,10 +86,6 @@ function getHighResFavicon(domain: string): string {
   return `https://www.google.com/s2/favicons?domain=${domain.replace(/^www\./, '')}&sz=128`;
 }
 
-function getFaviconUrl(domain: string): string {
-  return `https://www.google.com/s2/favicons?domain=${domain.replace(/^www\./, '')}&sz=64`;
-}
-
 // Divergence level indicator for Intel Brief
 function getDivergenceLevel(keyDifferences: KeyDifference[] | string | null): { level: string; color: string; bg: string; icon: string; description: string } {
   if (Array.isArray(keyDifferences)) {
@@ -166,6 +161,124 @@ function getCoverageDistribution(results: GroundingSource[], inputUrl?: string):
 
   const total = (inputUrl ? 1 : 0) + (results?.length || 0);
   return { left, centerLeft, center, centerRight, right, total, inputLean };
+}
+
+// Animated bar component for Coverage Distribution
+function AnimatedBar({ targetWidth, color, delay }: { targetWidth: number; color: string; delay: number }) {
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setWidth(targetWidth);
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [targetWidth, delay]);
+
+  return (
+    <div
+      className={`${color} h-3 rounded-full transition-all duration-700 ease-out`}
+      style={{ width: `${width}%` }}
+    />
+  );
+}
+
+// Coverage Distribution Chart with animated bars
+function CoverageDistributionChart({ results, lastSubmittedUrl }: { results: GroundingSource[]; lastSubmittedUrl: string }) {
+  const dist = getCoverageDistribution(results, lastSubmittedUrl);
+  const inputSourceName = (() => {
+    try {
+      const hostname = new URL(lastSubmittedUrl).hostname.replace('www.', '');
+      return hostname.split('.')[0].charAt(0).toUpperCase() + hostname.split('.')[0].slice(1);
+    } catch {
+      return null;
+    }
+  })();
+
+  // Calculate percentages with minimum width for visibility
+  const getBarWidth = (count: number) => Math.max((count / Math.max(dist.total, 1)) * 100, count > 0 ? 8 : 0);
+
+  return (
+    <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+      <div className="flex items-center gap-2 mb-3">
+        <svg className="w-4 h-4 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 20V10" /><path d="M12 20V4" /><path d="M6 20v-6" />
+        </svg>
+        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Coverage Distribution</h3>
+      </div>
+
+      <div className="space-y-2">
+        {/* Input source indicator */}
+        {inputSourceName && dist.inputLean && (
+          <p className="text-sm text-gray-500 mb-3 flex items-center gap-2 flex-wrap">
+            <span>📍 Your article:</span>
+            <span className="font-medium text-slate-700">{inputSourceName}</span>
+            <span className={`text-xs px-1.5 py-0.5 rounded ${LEAN_COLORS[dist.inputLean].bg} ${LEAN_COLORS[dist.inputLean].text}`}>
+              {LEAN_LABELS[dist.inputLean]}
+            </span>
+          </p>
+        )}
+
+        {/* Left - Dark Blue */}
+        <div className="flex items-center gap-3">
+          <span className="w-24 text-sm text-gray-600">Left</span>
+          <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
+            <AnimatedBar targetWidth={getBarWidth(dist.left)} color="bg-blue-600" delay={0} />
+          </div>
+          <span className="w-6 text-sm text-gray-500 text-right">{dist.left}</span>
+        </div>
+
+        {/* Center-Left - Cyan */}
+        <div className="flex items-center gap-3">
+          <span className="w-24 text-sm text-gray-600">Center-Left</span>
+          <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
+            <AnimatedBar targetWidth={getBarWidth(dist.centerLeft)} color="bg-cyan-500" delay={100} />
+          </div>
+          <span className="w-6 text-sm text-gray-500 text-right">{dist.centerLeft}</span>
+        </div>
+
+        {/* Center - Purple */}
+        <div className="flex items-center gap-3">
+          <span className="w-24 text-sm text-gray-600">Center</span>
+          <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
+            <AnimatedBar targetWidth={getBarWidth(dist.center)} color="bg-purple-500" delay={200} />
+          </div>
+          <span className="w-6 text-sm text-gray-500 text-right">{dist.center}</span>
+        </div>
+
+        {/* Center-Right - Orange */}
+        <div className="flex items-center gap-3">
+          <span className="w-24 text-sm text-gray-600">Center-Right</span>
+          <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
+            <AnimatedBar targetWidth={getBarWidth(dist.centerRight)} color="bg-orange-500" delay={300} />
+          </div>
+          <span className="w-6 text-sm text-gray-500 text-right">{dist.centerRight}</span>
+        </div>
+
+        {/* Right - Red */}
+        <div className="flex items-center gap-3">
+          <span className="w-24 text-sm text-gray-600">Right</span>
+          <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
+            <AnimatedBar targetWidth={getBarWidth(dist.right)} color="bg-red-600" delay={400} />
+          </div>
+          <span className="w-6 text-sm text-gray-500 text-right">{dist.right}</span>
+        </div>
+
+        {/* Gap warnings */}
+        {(dist.left + dist.centerLeft === 0) && dist.total > 0 && (
+          <p className="mt-3 text-sm text-orange-600 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" />
+            Coverage gap: no left-leaning sources found
+          </p>
+        )}
+        {(dist.right + dist.centerRight === 0) && dist.total > 0 && (
+          <p className="mt-3 text-sm text-orange-600 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" />
+            Coverage gap: no right-leaning sources found
+          </p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // Find the most divergent trio: strictly 1 Left + 1 Right + 1 Center for max diversity
@@ -265,12 +378,11 @@ function HomeContent() {
   const [usage, setUsage] = useState<Usage | null>(null);
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
-  const [hasAutoSearched, setHasAutoSearched] = useState(false);
+  const hasAutoSearchedRef = useRef(false);
   const [loadingFactIndex, setLoadingFactIndex] = useState(0);
   const [scannerIconIndex, setScannerIconIndex] = useState(0);
   const [currentUrl, setCurrentUrl] = useState("");
   const [lastSubmittedUrl, setLastSubmittedUrl] = useState("");
-  const [visibleIcons, setVisibleIcons] = useState(0);
   const [showKeywordFallback, setShowKeywordFallback] = useState(false);
   const [keywordFallbackType, setKeywordFallbackType] = useState<'share' | 'premium' | null>(null);
   const [keywords, setKeywords] = useState("");
@@ -369,20 +481,6 @@ function HomeContent() {
     }
   }, [loading]);
 
-  // Staggered icon reveal
-  useEffect(() => {
-    if (!loading && results.length > 0) {
-      setVisibleIcons(0);
-      const timer = setInterval(() => {
-        setVisibleIcons((prev) => {
-          if (prev >= results.length) { clearInterval(timer); return prev; }
-          return prev + 1;
-        });
-      }, 150);
-      return () => clearInterval(timer);
-    }
-  }, [loading, results.length]);
-
   async function refreshUsage() {
     try {
       const r = await fetch("/api/usage", { cache: "no-store" });
@@ -452,7 +550,6 @@ function HomeContent() {
     setLastSubmittedUrl(url);
     setLoadingFactIndex(0);
     setScannerIconIndex(0);
-    setVisibleIcons(0);
     setShowKeywordFallback(false);
     setKeywordFallbackType(null);
     setKeywords("");
@@ -540,7 +637,6 @@ function HomeContent() {
 
     setLoadingFactIndex(0);
     setScannerIconIndex(0);
-    setVisibleIcons(0);
     setShowKeywordFallback(false);
     setSelectedForCompare([]);
     hasAutoSelected.current = false;
@@ -603,11 +699,24 @@ function HomeContent() {
   useEffect(() => {
     refreshUsage();
 
-    const urlParam = searchParams.get('url');
-    const textParam = searchParams.get('text');
+    // Try searchParams first, then fall back to window.location for mobile PWA
+    let urlParam = searchParams.get('url');
+    let textParam = searchParams.get('text');
+
+    // Mobile PWA fallback: searchParams may be empty during hydration
+    if (!urlParam && !textParam && typeof window !== 'undefined') {
+      const windowParams = new URLSearchParams(window.location.search);
+      urlParam = windowParams.get('url') || urlParam;
+      textParam = windowParams.get('text') || textParam;
+      if (urlParam || textParam) {
+        console.log('[Init] Used window.location fallback for mobile');
+      }
+    }
+
+    console.log('[Init] Params - url:', urlParam, 'text:', textParam, 'hasAutoSearched:', hasAutoSearchedRef.current);
 
     // ANDROID SHARE: Extract headline from shared text (e.g., "Headline here https://share.google...")
-    if (textParam && !hasAutoSearched) {
+    if (textParam && !hasAutoSearchedRef.current) {
       console.log('[Init] Text from Android share:', textParam);
       sessionStorage.removeItem('mirrorSourceResults');
 
@@ -619,7 +728,7 @@ function HomeContent() {
 
       if (headline) {
         console.log('[Init] Extracted headline:', headline);
-        setHasAutoSearched(true);
+        hasAutoSearchedRef.current = true;
         setTimeout(() => handleKeywordSearch(headline), 100);
         return;
       }
@@ -631,8 +740,8 @@ function HomeContent() {
       sessionStorage.removeItem('mirrorSourceResults'); // Clear stale data
       setCurrentUrl(urlParam);
       // Trigger search with this URL
-      if (!hasAutoSearched) {
-        setHasAutoSearched(true);
+      if (!hasAutoSearchedRef.current) {
+        hasAutoSearchedRef.current = true;
         setTimeout(() => handleSearchWithUrl(urlParam), 100);
       }
       return; // Don't check sessionStorage
@@ -640,7 +749,7 @@ function HomeContent() {
 
     // Only use sessionStorage if NO URL parameter
     const saved = sessionStorage.getItem('mirrorSourceResults');
-    if (saved && !hasAutoSearched) {
+    if (saved && !hasAutoSearchedRef.current) {
       try {
         const data = JSON.parse(saved);
         setCurrentUrl(data.url || '');
@@ -651,12 +760,12 @@ function HomeContent() {
         setIsPaywalled(data.isPaywalled || false);
         setDiversityWarning(data.diversityWarning || null);
         setQueryBiasWarning(data.queryBiasWarning || null);
-        setHasAutoSearched(true);
+        hasAutoSearchedRef.current = true;
       } catch (e) {
         console.error('Failed to restore results:', e);
       }
     }
-  }, [searchParams, hasAutoSearched]);
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -701,8 +810,7 @@ function HomeContent() {
     setErrorRetryable(true);
     setCurrentUrl("");
     setLastSubmittedUrl("");
-    setHasAutoSearched(true);
-    setVisibleIcons(0);
+    hasAutoSearchedRef.current = true;
     setShowKeywordFallback(false);
     setKeywords("");
     setSelectedForCompare([]);
@@ -1000,43 +1108,9 @@ function HomeContent() {
 
       {/* Results */}
       {!loading && hasContent && (
-        <div className="flex-1 bg-slate-50 px-4 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <div className="max-w-4xl mx-auto space-y-6">
+        <div className="flex-1 bg-slate-50 px-4 pb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="max-w-4xl mx-auto space-y-8">
 
-            {/* Source Icons with Transparency Cards */}
-            {results.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-3 md:gap-4 py-4">
-                {results.map((item, index) => {
-                  const sourceDomain = item.sourceDomain || '';
-                  const isVisible = index < visibleIcons;
-                  const hasTransparency = item.ownership || item.funding;
-                  return (
-                    <TransparencyCard
-                      key={index}
-                      source={{
-                        displayName: item.displayName || sourceDomain.split('.')[0].toUpperCase(),
-                        domain: sourceDomain,
-                        ownership: item.ownership,
-                        funding: item.funding,
-                      }}
-                      trigger={
-                        <a href={item.uri} target="_blank" rel="noopener noreferrer" className={`flex flex-col items-center gap-1.5 group ${isVisible ? 'icon-pop' : 'opacity-0 scale-0'}`} style={{ animationDelay: `${index * 100}ms` }}>
-                          <div className="w-10 h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full bg-white shadow-md border border-slate-200 flex items-center justify-center group-hover:shadow-lg group-hover:border-blue-300 transition-all relative">
-                            <img src={getFaviconUrl(sourceDomain)} alt={sourceDomain} className="w-5 h-5 md:w-6 md:h-6 lg:w-8 lg:h-8 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                            {/* Blue dot indicator for sources with transparency data */}
-                            {hasTransparency && (
-                              <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-blue-500 rounded-full border-2 border-white shadow-sm" title="Tap for ownership info" />
-                            )}
-                          </div>
-                          <span className="text-[10px] md:text-xs font-medium text-slate-500 uppercase tracking-wide group-hover:text-blue-600 transition-colors text-center max-w-[60px] truncate">{sourceDomain.replace(/^www\./, '').split('.')[0]}</span>
-                        </a>
-                      }
-                    />
-                  );
-                })}
-              </div>
-            )}
-            
             {/* Summary */}
             <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8 lg:p-10">
               <div className="flex items-center justify-between mb-5">
@@ -1075,6 +1149,9 @@ function HomeContent() {
                     — {getDivergenceLevel(keyDifferences).description}
                   </span>
                 </div>
+
+                {/* Coverage Distribution Chart - Animated */}
+                {results.length > 0 && <CoverageDistributionChart results={results} lastSubmittedUrl={lastSubmittedUrl} />}
 
                 <div className="grid md:grid-cols-2 gap-5">
                   {commonGround && (Array.isArray(commonGround) ? commonGround.length > 0 : commonGround) && (
@@ -1344,119 +1421,6 @@ function HomeContent() {
                   </div>
 
                 </div>
-              </div>
-            )}
-
-            {/* Coverage Distribution */}
-            {results.length > 0 && (
-              <div className="bg-white rounded-2xl shadow border border-slate-200 p-5 md:p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <svg className="w-5 h-5 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 20V10" /><path d="M12 20V4" /><path d="M6 20v-6" />
-                  </svg>
-                  <h3 className="text-base font-semibold text-slate-800">Coverage Distribution</h3>
-                </div>
-
-                {(() => {
-                  const dist = getCoverageDistribution(results, lastSubmittedUrl);
-                  const inputSourceName = (() => {
-                    try {
-                      const hostname = new URL(lastSubmittedUrl).hostname.replace('www.', '');
-                      return hostname.split('.')[0].charAt(0).toUpperCase() + hostname.split('.')[0].slice(1);
-                    } catch {
-                      return null;
-                    }
-                  })();
-
-                  return (
-                    <div className="space-y-2">
-                      {/* Input source indicator */}
-                      {inputSourceName && dist.inputLean && (
-                        <p className="text-sm text-gray-500 mb-3 flex items-center gap-2 flex-wrap">
-                          <span>📍 Your article:</span>
-                          <span className="font-medium text-slate-700">{inputSourceName}</span>
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${LEAN_COLORS[dist.inputLean].bg} ${LEAN_COLORS[dist.inputLean].text}`}>
-                            {LEAN_LABELS[dist.inputLean]}
-                          </span>
-                        </p>
-                      )}
-
-                      {/* Left - Dark Blue */}
-                      <div className="flex items-center gap-3">
-                        <span className="w-24 text-sm text-gray-600">Left</span>
-                        <div className="flex-1 bg-gray-100 rounded-full h-3">
-                          <div
-                            className="bg-blue-600 h-3 rounded-full transition-all"
-                            style={{ width: `${Math.max((dist.left / Math.max(dist.total, 1)) * 100, dist.left > 0 ? 8 : 0)}%` }}
-                          />
-                        </div>
-                        <span className="w-6 text-sm text-gray-500 text-right">{dist.left}</span>
-                      </div>
-
-                      {/* Center-Left - Cyan */}
-                      <div className="flex items-center gap-3">
-                        <span className="w-24 text-sm text-gray-600">Center-Left</span>
-                        <div className="flex-1 bg-gray-100 rounded-full h-3">
-                          <div
-                            className="bg-cyan-500 h-3 rounded-full transition-all"
-                            style={{ width: `${Math.max((dist.centerLeft / Math.max(dist.total, 1)) * 100, dist.centerLeft > 0 ? 8 : 0)}%` }}
-                          />
-                        </div>
-                        <span className="w-6 text-sm text-gray-500 text-right">{dist.centerLeft}</span>
-                      </div>
-
-                      {/* Center - Purple */}
-                      <div className="flex items-center gap-3">
-                        <span className="w-24 text-sm text-gray-600">Center</span>
-                        <div className="flex-1 bg-gray-100 rounded-full h-3">
-                          <div
-                            className="bg-purple-500 h-3 rounded-full transition-all"
-                            style={{ width: `${Math.max((dist.center / Math.max(dist.total, 1)) * 100, dist.center > 0 ? 8 : 0)}%` }}
-                          />
-                        </div>
-                        <span className="w-6 text-sm text-gray-500 text-right">{dist.center}</span>
-                      </div>
-
-                      {/* Center-Right - Orange */}
-                      <div className="flex items-center gap-3">
-                        <span className="w-24 text-sm text-gray-600">Center-Right</span>
-                        <div className="flex-1 bg-gray-100 rounded-full h-3">
-                          <div
-                            className="bg-orange-500 h-3 rounded-full transition-all"
-                            style={{ width: `${Math.max((dist.centerRight / Math.max(dist.total, 1)) * 100, dist.centerRight > 0 ? 8 : 0)}%` }}
-                          />
-                        </div>
-                        <span className="w-6 text-sm text-gray-500 text-right">{dist.centerRight}</span>
-                      </div>
-
-                      {/* Right - Red */}
-                      <div className="flex items-center gap-3">
-                        <span className="w-24 text-sm text-gray-600">Right</span>
-                        <div className="flex-1 bg-gray-100 rounded-full h-3">
-                          <div
-                            className="bg-red-600 h-3 rounded-full transition-all"
-                            style={{ width: `${Math.max((dist.right / Math.max(dist.total, 1)) * 100, dist.right > 0 ? 8 : 0)}%` }}
-                          />
-                        </div>
-                        <span className="w-6 text-sm text-gray-500 text-right">{dist.right}</span>
-                      </div>
-
-                      {/* Gap warnings */}
-                      {(dist.left + dist.centerLeft === 0) && dist.total > 0 && (
-                        <p className="mt-3 text-sm text-orange-600 flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4" />
-                          Coverage gap: no left-leaning sources found
-                        </p>
-                      )}
-                      {(dist.right + dist.centerRight === 0) && dist.total > 0 && (
-                        <p className="mt-3 text-sm text-orange-600 flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4" />
-                          Coverage gap: no right-leaning sources found
-                        </p>
-                      )}
-                    </div>
-                  );
-                })()}
               </div>
             )}
 
