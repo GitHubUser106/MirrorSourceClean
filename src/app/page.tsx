@@ -182,9 +182,9 @@ function getCoverageDistribution(results: GroundingSource[], inputUrl?: string):
 }
 
 // Animated vertical bar for Coverage Distribution
-function AnimatedVerticalBar({ count, maxCount, label, colorClass }: { count: number; maxCount: number; label: string; colorClass: string }) {
+function AnimatedVerticalBar({ count, maxCount, label, barColorClass }: { count: number; maxCount: number; label: string; barColorClass: string }) {
   const [height, setHeight] = useState(0);
-  const targetHeight = maxCount > 0 ? Math.max((count / maxCount) * 100, count > 0 ? 20 : 0) : 0;
+  const targetHeight = maxCount > 0 ? Math.max((count / maxCount) * 100, count > 0 ? 25 : 0) : 0;
 
   useEffect(() => {
     const timer = setTimeout(() => setHeight(targetHeight), 100);
@@ -192,18 +192,18 @@ function AnimatedVerticalBar({ count, maxCount, label, colorClass }: { count: nu
   }, [targetHeight]);
 
   return (
-    <div className="text-center flex-1">
-      <div className="h-32 flex items-end justify-center mb-2">
+    <div className="text-center">
+      <div className="h-28 flex items-end justify-center mb-2">
         <div
-          className={`${colorClass} w-full max-w-12 rounded-lg transition-all duration-700 ease-out flex items-end justify-center pb-2`}
-          style={{ height: `${height}%`, minHeight: count > 0 ? '2rem' : '0' }}
+          className={`${barColorClass} w-14 rounded-t-lg transition-all duration-700 ease-out flex items-end justify-center pb-2`}
+          style={{ height: `${height}%`, minHeight: count > 0 ? '2.5rem' : '0' }}
         >
           {count > 0 && (
-            <span className="text-white font-semibold text-sm">{count}</span>
+            <span className="text-white font-bold text-sm">{count}</span>
           )}
         </div>
       </div>
-      <span className="text-xs text-slate-500">{label}</span>
+      <span className="text-xs text-slate-600 font-medium">{label}</span>
     </div>
   );
 }
@@ -241,12 +241,12 @@ function CoverageDistributionChart({ results, lastSubmittedUrl }: { results: Gro
       )}
 
       {/* Vertical bar chart */}
-      <div className="grid grid-cols-5 gap-3">
-        <AnimatedVerticalBar count={dist.left} maxCount={maxCount} label="Left" colorClass="bg-lean-left" />
-        <AnimatedVerticalBar count={dist.centerLeft} maxCount={maxCount} label="Center-Left" colorClass="bg-lean-center-left" />
-        <AnimatedVerticalBar count={dist.center} maxCount={maxCount} label="Center" colorClass="bg-lean-center" />
-        <AnimatedVerticalBar count={dist.centerRight} maxCount={maxCount} label="Center-Right" colorClass="bg-lean-center-right" />
-        <AnimatedVerticalBar count={dist.right} maxCount={maxCount} label="Right" colorClass="bg-lean-right" />
+      <div className="flex justify-center gap-6">
+        <AnimatedVerticalBar count={dist.left} maxCount={maxCount} label="Left" barColorClass={LEAN_COLORS['left'].bar} />
+        <AnimatedVerticalBar count={dist.centerLeft} maxCount={maxCount} label="Center-Left" barColorClass={LEAN_COLORS['center-left'].bar} />
+        <AnimatedVerticalBar count={dist.center} maxCount={maxCount} label="Center" barColorClass={LEAN_COLORS['center'].bar} />
+        <AnimatedVerticalBar count={dist.centerRight} maxCount={maxCount} label="Center-Right" barColorClass={LEAN_COLORS['center-right'].bar} />
+        <AnimatedVerticalBar count={dist.right} maxCount={maxCount} label="Right" barColorClass={LEAN_COLORS['right'].bar} />
       </div>
 
       {/* Gap warnings */}
@@ -312,13 +312,13 @@ function getSpectrumSources(results: GroundingSource[]): string[] {
     if (pick) selected.push(pick);
   }
 
-  // If we don't have 5 yet, fill from any remaining sources
-  if (selected.length < 5) {
+  // If we don't have 4 yet, fill from any remaining sources
+  if (selected.length < 4) {
     for (const r of results) {
       if (!usedUris.has(r.uri)) {
         usedUris.add(r.uri);
         selected.push(r.uri);
-        if (selected.length >= 5) break;
+        if (selected.length >= 4) break;
       }
     }
   }
@@ -332,7 +332,7 @@ function getSpectrumSources(results: GroundingSource[]): string[] {
     selected
   });
 
-  return selected.slice(0, 5);
+  return selected.slice(0, 4);
 }
 
 function HomeContent() {
@@ -1265,8 +1265,8 @@ function HomeContent() {
                   <p className="text-slate-500 text-sm">See how different sources cover the same story</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                  {inlineComparison.analyses.slice(0, 5).map((analysis: any, idx: number) => {
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {inlineComparison.analyses.slice(0, 4).map((analysis: any, idx: number) => {
                     // Use sorted source URLs from the comparison data
                     const sourceUrl = inlineComparison.sortedSourceUrls?.[idx] || selectedForCompare[idx];
                     const source = results.find(r => r.uri === sourceUrl);
@@ -1381,7 +1381,7 @@ function HomeContent() {
 
                     <button
                       onClick={() => {
-                        const headlines = inlineComparison.analyses.slice(0, 5).map((a: any, i: number) => {
+                        const headlines = inlineComparison.analyses.slice(0, 4).map((a: any, i: number) => {
                           const src = results.find(r => selectedForCompare[i] === r.uri);
                           return `${src?.displayName || 'Source'}: "${a.headline}"`;
                         }).join('\n');
@@ -1412,7 +1412,7 @@ function HomeContent() {
                         <span className="text-slate-300">|</span>
                         <button
                           onClick={() => {
-                            const headlines = inlineComparison.analyses.slice(0, 5).map((a: any, i: number) => {
+                            const headlines = inlineComparison.analyses.slice(0, 4).map((a: any, i: number) => {
                               const src = results.find(r => selectedForCompare[i] === r.uri);
                               return `${src?.displayName || 'Source'}: "${a.headline}"`;
                             }).join('\n');
