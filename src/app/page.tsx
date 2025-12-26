@@ -185,6 +185,9 @@ function getCoverageDistribution(results: GroundingSource[], inputUrl?: string):
 function VerticalBar({ count, maxCount, label, barColorClass }: { count: number; maxCount: number; label: string; barColorClass: string }) {
   const heightPercent = maxCount > 0 ? Math.max((count / maxCount) * 100, count > 0 ? 25 : 0) : 0;
 
+  // Debug logging
+  console.log('[VerticalBar]', { label, count, maxCount, heightPercent, barColorClass });
+
   return (
     <div className="text-center flex-shrink-0">
       <div className="h-28 flex items-end justify-center mb-2">
@@ -205,6 +208,9 @@ function VerticalBar({ count, maxCount, label, barColorClass }: { count: number;
 // Coverage Distribution Chart with vertical bars (v0 style)
 function CoverageDistributionChart({ results, lastSubmittedUrl }: { results: GroundingSource[]; lastSubmittedUrl: string }) {
   const dist = getCoverageDistribution(results, lastSubmittedUrl);
+
+  // Debug logging
+  console.log('[CoverageDistributionChart] dist:', dist);
 
   const inputSourceName = (() => {
     try {
