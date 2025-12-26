@@ -181,19 +181,29 @@ function getCoverageDistribution(results: GroundingSource[], inputUrl?: string):
   return { left, centerLeft, center, centerRight, right, total, inputLean };
 }
 
-// Static vertical bar for Coverage Distribution (no animation to avoid rendering issues)
-function VerticalBar({ count, maxCount, label, barColorClass }: { count: number; maxCount: number; label: string; barColorClass: string }) {
-  const heightPercent = maxCount > 0 ? Math.max((count / maxCount) * 100, count > 0 ? 25 : 0) : 0;
+// Hex colors for vertical bars (avoids Tailwind purge issues with dynamic classes)
+const BAR_COLORS: Record<string, string> = {
+  'left': '#2563eb',        // blue-600
+  'center-left': '#06b6d4', // cyan-500
+  'center': '#a855f7',      // purple-500
+  'center-right': '#f97316', // orange-500
+  'right': '#dc2626',       // red-600
+};
 
-  // Debug logging
-  console.log('[VerticalBar]', { label, count, maxCount, heightPercent, barColorClass });
+// Static vertical bar for Coverage Distribution
+function VerticalBar({ count, maxCount, label, colorKey }: { count: number; maxCount: number; label: string; colorKey: string }) {
+  const heightPercent = maxCount > 0 ? Math.max((count / maxCount) * 100, count > 0 ? 25 : 0) : 0;
 
   return (
     <div className="text-center flex-shrink-0">
       <div className="h-28 flex items-end justify-center mb-2">
         <div
-          className={`${barColorClass} w-10 sm:w-12 md:w-14 rounded-t-lg flex items-end justify-center pb-2`}
-          style={{ height: `${heightPercent}%`, minHeight: count > 0 ? '2.5rem' : '0' }}
+          className="w-10 sm:w-12 md:w-14 rounded-t-lg flex items-end justify-center pb-2"
+          style={{
+            backgroundColor: BAR_COLORS[colorKey] || BAR_COLORS['center'],
+            height: `${heightPercent}%`,
+            minHeight: count > 0 ? '2.5rem' : '0'
+          }}
         >
           {count > 0 && (
             <span className="text-white font-bold text-xs sm:text-sm">{count}</span>
@@ -208,9 +218,6 @@ function VerticalBar({ count, maxCount, label, barColorClass }: { count: number;
 // Coverage Distribution Chart with vertical bars (v0 style)
 function CoverageDistributionChart({ results, lastSubmittedUrl }: { results: GroundingSource[]; lastSubmittedUrl: string }) {
   const dist = getCoverageDistribution(results, lastSubmittedUrl);
-
-  // Debug logging
-  console.log('[CoverageDistributionChart] dist:', dist);
 
   const inputSourceName = (() => {
     try {
@@ -243,11 +250,11 @@ function CoverageDistributionChart({ results, lastSubmittedUrl }: { results: Gro
 
       {/* Vertical bar chart */}
       <div className="flex justify-center gap-2 sm:gap-4 md:gap-6">
-        <VerticalBar key="left" count={dist.left} maxCount={maxCount} label="Left" barColorClass={LEAN_COLORS['left'].bar} />
-        <VerticalBar key="center-left" count={dist.centerLeft} maxCount={maxCount} label="Center-Left" barColorClass={LEAN_COLORS['center-left'].bar} />
-        <VerticalBar key="center" count={dist.center} maxCount={maxCount} label="Center" barColorClass={LEAN_COLORS['center'].bar} />
-        <VerticalBar key="center-right" count={dist.centerRight} maxCount={maxCount} label="Center-Right" barColorClass={LEAN_COLORS['center-right'].bar} />
-        <VerticalBar key="right" count={dist.right} maxCount={maxCount} label="Right" barColorClass={LEAN_COLORS['right'].bar} />
+        <VerticalBar key="left" count={dist.left} maxCount={maxCount} label="Left" colorKey="left" />
+        <VerticalBar key="center-left" count={dist.centerLeft} maxCount={maxCount} label="Center-Left" colorKey="center-left" />
+        <VerticalBar key="center" count={dist.center} maxCount={maxCount} label="Center" colorKey="center" />
+        <VerticalBar key="center-right" count={dist.centerRight} maxCount={maxCount} label="Center-Right" colorKey="center-right" />
+        <VerticalBar key="right" count={dist.right} maxCount={maxCount} label="Right" colorKey="right" />
       </div>
 
       {/* Gap warnings */}
