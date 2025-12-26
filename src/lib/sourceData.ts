@@ -168,7 +168,9 @@ export function getSourceInfo(urlOrDomain: string): Source | undefined {
  */
 export function getPoliticalLean(urlOrDomain: string): PoliticalLean {
   const source = getSourceInfo(urlOrDomain);
-  return source?.lean ?? 'center';
+  const lean = source?.lean ?? 'center';
+  console.log('[getPoliticalLean]', { input: urlOrDomain, normalized: urlOrDomain?.toLowerCase(), source: source?.domain, lean });
+  return lean;
 }
 
 /**
