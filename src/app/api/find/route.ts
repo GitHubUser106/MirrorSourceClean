@@ -1624,7 +1624,7 @@ const sources: Record<string, SourceInfo> = {
 
 // Get source info with transparency data
 function getSourceInfo(domain: string): SourceInfo {
-  if (!domain) return { displayName: 'SOURCE', type: 'local', countryCode: 'US' };
+  if (!domain) return { displayName: 'SOURCE', type: 'local', countryCode: 'US', lean: 'center' };
 
   // Normalize domain: remove www., m., and lowercase
   const normalized = domain
@@ -1633,25 +1633,31 @@ function getSourceInfo(domain: string): SourceInfo {
     .replace(/^m\./, '')
     .replace(/^amp\./, '');
 
+  // Helper to ensure lean is always populated
+  const withLean = (info: SourceInfo): SourceInfo => {
+    if (info.lean) return info;
+    return { ...info, lean: getPoliticalLean(domain) };
+  };
+
   // Check exact match first
   if (sources[normalized]) {
-    return sources[normalized];
+    return withLean(sources[normalized]);
   }
 
   // Handle special cases for major newspapers
   if (normalized.includes('washingtonpost')) {
-    return sources['washingtonpost.com'];
+    return withLean(sources['washingtonpost.com']);
   }
   if (normalized.includes('nytimes')) {
-    return sources['nytimes.com'];
+    return withLean(sources['nytimes.com']);
   }
   if (normalized.includes('abcnews')) {
-    return sources['abcnews.go.com'];
+    return withLean(sources['abcnews.go.com']);
   }
 
   // Check partial matches (e.g., nytimes.com matches www.nytimes.com)
   for (const [key, info] of Object.entries(sources)) {
-    if (normalized.includes(key) || key.includes(normalized)) return info;
+    if (normalized.includes(key) || key.includes(normalized)) return withLean(info);
   }
 
   const lower = normalized;

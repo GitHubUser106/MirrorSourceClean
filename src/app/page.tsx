@@ -165,7 +165,6 @@ function getCoverageDistribution(results: GroundingSource[], inputUrl?: string):
   if (results && results.length) {
     for (const r of results) {
       // Use API-provided lean, or fall back to shared source data lookup
-      console.log('[getCoverageDistribution] source:', { displayName: r.displayName, sourceDomain: r.sourceDomain, politicalLean: r.politicalLean, uri: r.uri });
       const lean = (r.politicalLean?.toLowerCase() || getPoliticalLean(r.sourceDomain || r.uri)) as PoliticalLean;
 
       switch (lean) {
@@ -212,9 +211,6 @@ function AnimatedVerticalBar({ count, maxCount, label, barColorClass }: { count:
 // Coverage Distribution Chart with vertical bars (v0 style)
 function CoverageDistributionChart({ results, lastSubmittedUrl }: { results: GroundingSource[]; lastSubmittedUrl: string }) {
   const dist = getCoverageDistribution(results, lastSubmittedUrl);
-
-  // Debug: log distribution values
-  console.log('[CoverageDistribution]', { dist, resultsCount: results?.length });
 
   const inputSourceName = (() => {
     try {
