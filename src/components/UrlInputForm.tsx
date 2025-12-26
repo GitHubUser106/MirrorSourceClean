@@ -19,27 +19,29 @@ export default function UrlInputForm({
 }: UrlInputFormProps) {
 
   return (
-    <form onSubmit={onSubmit} className="w-full max-w-2xl lg:max-w-3xl mx-auto">
-      {/* INPUT + BUTTON INLINE */}
-      <div className="relative flex items-center gap-3">
-        <div className="absolute left-4 lg:left-5 text-slate-400 pointer-events-none">
-          <Search size={20} className="md:w-6 md:h-6" />
+    <form onSubmit={onSubmit} className="w-full">
+      {/* INPUT + BUTTON - stacked on mobile, inline on md+ */}
+      <div className="flex flex-col md:flex-row gap-3">
+        <div className="relative w-full md:flex-1">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+            <Search size={20} />
+          </div>
+
+          <input
+            type="url"
+            placeholder="Paste any news article URL..."
+            className="w-full pl-12 pr-4 py-3 lg:py-4 rounded-lg border border-slate-200 focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary)]/20 transition-all outline-none text-slate-700 placeholder:text-slate-400 text-base"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            required
+          />
         </div>
 
-        <input
-          type="url"
-          placeholder="Paste any news article URL..."
-          className="flex-1 pl-12 lg:pl-14 pr-4 py-3 lg:py-4 rounded-lg border border-slate-200 focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary)]/20 transition-all outline-none text-slate-700 placeholder:text-slate-400 text-base"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          required
-        />
-
-        {/* BUTTON - Inline */}
+        {/* BUTTON - full width on mobile, auto on md+ */}
         <button
           type="submit"
           disabled={isLoading}
-          className="bg-[color:var(--primary)] hover:opacity-90 text-white py-3 lg:py-4 px-6 lg:px-8 rounded-lg font-medium text-base transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
+          className="w-full md:w-auto bg-[color:var(--primary)] hover:opacity-90 text-white py-3 lg:py-4 px-6 lg:px-8 rounded-lg font-medium text-base transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 shrink-0"
         >
           {isLoading ? (
             "Analyzing..."
