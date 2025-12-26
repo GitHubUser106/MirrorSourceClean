@@ -331,14 +331,6 @@ function getSpectrumSources(results: GroundingSource[]): string[] {
     }
   }
 
-  console.log('[Spectrum Sources]', {
-    left: buckets['left'].map(s => s.displayName),
-    centerLeft: buckets['center-left'].map(s => s.displayName),
-    center: buckets['center'].map(s => s.displayName),
-    centerRight: buckets['center-right'].map(s => s.displayName),
-    right: buckets['right'].map(s => s.displayName),
-    selected
-  });
 
   return selected.slice(0, 4);
 }
