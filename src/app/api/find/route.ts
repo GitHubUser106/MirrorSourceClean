@@ -225,7 +225,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Associated Press', type: 'cooperative', note: 'Non-profit cooperative owned by ~1,300 member newspapers and broadcasters' },
     funding: { model: 'Member fees & content licensing to media outlets worldwide' },
-    lean: 'center',
+    lean: 'left',  // UPDATED per AllSides December 2024
   },
   'reuters.com': {
     displayName: 'REUTERS',
