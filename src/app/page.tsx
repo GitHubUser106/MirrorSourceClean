@@ -181,22 +181,16 @@ function getCoverageDistribution(results: GroundingSource[], inputUrl?: string):
   return { left, centerLeft, center, centerRight, right, total, inputLean };
 }
 
-// Animated vertical bar for Coverage Distribution
-function AnimatedVerticalBar({ count, maxCount, label, barColorClass }: { count: number; maxCount: number; label: string; barColorClass: string }) {
-  const [height, setHeight] = useState(0);
-  const targetHeight = maxCount > 0 ? Math.max((count / maxCount) * 100, count > 0 ? 25 : 0) : 0;
-
-  useEffect(() => {
-    const timer = setTimeout(() => setHeight(targetHeight), 100);
-    return () => clearTimeout(timer);
-  }, [targetHeight]);
+// Static vertical bar for Coverage Distribution (no animation to avoid rendering issues)
+function VerticalBar({ count, maxCount, label, barColorClass }: { count: number; maxCount: number; label: string; barColorClass: string }) {
+  const heightPercent = maxCount > 0 ? Math.max((count / maxCount) * 100, count > 0 ? 25 : 0) : 0;
 
   return (
     <div className="text-center flex-shrink-0">
       <div className="h-28 flex items-end justify-center mb-2">
         <div
-          className={`${barColorClass} w-10 sm:w-12 md:w-14 rounded-t-lg transition-all duration-700 ease-out flex items-end justify-center pb-2`}
-          style={{ height: `${height}%`, minHeight: count > 0 ? '2.5rem' : '0' }}
+          className={`${barColorClass} w-10 sm:w-12 md:w-14 rounded-t-lg flex items-end justify-center pb-2`}
+          style={{ height: `${heightPercent}%`, minHeight: count > 0 ? '2.5rem' : '0' }}
         >
           {count > 0 && (
             <span className="text-white font-bold text-xs sm:text-sm">{count}</span>
@@ -242,12 +236,12 @@ function CoverageDistributionChart({ results, lastSubmittedUrl }: { results: Gro
       )}
 
       {/* Vertical bar chart */}
-      <div className="flex justify-center gap-2 sm:gap-4 md:gap-6 overflow-x-auto">
-        <AnimatedVerticalBar count={dist.left} maxCount={maxCount} label="Left" barColorClass={LEAN_COLORS['left'].bar} />
-        <AnimatedVerticalBar count={dist.centerLeft} maxCount={maxCount} label="Center-Left" barColorClass={LEAN_COLORS['center-left'].bar} />
-        <AnimatedVerticalBar count={dist.center} maxCount={maxCount} label="Center" barColorClass={LEAN_COLORS['center'].bar} />
-        <AnimatedVerticalBar count={dist.centerRight} maxCount={maxCount} label="Center-Right" barColorClass={LEAN_COLORS['center-right'].bar} />
-        <AnimatedVerticalBar count={dist.right} maxCount={maxCount} label="Right" barColorClass={LEAN_COLORS['right'].bar} />
+      <div className="flex justify-center gap-2 sm:gap-4 md:gap-6">
+        <VerticalBar key="left" count={dist.left} maxCount={maxCount} label="Left" barColorClass={LEAN_COLORS['left'].bar} />
+        <VerticalBar key="center-left" count={dist.centerLeft} maxCount={maxCount} label="Center-Left" barColorClass={LEAN_COLORS['center-left'].bar} />
+        <VerticalBar key="center" count={dist.center} maxCount={maxCount} label="Center" barColorClass={LEAN_COLORS['center'].bar} />
+        <VerticalBar key="center-right" count={dist.centerRight} maxCount={maxCount} label="Center-Right" barColorClass={LEAN_COLORS['center-right'].bar} />
+        <VerticalBar key="right" count={dist.right} maxCount={maxCount} label="Right" barColorClass={LEAN_COLORS['right'].bar} />
       </div>
 
       {/* Gap warnings */}
