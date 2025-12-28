@@ -40,24 +40,6 @@ const loadingFacts = [
   "Looking for wire services...",
 ];
 
-const scannerIcons = [
-  { domain: "apnews.com", name: "AP News" },
-  { domain: "reuters.com", name: "Reuters" },
-  { domain: "bbc.com", name: "BBC" },
-  { domain: "theguardian.com", name: "The Guardian" },
-  { domain: "npr.org", name: "NPR" },
-  { domain: "cbsnews.com", name: "CBS News" },
-  { domain: "nbcnews.com", name: "NBC News" },
-  { domain: "cnn.com", name: "CNN" },
-  { domain: "foxnews.com", name: "Fox News" },
-  { domain: "pbs.org", name: "PBS" },
-  { domain: "politico.com", name: "Politico" },
-  { domain: "axios.com", name: "Axios" },
-  { domain: "thehill.com", name: "The Hill" },
-  { domain: "usatoday.com", name: "USA Today" },
-  { domain: "aljazeera.com", name: "Al Jazeera" },
-  { domain: "forbes.com", name: "Forbes" },
-];
 
 const FEATURED_STORIES = [
   {
@@ -352,7 +334,6 @@ function HomeContent() {
   const [shared, setShared] = useState(false);
   const hasAutoSearchedRef = useRef(false);
   const [loadingFactIndex, setLoadingFactIndex] = useState(0);
-  const [scannerIconIndex, setScannerIconIndex] = useState(0);
   const [currentUrl, setCurrentUrl] = useState("");
   const [lastSubmittedUrl, setLastSubmittedUrl] = useState("");
   const [showKeywordFallback, setShowKeywordFallback] = useState(false);
@@ -452,15 +433,6 @@ function HomeContent() {
     }
   }, [loading]);
 
-  // Rotate scanner icons - 1100ms is optimal (research: 1000-1200ms feels steady, not frantic)
-  useEffect(() => {
-    if (loading) {
-      const interval = setInterval(() => {
-        setScannerIconIndex((prev) => (prev + 1) % scannerIcons.length);
-      }, 1100);
-      return () => clearInterval(interval);
-    }
-  }, [loading]);
 
   async function refreshUsage() {
     try {
@@ -530,7 +502,6 @@ function HomeContent() {
     if (!url.trim()) return;
     setLastSubmittedUrl(url);
     setLoadingFactIndex(0);
-    setScannerIconIndex(0);
     setShowKeywordFallback(false);
     setKeywordFallbackType(null);
     setKeywords("");
@@ -617,7 +588,6 @@ function HomeContent() {
     if (!searchTerms.trim()) return;
 
     setLoadingFactIndex(0);
-    setScannerIconIndex(0);
     setShowKeywordFallback(false);
     setSelectedForCompare([]);
     hasAutoSelected.current = false;
@@ -802,7 +772,6 @@ function HomeContent() {
 
   const hasContent = summary || results.length > 0;
   const isActive = loading || hasContent;
-  const currentScannerIcon = scannerIcons[scannerIconIndex];
   const todaysStory = getDailyStory();
 
   return (
@@ -814,7 +783,7 @@ function HomeContent() {
           100% { transform: scale(1); opacity: 1; }
         }
         .icon-pop { animation: popIn 0.4s ease-out forwards; }
-        
+
         @keyframes progress {
           0% { width: 0%; }
           10% { width: 15%; }
@@ -824,8 +793,21 @@ function HomeContent() {
           90% { width: 88%; }
           100% { width: 95%; }
         }
-        .animate-progress { 
+        .animate-progress {
           animation: progress 20s ease-out forwards;
+        }
+
+        @keyframes scanning-wave {
+          0%, 100% {
+            transform: scale(1);
+            opacity: 0.5;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          }
+          50% {
+            transform: scale(1.1);
+            opacity: 1;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          }
         }
       `}} />
       
@@ -1059,23 +1041,44 @@ function HomeContent() {
         <div className="flex flex-col items-center px-4 pt-6 pb-12 animate-in fade-in duration-500">
           {/* Progress section */}
           <div className="flex flex-col items-center gap-4 mb-8">
-            {/* Animated icon */}
-            <div className="relative">
-              <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-br from-cyan-50 to-blue-100 flex items-center justify-center shadow-lg">
-                <img key={currentScannerIcon.domain} src={getHighResFavicon(currentScannerIcon.domain)} alt={currentScannerIcon.name} className="w-12 h-12 md:w-14 md:h-14 object-contain rounded-lg animate-in fade-in zoom-in duration-300" onError={(e) => { (e.target as HTMLImageElement).src = '/favicon.ico'; }} />
-              </div>
+            {/* Spectrum Wave - Media Tiles scanning Left to Right */}
+            <div className="flex items-center gap-3 mb-2">
+              {[
+                { domain: "msnbc.com", name: "MSNBC", color: "#2563eb" },        // Left - blue
+                { domain: "nytimes.com", name: "NYT", color: "#06b6d4" },        // Center-Left - cyan
+                { domain: "reuters.com", name: "Reuters", color: "#a855f7" },    // Center - purple
+                { domain: "wsj.com", name: "WSJ", color: "#f97316" },            // Center-Right - orange
+                { domain: "foxnews.com", name: "Fox", color: "#dc2626" },        // Right - red
+              ].map((source, index) => (
+                <div
+                  key={source.domain}
+                  className="w-12 h-12 md:w-14 md:h-14 rounded-lg border-2 bg-white shadow-md flex items-center justify-center overflow-hidden"
+                  style={{
+                    borderColor: source.color,
+                    animation: 'scanning-wave 2.5s ease-in-out infinite',
+                    animationDelay: `${index * 200}ms`,
+                  }}
+                >
+                  <img
+                    src={getHighResFavicon(source.domain)}
+                    alt={source.name}
+                    className="w-8 h-8 md:w-10 md:h-10 object-contain"
+                    onError={(e) => { (e.target as HTMLImageElement).src = '/favicon.ico'; }}
+                  />
+                </div>
+              ))}
             </div>
-            
+
             {/* Status text */}
             <div className="text-center">
-              <p className="text-cyan-600 font-semibold text-sm uppercase tracking-wider mb-1">Scanning...</p>
+              <p className="text-cyan-600 font-semibold text-sm uppercase tracking-wider mb-1">Scanning Spectrum...</p>
               <p className="text-slate-500 text-sm">{loadingFacts[loadingFactIndex]}</p>
             </div>
 
             {/* Progress bar */}
             <div className="w-64 md:w-80">
               <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full animate-progress"></div>
+                <div className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-red-500 rounded-full animate-progress"></div>
               </div>
               <p className="text-xs text-slate-400 text-center mt-2">Usually takes 10-15 seconds</p>
               <p className="text-xs text-slate-400 text-center mt-1">Results vary — tap "Try Again" if needed</p>
@@ -1084,10 +1087,17 @@ function HomeContent() {
 
           {/* Skeleton preview - shows what's coming */}
           <div className="w-full max-w-4xl space-y-4 opacity-40">
-            {/* Skeleton source icons */}
-            <div className="flex flex-wrap justify-center gap-4 py-4">
+            {/* Skeleton source tiles */}
+            <div className="flex flex-wrap justify-center gap-3 py-4">
               {[1,2,3,4,5].map((i) => (
-                <div key={i} className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-slate-200 animate-pulse" style={{ animationDelay: `${i * 100}ms` }}></div>
+                <div
+                  key={i}
+                  className="w-12 h-12 md:w-14 md:h-14 rounded-lg border border-slate-200 bg-slate-100"
+                  style={{
+                    animation: 'pulse 2s ease-in-out infinite',
+                    animationDelay: `${i * 150}ms`,
+                  }}
+                />
               ))}
             </div>
             
