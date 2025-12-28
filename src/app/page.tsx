@@ -796,19 +796,6 @@ function HomeContent() {
         .animate-progress {
           animation: progress 20s ease-out forwards;
         }
-
-        @keyframes scanning-wave {
-          0%, 100% {
-            transform: scale(1);
-            opacity: 0.5;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-          }
-          50% {
-            transform: scale(1.1);
-            opacity: 1;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-          }
-        }
       `}} />
       
       {/* Header */}
@@ -1041,23 +1028,19 @@ function HomeContent() {
         <div className="flex flex-col items-center px-4 pt-6 pb-12 animate-in fade-in duration-500">
           {/* Progress section */}
           <div className="flex flex-col items-center gap-4 mb-8">
-            {/* Spectrum Wave - Media Tiles scanning Left to Right */}
-            <div className="flex items-center gap-3 mb-2">
+            {/* Media Tiles - simultaneous flashing */}
+            <div className="flex items-center gap-3 mb-2 animate-pulse">
               {[
                 { domain: "msnbc.com", name: "MSNBC", color: "#2563eb" },        // Left - blue
                 { domain: "nytimes.com", name: "NYT", color: "#06b6d4" },        // Center-Left - cyan
                 { domain: "reuters.com", name: "Reuters", color: "#a855f7" },    // Center - purple
                 { domain: "wsj.com", name: "WSJ", color: "#f97316" },            // Center-Right - orange
                 { domain: "foxnews.com", name: "Fox", color: "#dc2626" },        // Right - red
-              ].map((source, index) => (
+              ].map((source) => (
                 <div
                   key={source.domain}
                   className="w-12 h-12 md:w-14 md:h-14 rounded-lg border-2 bg-white shadow-md flex items-center justify-center overflow-hidden"
-                  style={{
-                    borderColor: source.color,
-                    animation: 'scanning-wave 2.5s ease-in-out infinite',
-                    animationDelay: `${index * 200}ms`,
-                  }}
+                  style={{ borderColor: source.color }}
                 >
                   <img
                     src={getHighResFavicon(source.domain)}
@@ -1071,7 +1054,7 @@ function HomeContent() {
 
             {/* Status text */}
             <div className="text-center">
-              <p className="text-cyan-600 font-semibold text-sm uppercase tracking-wider mb-1">Scanning Spectrum...</p>
+              <p className="text-cyan-600 font-semibold text-sm uppercase tracking-wider mb-1">Scanning...</p>
               <p className="text-slate-500 text-sm">{loadingFacts[loadingFactIndex]}</p>
             </div>
 
@@ -1092,11 +1075,7 @@ function HomeContent() {
               {[1,2,3,4,5].map((i) => (
                 <div
                   key={i}
-                  className="w-12 h-12 md:w-14 md:h-14 rounded-lg border border-slate-200 bg-slate-100"
-                  style={{
-                    animation: 'pulse 2s ease-in-out infinite',
-                    animationDelay: `${i * 150}ms`,
-                  }}
+                  className="w-12 h-12 md:w-14 md:h-14 rounded-lg border border-slate-200 bg-slate-100 animate-pulse"
                 />
               ))}
             </div>
