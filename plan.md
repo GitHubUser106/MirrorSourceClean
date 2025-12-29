@@ -6,43 +6,26 @@
 * **Primary Rule:** DO NOT hallucinate file paths. Always check `ls` before editing.
 
 ## 2. Current Sprint (The "Active" Sheet Music)
-**Goal:** UI Polish - Fix Empty Cards, Confusing Badges, and Flip Layout
+**Goal:** Micro-Polish - Strip HTML Tags from Search Snippets
 
 ### Context
-> **The Problem:** > 1. Cards without AI analysis (Fox, CNN) appear empty/broken.
-> 2. "Public" badge is ambiguous (confused with government).
-> 3. Flip card back is cramped, hiding the "Verify" link.
-> **The Fix:** Implement smart content fallbacks, a clear label mapping system, and CSS spacing fixes.
+> **The Problem:** The fallback text (Brave Search snippets) contains raw HTML tags like `<strong>` and `</b>`, which are visible to the user and look broken.
+> **The Fix:** Sanitize the text by stripping all HTML tags before rendering.
 
 ### Execution Checklist
-- [ ] **Step 1 (The "Empty Card" Fix):** Open `src/components/SourceFlipCard.tsx`.
-    * **Logic Update:** If `analysis.tone` or `analysis.headline` is missing, do NOT leave the card body empty.
-    * **Fallback Priority:**
-        1. Show `source.snippet` (from Brave Search), truncated to 3 lines (line-clamp-3).
-        2. If no snippet, show generic text: "Click to read full coverage from [Source Name]."
-    * **Visual:** Ensure this fallback text has a subtle gray color (`text-gray-500`) to distinguish it from AI-generated insights.
-- [ ] **Step 2 (Badge Clarity):** Open `src/lib/sourceData.ts`.
-    * Export a new mapping constant to standardize labels:
-      ```typescript
-      export const OWNERSHIP_LABELS: Record<OwnershipType, string> = {
-        'nonprofit': 'Nonprofit',
-        'public': 'Public Co.',      // Clarity fix: Publicly Traded
-        'family': 'Family-Owned',
-        'billionaire': 'Billionaire-Owned',
-        'corporate': 'Corporate',
-        'government': 'Public Broadcaster', // Neutral fix for BBC/PBS
-        'cooperative': 'Co-op',
-      };
-      ```
-    * Update `src/components/SourceFlipCard.tsx` (and any other badge usage) to render `OWNERSHIP_LABELS[type]` instead of the raw string.
-- [ ] **Step 3 (Flip Layout Fix):** Open `src/components/SourceFlipCard.tsx` (Back Side).
-    * **Container:** Ensure the back face uses `flex flex-col h-full`.
-    * **Content Area:** Wrap the Owner/Funding text in a div with `flex-grow overflow-y-auto pr-1` (scrollable if text is long).
-    * **Footer Area:** Place the "Verify on Wikipedia" link and "Back" button in a fixed bottom section with top padding (`pt-2 mt-auto`).
-- [ ] **Step 4 (Commit):** `git add . && git commit -m "UI Polish: Fix empty cards, badge labels, and flip layout" && git push`
+- [ ] **Step 1 (The Sanitizer):** Open `src/components/SourceFlipCard.tsx`.
+- [ ] **Step 2 (Helper Logic):** Inside the component (or as a utility function), add a simple regex cleaner:
+    ```typescript
+    const cleanSnippet = (text: string) => {
+      if (!text) return '';
+      // Remove HTML tags
+      return text.replace(/<[^>]*>?/gm, '')
+        // Optional: Decode HTML entities if needed (e.g. &amp;)
+        .replace(/&nbsp;/g, ' ');
+    };
+    ```
+- [ ] **Step 3 (Apply):** Locate where `source.snippet` is rendered in the fallback logic. Wrap it in the cleaner: `cleanSnippet(source.snippet)`.
+- [ ] **Step 4 (Commit):** `git add . && git commit -m "Fix: Strip HTML tags from source snippets" && git push`
 
 ### Success Criteria
-- [ ] **Fox/CNN/Breitbart:** Now display a snippet text instead of white space.
-- [ ] **NYT/Reuters:** Badge says "Public Co."
-- [ ] **BBC:** Badge says "Public Broadcaster."
-- [ ] **Flip Card:** "Verify" link is always visible and clickable, never pushed off-screen.
+- [ ] Cards for BBC/Fox/CNN show clean text (e.g., "Two pilots...") without `<strong>` tags.

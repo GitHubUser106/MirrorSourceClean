@@ -5,6 +5,18 @@ import { ExternalLink, Info } from 'lucide-react';
 import { LEAN_COLORS, LEAN_LABELS, getWikiLink } from '@/lib/sourceData';
 import type { GroundingSource, PoliticalLean, OwnershipType } from '@/types';
 
+// Strip HTML tags from Brave Search snippets
+const cleanSnippet = (text: string) => {
+  if (!text) return '';
+  return text
+    .replace(/<[^>]*>?/gm, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"');
+};
+
 // Ownership type labels - clearer naming for users
 const OWNERSHIP_LABELS: Record<string, string> = {
   'private': 'Private',
@@ -133,7 +145,7 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean }: SourceFli
           ) : (
             /* Fallback content when no AI analysis */
             <p className="text-sm text-slate-500 leading-relaxed line-clamp-3 mb-3">
-              {source.snippet || `Click to read full coverage from ${sourceName}.`}
+              {cleanSnippet(source.snippet) || `Click to read full coverage from ${sourceName}.`}
             </p>
           )}
 
