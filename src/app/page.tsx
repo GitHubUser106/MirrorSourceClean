@@ -5,9 +5,9 @@ import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import UrlInputForm from "@/components/UrlInputForm";
-import ResultsDisplay from "@/components/ResultsDisplay";
+import SourceFlipCard from "@/components/SourceFlipCard";
 import type { GroundingSource } from "@/types";
-import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, ArrowRight, FileText, BarChart3, Sparkles } from "lucide-react";
+import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, FileText, BarChart3, Sparkles } from "lucide-react";
 import { getPoliticalLean, LEAN_COLORS, LEAN_LABELS, type PoliticalLean } from "@/lib/sourceData";
 
 // Political lean spectrum order for sorting (Left → Right)
@@ -17,15 +17,6 @@ const LEAN_ORDER: Record<string, number> = {
   'center': 3,
   'center-right': 4,
   'right': 5,
-};
-
-// Border colors for Compare Coverage cards based on political lean
-const LEAN_BORDER_COLORS: Record<string, string> = {
-  'left': 'border-l-4 border-l-blue-500',
-  'center-left': 'border-l-4 border-l-cyan-500',
-  'center': 'border-l-4 border-l-purple-400',
-  'center-right': 'border-l-4 border-l-orange-500',
-  'right': 'border-l-4 border-l-red-500',
 };
 
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
@@ -412,15 +403,6 @@ function HomeContent() {
     } catch {
       return "this source";
     }
-  }
-
-  // Toggle source selection for compare
-  function handleToggleCompare(uri: string) {
-    setSelectedForCompare(prev =>
-      prev.includes(uri)
-        ? prev.filter(id => id !== uri)
-        : [...prev, uri]
-    );
   }
 
   // Rotate loading facts
@@ -1233,206 +1215,6 @@ function HomeContent() {
               </div>
             )}
 
-            {/* Inline Comparison Cards - The "Zing" */}
-            {loadingComparison && (
-              <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8">
-                <div className="flex items-center justify-center gap-3">
-                  <RefreshCw size={20} className="animate-spin text-blue-500" />
-                  <p className="text-slate-600 font-medium">Analyzing how each source covers this story...</p>
-                </div>
-              </div>
-            )}
-
-            {inlineComparison && inlineComparison.analyses && inlineComparison.analyses.length > 0 && (
-              <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8 lg:p-10">
-                <div className="mb-6">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Scale size={22} className="text-blue-600" />
-                    <h2 className="text-xl md:text-2xl font-bold text-slate-900">Compare Coverage</h2>
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Auto-selected</span>
-                  </div>
-                  <p className="text-slate-500 text-sm">See how different sources cover the same story</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {inlineComparison.analyses.slice(0, 4).map((analysis: any, idx: number) => {
-                    // Use sorted source URLs from the comparison data
-                    const sourceUrl = inlineComparison.sortedSourceUrls?.[idx] || selectedForCompare[idx];
-                    const source = results.find(r => r.uri === sourceUrl);
-                    const sourceName = source?.displayName || source?.sourceDomain?.split('.')[0].toUpperCase() || 'Source';
-                    const lean = (source?.politicalLean?.toLowerCase() || getPoliticalLean(source?.sourceDomain || '')) as string;
-                    const borderClass = LEAN_BORDER_COLORS[lean] || LEAN_BORDER_COLORS['center'];
-
-                    return (
-                      <div key={idx} className={`border border-slate-200 rounded-xl p-5 bg-slate-50 hover:shadow-md transition-shadow ${borderClass}`}>
-                        {/* Source Header */}
-                        <div className="flex items-center gap-2 mb-2">
-                          <img
-                            src={`https://www.google.com/s2/favicons?domain=${source?.sourceDomain}&sz=32`}
-                            alt=""
-                            className="w-5 h-5 rounded-md flex-shrink-0"
-                          />
-                          <span className="font-semibold text-slate-900">{sourceName}</span>
-                          {source?.countryCode && (
-                            <span className="text-xs flex-shrink-0">{source.countryCode === 'US' ? '🇺🇸' : source.countryCode === 'GB' ? '🇬🇧' : source.countryCode === 'CA' ? '🇨🇦' : '🌍'}</span>
-                          )}
-                        </div>
-                        {/* Political Lean Badge */}
-                        <div className="mb-2">
-                          {(() => {
-                            const lean = (source?.politicalLean?.toLowerCase() || getPoliticalLean(source?.sourceDomain || '')) as PoliticalLean;
-                            const colors = LEAN_COLORS[lean] || LEAN_COLORS['center'];
-                            const label = LEAN_LABELS[lean] || 'Center';
-                            return (
-                              <span className={`text-xs px-2 py-0.5 rounded font-medium ${colors.bg} ${colors.text}`}>
-                                {label}
-                              </span>
-                            );
-                          })()}
-                        </div>
-
-                        <a href={source?.uri} target="_blank" rel="noopener noreferrer"
-                           className="text-blue-600 text-sm hover:underline inline-flex items-center gap-1">
-                          Read full article <ArrowRight size={12} />
-                        </a>
-
-                        {/* Headline */}
-                        <p className="font-medium mt-4 text-slate-900 leading-snug">"{analysis.headline}"</p>
-
-                        {/* Tone Badge */}
-                        <div className="mt-4">
-                          <span className="text-xs text-slate-500 uppercase tracking-wide font-medium">Tone</span>
-                          <span className={`ml-2 text-sm px-2.5 py-0.5 rounded-full font-medium ${
-                            ['Critical', 'Alarming', 'Concerned', 'Skeptical', 'Warning'].some(t => analysis.tone?.includes(t))
-                              ? 'bg-red-100 text-red-700'
-                              : ['Supportive', 'Approving', 'Optimistic', 'Positive'].some(t => analysis.tone?.includes(t))
-                              ? 'bg-green-100 text-green-700'
-                              : ['Urgent', 'Alert'].some(t => analysis.tone?.includes(t))
-                              ? 'bg-amber-100 text-amber-700'
-                              : 'bg-blue-100 text-blue-700'
-                          }`}>
-                            {analysis.tone}
-                          </span>
-                        </div>
-
-                        {/* Focus */}
-                        <div className="mt-4">
-                          <span className="text-xs text-slate-500 uppercase tracking-wide font-medium block mb-1">Focus</span>
-                          <p className="text-sm text-slate-700 leading-relaxed">{analysis.focus}</p>
-                        </div>
-
-                        {/* Unique Angle */}
-                        <div className="mt-4">
-                          <span className="text-xs text-slate-500 uppercase tracking-wide font-medium block mb-1">Unique Angle</span>
-                          <p className="text-sm text-slate-700 leading-relaxed">{analysis.uniqueAngle}</p>
-                        </div>
-
-                        {/* Not Covered */}
-                        {analysis.notCovered && (
-                          <div className="mt-4">
-                            <span className="text-xs text-red-500 uppercase tracking-wide font-medium block mb-1">Not Covered</span>
-                            <p className="text-sm text-slate-600 italic leading-relaxed">{analysis.notCovered}</p>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Share & Full Compare */}
-                <div className="mt-6 pt-4 border-t border-slate-100">
-                  {/* Share Buttons */}
-                  <div className="flex items-center justify-center gap-3 mb-4">
-                    <button
-                      onClick={async () => {
-                        const shareUrl = `${window.location.origin}/compare?sources=${encodeURIComponent(JSON.stringify(
-                          results
-                            .filter(r => selectedForCompare.includes(r.uri))
-                            .map((r, i) => ({
-                              id: `source-${i}`,
-                              name: r.displayName || r.sourceDomain,
-                              type: r.sourceType || 'Corporate',
-                              url: r.uri,
-                            }))
-                        ))}&context=${encodeURIComponent(summary || '')}`;
-                        await navigator.clipboard.writeText(shareUrl);
-                        const btn = document.activeElement as HTMLButtonElement;
-                        const original = btn.innerHTML;
-                        btn.innerHTML = '✓ Copied!';
-                        setTimeout(() => { btn.innerHTML = original; }, 2000);
-                      }}
-                      className="text-xs text-slate-500 hover:text-slate-700 transition-colors"
-                    >
-                      🔗 Copy
-                    </button>
-
-                    <span className="text-slate-300">|</span>
-
-                    <button
-                      onClick={() => {
-                        const headlines = inlineComparison.analyses.slice(0, 4).map((a: any, i: number) => {
-                          const src = results.find(r => selectedForCompare[i] === r.uri);
-                          return `${src?.displayName || 'Source'}: "${a.headline}"`;
-                        }).join('\n');
-                        const tweetText = `See how different sources cover this story:\n\n${headlines}\n\nCompare coverage:`;
-                        const shareUrl = `${window.location.origin}/compare?sources=${encodeURIComponent(JSON.stringify(
-                          results
-                            .filter(r => selectedForCompare.includes(r.uri))
-                            .map((r, i) => ({
-                              id: `source-${i}`,
-                              name: r.displayName || r.sourceDomain,
-                              type: r.sourceType || 'Corporate',
-                              url: r.uri,
-                            }))
-                        ))}&context=${encodeURIComponent(summary || '')}`;
-                        window.open(
-                          `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(shareUrl)}`,
-                          '_blank',
-                          'width=550,height=420'
-                        );
-                      }}
-                      className="text-xs text-slate-500 hover:text-slate-700 transition-colors"
-                    >
-                      𝕏 Tweet
-                    </button>
-
-                    {typeof navigator !== 'undefined' && 'share' in navigator && (
-                      <>
-                        <span className="text-slate-300">|</span>
-                        <button
-                          onClick={() => {
-                            const headlines = inlineComparison.analyses.slice(0, 4).map((a: any, i: number) => {
-                              const src = results.find(r => selectedForCompare[i] === r.uri);
-                              return `${src?.displayName || 'Source'}: "${a.headline}"`;
-                            }).join('\n');
-                            const shareUrl = `${window.location.origin}/compare?sources=${encodeURIComponent(JSON.stringify(
-                              results
-                                .filter(r => selectedForCompare.includes(r.uri))
-                                .map((r, i) => ({
-                                  id: `source-${i}`,
-                                  name: r.displayName || r.sourceDomain,
-                                  type: r.sourceType || 'Corporate',
-                                  url: r.uri,
-                                }))
-                            ))}&context=${encodeURIComponent(summary || '')}`;
-                            navigator.share({
-                              title: 'Compare News Coverage - MirrorSource',
-                              text: `See how different sources cover this story:\n${headlines}`,
-                              url: shareUrl
-                            });
-                          }}
-                          className="text-xs text-slate-500 hover:text-slate-700 transition-colors"
-                        >
-                          📤 Share
-                        </button>
-                      </>
-                    )}
-                  </div>
-
-                </div>
-              </div>
-            )}
-
             {/* Coverage Distribution */}
             {results.length > 0 && (
               <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8 lg:p-10">
@@ -1440,54 +1222,53 @@ function HomeContent() {
               </div>
             )}
 
-            {/* More Sources */}
-            <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8 lg:p-10">
-              <div className="flex items-center justify-between mb-5">
-                <div>
-                  <h2 className="text-xl md:text-2xl font-bold text-slate-900">More Sources</h2>
-                  <p className="text-sm text-slate-500 mt-1">Select different sources to compare</p>
+            {/* Source Analysis - Flip Cards */}
+            {results.length > 0 && (
+              <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8 lg:p-10">
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Scale size={22} className="text-blue-600" />
+                    <h2 className="text-xl md:text-2xl font-bold text-slate-900">Source Analysis</h2>
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">{results.length} sources</span>
+                  </div>
+                  <p className="text-slate-500 text-sm">Tap any card to see ownership transparency</p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {results.map((source, idx) => {
+                    // Find analysis for this source if it exists (from inline comparison)
+                    const analysisIdx = inlineComparison?.sortedSourceUrls?.findIndex((url: string) => url === source.uri);
+                    const analysis = analysisIdx >= 0 ? inlineComparison?.analyses?.[analysisIdx] : undefined;
+
+                    return (
+                      <SourceFlipCard
+                        key={source.uri || idx}
+                        source={source}
+                        analysis={analysis}
+                        getPoliticalLean={getPoliticalLean}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Retry Button */}
+                <div className="mt-6 pt-4 border-t border-slate-100">
+                  <p className="text-sm text-slate-500 text-center mb-3">Results may vary. Try again for different sources.</p>
+                  <button
+                    onClick={() => handleSearchWithUrl(lastSubmittedUrl)}
+                    disabled={loading}
+                    className="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 disabled:bg-slate-50 text-slate-700 font-medium py-3 px-6 rounded-full transition-colors border border-slate-200"
+                  >
+                    <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                    Find different sources
+                  </button>
                 </div>
               </div>
+            )}
 
-              {results.length > 0 ? (
-                <>
-                  <ResultsDisplay
-                    results={results}
-                    selectedIds={selectedForCompare}
-                    onToggleSelect={handleToggleCompare}
-                  />
-                  <div className="mt-6 pt-6 border-t border-slate-100">
-                    {/* Compare Selected Button */}
-                    {selectedForCompare.length >= 2 && (
-                      <div className="mb-4">
-                        <Link
-                          href={`/compare?sources=${encodeURIComponent(JSON.stringify(
-                            results
-                              .filter(r => selectedForCompare.includes(r.uri))
-                              .slice(0, 5)
-                              .map((r, i) => ({
-                                id: `source-${i}`,
-                                name: r.displayName || r.sourceDomain?.split('.')[0].toUpperCase() || 'Unknown',
-                                type: r.sourceType || 'unknown',
-                                url: r.uri,
-                                title: (r.title || '').slice(0, 100),
-                                snippet: (r.snippet || '').slice(0, 150)
-                              }))
-                          ))}`}
-                          className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition"
-                        >
-                          Compare {selectedForCompare.length} Sources →
-                        </Link>
-                      </div>
-                    )}
-                    <p className="text-sm text-slate-500 text-center mb-3">Results may vary. Try again for different sources.</p>
-                    <button onClick={() => handleSearchWithUrl(lastSubmittedUrl)} disabled={loading} className="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 disabled:bg-slate-50 text-slate-700 font-medium py-3 px-6 rounded-full transition-colors border border-slate-200">
-                      <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-                      Find different sources
-                    </button>
-                  </div>
-                </>
-              ) : (
+            {/* No Results State */}
+            {results.length === 0 && !loading && (
+              <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8 lg:p-10">
                 <div className="space-y-4">
                   <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
                     <AlertCircle className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0" />
@@ -1496,14 +1277,18 @@ function HomeContent() {
                       <p className="text-sm text-slate-500 mt-1">We searched but couldn't find free alternative sources for this specific article. This can happen with breaking news or niche topics.</p>
                     </div>
                   </div>
-                  
-                  <button onClick={() => handleSearchWithUrl(lastSubmittedUrl)} disabled={loading} className="w-full flex items-center justify-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-[#6b9aef] text-white font-medium py-3 px-6 rounded-full transition-colors">
+
+                  <button
+                    onClick={() => handleSearchWithUrl(lastSubmittedUrl)}
+                    disabled={loading}
+                    className="w-full flex items-center justify-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-[#6b9aef] text-white font-medium py-3 px-6 rounded-full transition-colors"
+                  >
                     <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
                     Try searching again
                   </button>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       )}

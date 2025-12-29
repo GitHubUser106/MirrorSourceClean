@@ -304,3 +304,9 @@ export const BALANCED_DOMAINS = [
   'dailywire.com',
   'breitbart.com',
 ];
+
+// =============================================================================
+// HELPER: Wikipedia Link Generator
+// =============================================================================
+export const getWikiLink = (sourceName: string): string =>
+  `https://en.wikipedia.org/wiki/${sourceName.replace(/ /g, '_')}`;

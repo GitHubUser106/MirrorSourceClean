@@ -2,78 +2,60 @@
 
 ## 1. Global Context & Rules
 * **App Name:** MirrorSource
-* **Core Stack:**
-  - **Framework:** Next.js 14.2.5 (App Router)
-  - **Hosting:** Vercel
-  - **Language:** TypeScript 5
-  - **Styling:** Tailwind CSS 3.4.1
-  - **UI Icons:** Lucide React
-  - **AI:** Google Gemini (@google/genai)
-  - **Search:** Brave Search API
-  - **Analytics:** @vercel/analytics
+* **Core Stack:** Next.js 14, TypeScript 5, Tailwind 3.4, Brave Search API, Gemini AI.
 * **Primary Rule:** DO NOT hallucinate file paths. Always check `ls` before editing.
-* **Coding Style:** "Vibecoding" — prioritize speed and functioning prototypes over over-engineering.
+* **Coding Style:** "Vibecoding" — prioritize speed and functioning prototypes.
 
-### Key Files & Structure
-```
-src/
-├── app/
-│   ├── page.tsx              # Main homepage with search, results, coverage distribution
-│   ├── api/
-│   │   ├── find/route.ts     # Main API - search, AI summary, source classification
-│   │   ├── compare/route.ts  # Source comparison API
-│   │   └── usage/route.ts    # Rate limiting API
-│   ├── compare/page.tsx      # Side-by-side source comparison page
-│   ├── sources/page.tsx      # Source database display
-│   └── about/, contact/, legal/
-├── components/
-│   ├── UrlInputForm.tsx      # Search input (mobile-responsive)
-│   ├── ResultsDisplay.tsx    # Source cards display
-│   └── ...
-├── lib/
-│   ├── sourceData.ts         # Political lean database (AllSides ratings)
-│   └── rate-limiter.ts       # Cookie-based rate limiting
-└── types/index.ts            # TypeScript interfaces
-```
+## 2. Current Sprint (The "Active" Sheet Music)
+**Goal:** UI Consolidation - Merge "Compare Coverage" + "More Sources" into Flip Cards
 
-### Environment Variables Required
-- `GEMINI_API_KEY` - Google Gemini AI
-- `BRAVE_API_KEY` - Brave Search API
+### Context
+> **The Problem:** With typically <18 results, having separate "Compare Coverage" and "More Sources" sections creates redundancy and extra scrolling.
+> **The Solution:** Consolidate into a single section of interactive flip cards.
+> **The Strategy:**
+> 1.  **Merge:** Combine all logic into one unified grid.
+> 2.  **Flip Cards:** Front shows analysis; back shows ownership transparency.
+> 3.  **Hybrid Data:** Use Gemini for ownership summaries + Wikipedia links for verification.
 
-Goal: Revert the loading animation to the original "flashing" behavior but maintain the new square icon styling.
+### Execution Checklist
+- [ ] **Step 0 (Baseline):** **(Conductor Action)** Screenshot current "Compare" and "More Sources" sections for comparison.
+- [ ] **Step 1 (Gemini Prompt Update):** In `src/app/api/find/route.ts` (or where the prompt lives), update the JSON schema request. Ask for these 3 new fields for *every* source:
+    * `ownership_owner`: (String) Parent company or individual (e.g., "Warner Bros. Discovery").
+    * `ownership_funding`: (String) Funding model (e.g., "Advertising + Cable Fees").
+    * `ownership_tag`: (String/Enum) **Must match existing types:** "corporate", "nonprofit", "government", "public", "family", "billionaire", "cooperative".
+- [ ] **Step 2 (Data Type Update):** Update the TypeScript interface (likely `ComparisonResult` or `Source`) to include these 3 new optional string fields.
+- [ ] **Step 3 (Helper Function):** Add to `src/lib/sourceData.ts`:
+    ```typescript
+    export const getWikiLink = (sourceName: string): string =>
+      `https://en.wikipedia.org/wiki/${sourceName.replace(/ /g, '_')}`;
+    ```
+- [ ] **Step 4 (Flip Card Component):** Create `src/components/SourceFlipCard.tsx`:
+    * **Front:** Source Name, Favicon, Lean Badge, **Ownership Tag Badge** (using the new `ownership_tag`), Headline, Tone/Focus. Add a small "↻" or "ℹ️" icon.
+    * **Back:** "Source Transparency" Header. Display Owner, Funding, and a **"Verify on Wikipedia →"** link (using `getWikiLink`).
+    * **Interaction:** CSS 3D Flip (preserve 3D). Click/Tap to flip.
+- [ ] **Step 5 (Layout Consolidation):** In `src/app/page.tsx`:
+    * **Delete** the "More Sources" section.
+    * **Rename** "Compare Coverage" to "Source Analysis".
+    * **Grid:** Use the new `SourceFlipCard` for ALL results.
+    * **Logic:** Pass all search results to this grid (removing any "Show Top 3" limits).
+- [ ] **Step 6 (Cleanup):** Remove old checkbox selection logic (since we now compare everything).
+- [ ] **Step 7 (Commit):** `git add . && git commit -m "UI: Merge sources into flip cards with ownership transparency" && git push`
+- [ ] **Step 8 (Verify):**
+    * Test flip animation on desktop (click) and mobile (tap).
+    * Confirm ownership data appears from Gemini response.
+    * Verify Wikipedia links open correctly.
+    * Check that all results display (no artificial limits).
+    * Confirm "More Sources" section is fully removed.
 
-Context
-The "Scanning Wave" (sequential animation) did not resonate; the user prefers the original simultaneous or random "flashing" effect. We need to roll back the behavioral changes to the animation (removing the sequential delays) while strictly preserving the visual changes (keeping the icons square/rounded-lg instead of circular).
+### Card Layout Specification
+**Front:**
+`[Logo] CNN [Left Badge] [Corporate Badge]`
+`"Headline text..."`
+`Tone: Analytical`
+`[↻ Flip for Info]`
 
-Execution Checklist
-[ ] Step 1: Open src/app/page.tsx (or the component handling the loading state).
-
-[ ] Step 2: Remove the sequential logic added in the previous turn:
-
-Delete the inline style={{ animationDelay: ... }} prop from the icons.
-
-[ ] Step 3: Restore the original animation method:
-
-Re-apply the standard animate-pulse class (or the previous animation class) to the icons or their container so they flash simultaneously/randomly as before.
-
-[ ] Step 4: Enforce Square Styling:
-
-Verify: Ensure the icons still have rounded-lg (or rounded-md) and border.
-
-Verify: Ensure rounded-full is NOT present.
-
-## 3. Known Issues & Constraints
-* **Tailwind Dynamic Classes:** Do NOT use dynamic Tailwind class names (e.g., `bg-${color}-500`). Tailwind purges them. Use inline styles with hex colors instead.
-* **Political Lean Data:** Two sources exist - `sourceData.ts` (shared) and API's internal `sources` object. The API's `getSourceInfo()` should always call `withLean()` to ensure lean is populated.
-* **Rate Limiting:** Cookie-based, resets on browser clear. No database persistence.
-* **Browser Extension:** Separate `mirrorsource-extension/` folder - Chrome extension for quick access.
-* **Mobile PWA:** Supports Android share intents via URL params (`?url=` and `?text=`).
-* **API Timeout:** 30 seconds max (`maxDuration = 30`).
-* **Cache:** In-memory search cache (1 hour TTL, max 500 entries, resets on cold start).
-
-## 4. Future Roadmap (The "Backlog")
-* [ ] Add more international source ratings (Canadian, UK, etc.)
-* [ ] Persist rate limiting to database
-* [ ] Add user accounts for saved searches
-* [ ] Improve mobile PWA experience
-* [ ] Add "share comparison" social features
+**Back:**
+`📋 SOURCE TRANSPARENCY`
+`Owner: Warner Bros Discovery`
+`Funding: Ads + Cable`
+`[🔗 Verify on Wikipedia]`
