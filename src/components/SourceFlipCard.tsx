@@ -149,15 +149,15 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean }: SourceFli
             </p>
           )}
 
-          {/* Read Article Link */}
+          {/* Read Article Link - 44px min tap target for mobile */}
           <a
             href={source.uri}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 text-xs hover:underline inline-flex items-center gap-1"
+            className="text-blue-600 text-sm hover:underline inline-flex items-center gap-1.5 py-2 px-3 -ml-3 min-h-[44px] rounded-lg hover:bg-blue-50 transition-colors"
             onClick={(e) => e.stopPropagation()}
           >
-            Read article <ExternalLink size={10} />
+            Read article <ExternalLink size={14} />
           </a>
 
           {/* Flip Indicator */}
@@ -204,19 +204,19 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean }: SourceFli
             </div>
           </div>
 
-          {/* Fixed Footer */}
+          {/* Fixed Footer - 44px min tap target for mobile */}
           <div className="pt-2 mt-auto border-t border-slate-200">
             <a
               href={getWikiLink(sourceName)}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline font-medium"
+              className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline font-medium py-2 px-3 -ml-3 min-h-[44px] rounded-lg hover:bg-blue-50 transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
               🔗 Verify on Wikipedia
-              <ExternalLink size={12} />
+              <ExternalLink size={14} />
             </a>
-            <div className="text-slate-400 flex items-center gap-1 text-xs mt-2">
+            <div className="text-slate-400 flex items-center gap-1 text-xs mt-1">
               <span>Tap to flip back</span>
             </div>
           </div>
