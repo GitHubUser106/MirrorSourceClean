@@ -2556,6 +2556,10 @@ export async function POST(req: NextRequest) {
     let gapFillAttempts = 0;
     const MAX_GAP_FILL_ATTEMPTS = 3;
 
+    // Rate limit handling with exponential backoff
+    let currentDelay = 500; // Start with 500ms delay (increased from 300ms)
+    const BACKOFF_MULTIPLIER = 2; // Double delay after each 429
+
     // Priority queue: Check rarest categories first (skip Center - usually over-represented)
     type GapFillTarget = {
       category: 'centerRight' | 'right' | 'left' | 'centerLeft';
@@ -2590,13 +2594,13 @@ export async function POST(req: NextRequest) {
       gapFillAttempted[target.category] = true;
       console.log(`[GapFill] Attempt ${gapFillAttempts}/${MAX_GAP_FILL_ATTEMPTS}: Searching for ${target.label} sources...`);
 
-      const siteQuery = target.domains.slice(0, 6).map(d => `site:${d}`).join(' OR ');
+      const siteQuery = target.domains.slice(0, 4).map(d => `site:${d}`).join(' OR ');
       const targetedQuery = `${searchQuery} (${siteQuery})`;
       console.log(`[GapFill] ${target.label} search query: ${targetedQuery}`);
 
-      // Rate limit delay
-      console.log(`[GapFill] Waiting 300ms to avoid rate limit...`);
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Rate limit delay with exponential backoff
+      console.log(`[GapFill] Waiting ${currentDelay}ms to avoid rate limit...`);
+      await new Promise(resolve => setTimeout(resolve, currentDelay));
 
       try {
         const results = await searchWithBrave(targetedQuery);
@@ -2620,8 +2624,14 @@ export async function POST(req: NextRequest) {
         }
       } catch (err: any) {
         if (err?.status === 429 || err?.message?.includes('429')) {
-          console.log(`[GapFill] Rate limit hit - stopping gap fill`);
-          gapFillRateLimited = true;
+          console.log(`[GapFill] Rate limit hit (429) - applying exponential backoff`);
+          currentDelay *= BACKOFF_MULTIPLIER;
+          console.log(`[GapFill] New delay: ${currentDelay}ms`);
+          // Don't stop immediately - try with longer delay
+          if (currentDelay > 4000) {
+            console.log(`[GapFill] Delay too long (>${4000}ms) - stopping gap fill`);
+            gapFillRateLimited = true;
+          }
         } else {
           console.log(`[GapFill] ${target.label} search failed:`, err);
         }
