@@ -5,21 +5,21 @@ import { ExternalLink, Info } from 'lucide-react';
 import { LEAN_COLORS, LEAN_LABELS, getWikiLink } from '@/lib/sourceData';
 import type { GroundingSource, PoliticalLean, OwnershipType } from '@/types';
 
-// Ownership type labels and colors
+// Ownership type labels - clearer naming for users
 const OWNERSHIP_LABELS: Record<string, string> = {
   'private': 'Private',
-  'public_traded': 'Public',
+  'public_traded': 'Public Co.',
   'nonprofit': 'Nonprofit',
-  'public_media': 'Public Media',
+  'public_media': 'Public Broadcaster',
   'state_owned': 'State-Funded',
   'cooperative': 'Co-op',
   'trust': 'Trust',
   // Legacy types from sourceData.ts
   'corporate': 'Corporate',
-  'public': 'Public',
-  'family': 'Family',
-  'billionaire': 'Billionaire',
-  'government': 'Government',
+  'public': 'Public Co.',
+  'family': 'Family-Owned',
+  'billionaire': 'Billionaire-Owned',
+  'government': 'Public Broadcaster',
 };
 
 const OWNERSHIP_COLORS: Record<string, { bg: string; text: string }> = {
@@ -101,32 +101,40 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean }: SourceFli
             </span>
           </div>
 
-          {/* Headline (if analysis exists) */}
-          {analysis?.headline && (
-            <p className="font-medium text-slate-900 leading-snug text-sm mb-3 line-clamp-2">
-              "{analysis.headline}"
+          {/* Content Area - AI analysis OR fallback */}
+          {analysis?.headline ? (
+            <>
+              {/* Headline from AI */}
+              <p className="font-medium text-slate-900 leading-snug text-sm mb-3 line-clamp-2">
+                "{analysis.headline}"
+              </p>
+
+              {/* Tone Badge */}
+              {analysis?.tone && (
+                <div className="mb-2">
+                  <span className="text-xs text-slate-500 uppercase tracking-wide font-medium">Tone: </span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    ['Critical', 'Alarming', 'Concerned', 'Skeptical', 'Warning'].some(t => analysis.tone?.includes(t))
+                      ? 'bg-red-100 text-red-700'
+                      : ['Supportive', 'Approving', 'Optimistic', 'Positive'].some(t => analysis.tone?.includes(t))
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {analysis.tone}
+                  </span>
+                </div>
+              )}
+
+              {/* Focus */}
+              {analysis?.focus && (
+                <p className="text-xs text-slate-600 leading-relaxed line-clamp-2 mb-3">{analysis.focus}</p>
+              )}
+            </>
+          ) : (
+            /* Fallback content when no AI analysis */
+            <p className="text-sm text-slate-500 leading-relaxed line-clamp-3 mb-3">
+              {source.snippet || `Click to read full coverage from ${sourceName}.`}
             </p>
-          )}
-
-          {/* Tone Badge */}
-          {analysis?.tone && (
-            <div className="mb-2">
-              <span className="text-xs text-slate-500 uppercase tracking-wide font-medium">Tone: </span>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                ['Critical', 'Alarming', 'Concerned', 'Skeptical', 'Warning'].some(t => analysis.tone?.includes(t))
-                  ? 'bg-red-100 text-red-700'
-                  : ['Supportive', 'Approving', 'Optimistic', 'Positive'].some(t => analysis.tone?.includes(t))
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-blue-100 text-blue-700'
-              }`}>
-                {analysis.tone}
-              </span>
-            </div>
-          )}
-
-          {/* Focus */}
-          {analysis?.focus && (
-            <p className="text-xs text-slate-600 leading-relaxed line-clamp-2 mb-3">{analysis.focus}</p>
           )}
 
           {/* Read Article Link */}
@@ -149,52 +157,56 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean }: SourceFli
 
         {/* BACK */}
         <div
-          className="absolute inset-0 backface-hidden border border-slate-200 rounded-xl p-5 bg-slate-50 rotate-y-180"
+          className="absolute inset-0 backface-hidden border border-slate-200 rounded-xl p-5 bg-slate-50 rotate-y-180 flex flex-col h-full"
           style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
         >
-          <div className="flex items-center gap-2 mb-4">
+          {/* Header */}
+          <div className="flex items-center gap-2 mb-3">
             <span className="text-lg">📋</span>
             <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wide">Source Transparency</h3>
           </div>
 
-          {/* Owner */}
-          <div className="mb-4">
-            <span className="text-xs text-slate-500 uppercase tracking-wide font-medium block mb-1">Owner</span>
-            <p className="text-sm text-slate-800 font-medium">
-              {source.ownership?.owner || 'Unknown'}
-              {source.ownership?.parent && source.ownership.parent !== source.ownership.owner && (
-                <span className="text-slate-500 font-normal"> ({source.ownership.parent})</span>
+          {/* Scrollable Content Area */}
+          <div className="flex-grow overflow-y-auto pr-1">
+            {/* Owner */}
+            <div className="mb-3">
+              <span className="text-xs text-slate-500 uppercase tracking-wide font-medium block mb-1">Owner</span>
+              <p className="text-sm text-slate-800 font-medium">
+                {source.ownership?.owner || 'Unknown'}
+                {source.ownership?.parent && source.ownership.parent !== source.ownership.owner && (
+                  <span className="text-slate-500 font-normal"> ({source.ownership.parent})</span>
+                )}
+              </p>
+              {source.ownership?.note && (
+                <p className="text-xs text-slate-500 mt-1">{source.ownership.note}</p>
               )}
-            </p>
-            {source.ownership?.note && (
-              <p className="text-xs text-slate-500 mt-1">{source.ownership.note}</p>
-            )}
+            </div>
+
+            {/* Funding */}
+            <div className="mb-3">
+              <span className="text-xs text-slate-500 uppercase tracking-wide font-medium block mb-1">Funding</span>
+              <p className="text-sm text-slate-700">{source.funding?.model || 'Not disclosed'}</p>
+              {source.funding?.note && (
+                <p className="text-xs text-slate-500 mt-1">{source.funding.note}</p>
+              )}
+            </div>
           </div>
 
-          {/* Funding */}
-          <div className="mb-4">
-            <span className="text-xs text-slate-500 uppercase tracking-wide font-medium block mb-1">Funding</span>
-            <p className="text-sm text-slate-700">{source.funding?.model || 'Not disclosed'}</p>
-            {source.funding?.note && (
-              <p className="text-xs text-slate-500 mt-1">{source.funding.note}</p>
-            )}
-          </div>
-
-          {/* Wikipedia Link */}
-          <a
-            href={getWikiLink(sourceName)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline font-medium"
-            onClick={(e) => e.stopPropagation()}
-          >
-            🔗 Verify on Wikipedia
-            <ExternalLink size={12} />
-          </a>
-
-          {/* Flip back indicator */}
-          <div className="absolute bottom-3 right-3 text-slate-400 flex items-center gap-1 text-xs">
-            <span>Tap to flip back</span>
+          {/* Fixed Footer */}
+          <div className="pt-2 mt-auto border-t border-slate-200">
+            <a
+              href={getWikiLink(sourceName)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline font-medium"
+              onClick={(e) => e.stopPropagation()}
+            >
+              🔗 Verify on Wikipedia
+              <ExternalLink size={12} />
+            </a>
+            <div className="text-slate-400 flex items-center gap-1 text-xs mt-2">
+              <span>Tap to flip back</span>
+            </div>
           </div>
         </div>
       </div>
