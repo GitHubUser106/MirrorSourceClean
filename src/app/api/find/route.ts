@@ -613,7 +613,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'News Corp', parent: 'News Corp', type: 'public_traded', note: 'Owned by Rupert Murdoch\'s News Corp (NASDAQ: NWSA)' },
     funding: { model: 'Advertising, subscriptions', note: 'Tabloid format, conservative editorial stance' },
-    lean: 'right',
+    lean: 'center-right',  // UPDATED to match sourceData.ts (AllSides "Lean Right")
   },
   'washingtonexaminer.com': {
     displayName: 'Washington Examiner',
@@ -621,7 +621,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Clarity Media Group', parent: 'Anschutz Corporation', type: 'private', note: 'Owned by billionaire Philip Anschutz' },
     funding: { model: 'Advertising, subscriptions', note: 'Conservative news and opinion' },
-    lean: 'right',
+    lean: 'center-right',  // UPDATED to match sourceData.ts (AllSides "Lean Right")
   },
   'washingtontimes.com': {
     displayName: 'Washington Times',
@@ -629,7 +629,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Operations Holdings', parent: 'Unification Church affiliates', type: 'private', note: 'Founded by Sun Myung Moon, now independent' },
     funding: { model: 'Advertising, subscriptions', note: 'Conservative daily newspaper' },
-    lean: 'right',
+    lean: 'center-right',  // UPDATED to match sourceData.ts (AllSides "Lean Right")
   },
   'dailywire.com': {
     displayName: 'Daily Wire',
@@ -661,7 +661,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'National Review Inc', parent: 'National Review Inc', type: 'nonprofit', note: 'Founded by William F. Buckley Jr. in 1955' },
     funding: { model: 'Subscriptions, donations', note: 'Conservative intellectual magazine' },
-    lean: 'right',
+    lean: 'center-right',  // UPDATED to match sourceData.ts (AllSides "Lean Right")
   },
   'dailycaller.com': {
     displayName: 'Daily Caller',
@@ -685,7 +685,7 @@ const sources: Record<string, SourceInfo> = {
     countryCode: 'US',
     ownership: { owner: 'Center for American Freedom', parent: 'Center for American Freedom', type: 'nonprofit', note: 'Conservative nonprofit news organization' },
     funding: { model: 'Donations', note: 'Investigative journalism, conservative perspective' },
-    lean: 'right',
+    lean: 'center-right',  // UPDATED to match sourceData.ts (AllSides "Lean Right")
   },
   'townhall.com': {
     displayName: 'Townhall',
