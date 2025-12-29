@@ -3,10 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import { checkRateLimit, incrementUsage, COOKIE_OPTIONS } from "@/lib/rate-limiter";
 import {
   getPoliticalLean,
-  LEFT_DOMAINS,
-  CENTER_LEFT_DOMAINS,
-  CENTER_RIGHT_DOMAINS,
-  RIGHT_DOMAINS,
+  BALANCED_DOMAINS,
 } from "@/lib/sourceData";
 
 export const dynamic = "force-dynamic";
@@ -2182,11 +2179,10 @@ function detectQueryBias(query: string): string | null {
 }
 
 // Analyze political diversity of results
-// gapFillInfo: tells us if we already tried to find underrepresented sources
 // inputUrl: the user's input URL (if provided) - included in coverage calculation
 function analyzePoliticalDiversity(
   results: ProcessedSource[],
-  gapFillInfo?: { attempted: { right: boolean; left: boolean }; found: { right: number; left: number } },
+  _gapFillInfo?: unknown, // Deprecated - kept for backward compatibility
   inputUrl?: string
 ): {
   isBalanced: boolean;
@@ -2237,21 +2233,11 @@ function analyzePoliticalDiversity(
 
   if (leftPct > 0.6 && rightCount < 2) {
     isBalanced = false;
-    // More accurate warning based on whether we tried gap fill
-    if (gapFillInfo?.attempted.right && gapFillInfo.found.right === 0) {
-      warning = `We searched specifically for right-leaning coverage but found none. This story may not be covered by these outlets.`;
-    } else {
-      warning = `Sources lean left (${leftCount}/${total}). Right-leaning perspectives may be underrepresented.`;
-    }
+    warning = `Sources lean left (${leftCount}/${total}). Right-leaning perspectives may be underrepresented.`;
     console.log(`[Diversity] WARNING: ${warning}`);
   } else if (rightPct > 0.6 && leftCount < 2) {
     isBalanced = false;
-    // More accurate warning based on whether we tried gap fill
-    if (gapFillInfo?.attempted.left && gapFillInfo.found.left === 0) {
-      warning = `We searched specifically for left-leaning coverage but found none. This story may not be covered by these outlets.`;
-    } else {
-      warning = `Sources lean right (${rightCount}/${total}). Left-leaning perspectives may be underrepresented.`;
-    }
+    warning = `Sources lean right (${rightCount}/${total}). Left-leaning perspectives may be underrepresented.`;
     console.log(`[Diversity] WARNING: ${warning}`);
   } else {
     console.log(`[Diversity] Sources are balanced - no warning`);
@@ -2434,63 +2420,63 @@ export async function POST(req: NextRequest) {
     // 5. Increment Usage (only for non-cached requests)
     const { info: usageInfo, cookieValue } = await incrementUsage(req);
 
-    // 6. STEP 1: THE EYES - Search with Brave
-    console.log(`[Search] Query: "${searchQuery}"`);
-    const searchResults = await searchWithBrave(searchQuery);
-    console.log(`[Search] Brave returned ${searchResults.length} results`);
+    // ==========================================================================
+    // BALANCED SEARCH: Single query targeting all 5 political leans
+    // Replaces the old multi-call "Gap Fill" system to avoid 429 rate limits
+    // ==========================================================================
+
+    // Build balanced query with site: operators for all political leans
+    const siteFilters = BALANCED_DOMAINS.map(d => `site:${d}`).join(' OR ');
+    const balancedQuery = `${searchQuery} (${siteFilters})`;
+
+    console.log(`[BalancedSearch] Primary query: "${balancedQuery.substring(0, 100)}..."`);
+    console.log(`[BalancedSearch] Targeting ${BALANCED_DOMAINS.length} domains across political spectrum`);
+
+    // Primary search: Balanced query targeting all political leans
+    const primaryResults = await searchWithBrave(balancedQuery);
+    console.log(`[BalancedSearch] Primary search returned ${primaryResults.length} results`);
 
     // Deduplicate by domain
     const seenDomains = new Set<string>();
-    const deduped = searchResults.filter(result => {
+    let qualityFiltered = primaryResults.filter(result => {
       if (!result.domain || seenDomains.has(result.domain)) return false;
       seenDomains.add(result.domain);
       return true;
     });
-    console.log(`[Search] After deduplication: ${deduped.length}`);
+    console.log(`[BalancedSearch] After deduplication: ${qualityFiltered.length}`);
 
-    // Filter out low-quality results (index pages, irrelevant content)
-    let qualityFiltered = filterQualityResults(deduped, searchQuery);
-    console.log(`[Search] After quality filter: ${qualityFiltered.length} of ${deduped.length} passed`);
+    // Apply quality filter
+    qualityFiltered = filterQualityResults(qualityFiltered, searchQuery);
+    console.log(`[BalancedSearch] After quality filter: ${qualityFiltered.length}`);
 
-    // FALLBACK: If quality filter returns 0 but we had results, retry with broader keywords
-    if (qualityFiltered.length === 0 && searchResults.length > 0) {
-      console.log(`[Fallback] Quality filter returned 0. Trying broader search...`);
+    // FALLBACK: If primary returns <10 results, run a broad search without site: filters
+    if (qualityFiltered.length < 10) {
+      console.log(`[BalancedSearch] Primary returned <10 results. Running fallback broad search...`);
 
-      // Take first 3 keywords for broader search
-      const words = searchQuery.split(/\s+/).filter(w => w.length > 2);
-      const broaderQuery = words.slice(0, 3).join(' ');
+      const broadResults = await searchWithBrave(searchQuery);
+      console.log(`[BalancedSearch] Fallback returned ${broadResults.length} results`);
 
-      if (broaderQuery && broaderQuery !== searchQuery) {
-        console.log(`[Fallback] Broader query: "${broaderQuery}"`);
-        const fallbackResults = await searchWithBrave(broaderQuery);
-        console.log(`[Fallback] Got ${fallbackResults.length} results`);
+      // Merge results, deduplicating by URL
+      const existingUrls = new Set(qualityFiltered.map(r => r.url));
+      const newResults = broadResults.filter(r => !existingUrls.has(r.url));
 
-        // Use relaxed quality filter (only structural, skip relevance)
-        qualityFiltered = fallbackResults.filter(result => {
-          if (!result || !result.url) return false;
-          try {
-            const path = new URL(result.url).pathname;
-            const segments = path.split('/').filter(s => s.length > 0);
-            if (segments.length < 2) return false;
-            if (path.endsWith('/') && segments.length < 3) return false;
-            if (/\/(world|news|business|politics|tech|opinion)\/?$/.test(path)) return false;
-            return true;
-          } catch { return false; }
-        });
-        console.log(`[Fallback] After relaxed filter: ${qualityFiltered.length} passed`);
-      }
+      // Apply quality filter to new results
+      const newFiltered = filterQualityResults(newResults, searchQuery);
+      console.log(`[BalancedSearch] Fallback added ${newFiltered.length} new results after quality filter`);
+
+      qualityFiltered = [...qualityFiltered, ...newFiltered];
+
+      // Re-deduplicate by domain after merge
+      const finalDomains = new Set<string>();
+      qualityFiltered = qualityFiltered.filter(result => {
+        if (!result.domain || finalDomains.has(result.domain)) return false;
+        finalDomains.add(result.domain);
+        return true;
+      });
+      console.log(`[BalancedSearch] After merge and dedup: ${qualityFiltered.length}`);
     }
 
-    // ==========================================================================
-    // GAP FILL: 5-Category System for Balanced Coverage
-    // Priority: Center-Right (often missed), Right, Left, Center-Left
-    // Skip: Center (usually over-represented)
-    // ==========================================================================
-    console.log(`[GapFill] Starting 5-category analysis...`);
-    console.log(`[GapFill] Total results before gap fill: ${qualityFiltered.length}`);
-    console.log(`[GapFill] Sources: ${qualityFiltered.map(r => r.domain).join(', ')}`);
-
-    // 5-category political lean counter
+    // 5-category political lean counter (for logging)
     type LeanCounts = {
       left: number;
       centerLeft: number;
@@ -2538,117 +2524,14 @@ export async function POST(req: NextRequest) {
       return counts;
     };
 
-    const initialCounts = countPoliticalLean5(qualityFiltered);
-    console.log(`[GapFill] Initial 5-category counts:`);
-    console.log(`  Left: ${initialCounts.left} [${initialCounts.sources.left.join(', ') || 'none'}]`);
-    console.log(`  Center-Left: ${initialCounts.centerLeft} [${initialCounts.sources.centerLeft.join(', ') || 'none'}]`);
-    console.log(`  Center: ${initialCounts.center} [${initialCounts.sources.center.join(', ') || 'none'}]`);
-    console.log(`  Center-Right: ${initialCounts.centerRight} [${initialCounts.sources.centerRight.join(', ') || 'none'}]`);
-    console.log(`  Right: ${initialCounts.right} [${initialCounts.sources.right.join(', ') || 'none'}]`);
-
-    // Gap fill tracking
-    let gapFillAttempted = { right: false, left: false, centerRight: false, centerLeft: false };
-    let gapFillFound = { right: 0, left: 0, centerRight: 0, centerLeft: 0 };
-    let gapFillRateLimited = false;
-    let gapFillAttempts = 0;
-    const MAX_GAP_FILL_ATTEMPTS = 3;
-
-    // Rate limit handling with exponential backoff
-    let currentDelay = 500; // Start with 500ms delay (increased from 300ms)
-    const BACKOFF_MULTIPLIER = 2; // Double delay after each 429
-
-    // Priority queue: Check rarest categories first (skip Center - usually over-represented)
-    type GapFillTarget = {
-      category: 'centerRight' | 'right' | 'left' | 'centerLeft';
-      count: number;
-      domains: string[];
-      label: string;
-    };
-
-    const gapFillQueue: GapFillTarget[] = ([
-      { category: 'centerRight' as const, count: initialCounts.centerRight, domains: CENTER_RIGHT_DOMAINS, label: 'Center-Right' },
-      { category: 'right' as const, count: initialCounts.right, domains: RIGHT_DOMAINS, label: 'Right' },
-      { category: 'left' as const, count: initialCounts.left, domains: LEFT_DOMAINS, label: 'Left' },
-      { category: 'centerLeft' as const, count: initialCounts.centerLeft, domains: CENTER_LEFT_DOMAINS, label: 'Center-Left' },
-    ] as GapFillTarget[]).filter(t => t.count < 1) // Only fill if 0 sources
-     .sort((a, b) => a.count - b.count); // Rarest first
-
-    console.log(`[GapFill] Gap fill queue (categories with 0 sources): ${gapFillQueue.map(t => t.label).join(', ') || 'none needed'}`);
-
-    // Initial delay before starting gap fill - gives Brave API breathing room after initial search
-    if (gapFillQueue.length > 0) {
-      console.log('[GapFill] Waiting 800ms before starting gap fill searches...');
-      await new Promise(resolve => setTimeout(resolve, 800));
-    }
-
-    // Execute gap fill for each missing category (max 3 attempts total)
-    for (const target of gapFillQueue) {
-      if (gapFillRateLimited || gapFillAttempts >= MAX_GAP_FILL_ATTEMPTS) {
-        console.log(`[GapFill] Stopping - rate limited or max attempts (${gapFillAttempts}/${MAX_GAP_FILL_ATTEMPTS})`);
-        break;
-      }
-
-      if (target.domains.length === 0) {
-        console.log(`[GapFill] Skipping ${target.label} - no domains configured`);
-        continue;
-      }
-
-      gapFillAttempts++;
-      gapFillAttempted[target.category] = true;
-      console.log(`[GapFill] Attempt ${gapFillAttempts}/${MAX_GAP_FILL_ATTEMPTS}: Searching for ${target.label} sources...`);
-
-      const siteQuery = target.domains.slice(0, 4).map(d => `site:${d}`).join(' OR ');
-      const targetedQuery = `${searchQuery} (${siteQuery})`;
-      console.log(`[GapFill] ${target.label} search query: ${targetedQuery}`);
-
-      // Rate limit delay with exponential backoff
-      console.log(`[GapFill] Waiting ${currentDelay}ms to avoid rate limit...`);
-      await new Promise(resolve => setTimeout(resolve, currentDelay));
-
-      try {
-        const results = await searchWithBrave(targetedQuery);
-        console.log(`[GapFill] ${target.label} search returned ${results.length} results`);
-
-        // Filter and dedupe
-        const existingUrls = new Set(qualityFiltered.map(r => r.url));
-        const existingDomains = new Set(qualityFiltered.map(r => r.domain));
-        const newResults = results.filter(r =>
-          !existingUrls.has(r.url) &&
-          !existingDomains.has(r.domain) &&
-          target.domains.some(d => r.domain?.includes(d))
-        );
-
-        gapFillFound[target.category] = newResults.length;
-        if (newResults.length > 0) {
-          console.log(`[GapFill] Adding ${newResults.length} new ${target.label} sources: ${newResults.map(r => r.domain).join(', ')}`);
-          qualityFiltered = [...qualityFiltered, ...newResults];
-        } else {
-          console.log(`[GapFill] No new ${target.label} sources found`);
-        }
-      } catch (err: any) {
-        if (err?.status === 429 || err?.message?.includes('429')) {
-          console.log(`[GapFill] Rate limit hit (429) - applying exponential backoff`);
-          currentDelay *= BACKOFF_MULTIPLIER;
-          console.log(`[GapFill] New delay: ${currentDelay}ms`);
-          // Don't stop immediately - try with longer delay
-          if (currentDelay > 4000) {
-            console.log(`[GapFill] Delay too long (>${4000}ms) - stopping gap fill`);
-            gapFillRateLimited = true;
-          }
-        } else {
-          console.log(`[GapFill] ${target.label} search failed:`, err);
-        }
-      }
-    }
-
     const finalCounts = countPoliticalLean5(qualityFiltered);
-    console.log(`[GapFill] Final 5-category counts:`);
+    console.log(`[BalancedSearch] Final 5-category distribution:`);
     console.log(`  Left: ${finalCounts.left} [${finalCounts.sources.left.join(', ') || 'none'}]`);
     console.log(`  Center-Left: ${finalCounts.centerLeft} [${finalCounts.sources.centerLeft.join(', ') || 'none'}]`);
     console.log(`  Center: ${finalCounts.center} [${finalCounts.sources.center.join(', ') || 'none'}]`);
     console.log(`  Center-Right: ${finalCounts.centerRight} [${finalCounts.sources.centerRight.join(', ') || 'none'}]`);
     console.log(`  Right: ${finalCounts.right} [${finalCounts.sources.right.join(', ') || 'none'}]`);
-    console.log(`[GapFill] Total results after gap fill: ${qualityFiltered.length}`);
+    console.log(`[BalancedSearch] Total results: ${qualityFiltered.length}`);
 
     // Diversify by source type using round-robin
     const diverseResults = diversifyResults(qualityFiltered, 15);
@@ -2674,13 +2557,10 @@ export async function POST(req: NextRequest) {
     // 7. STEP 3: Process results with badges + transparency
     const alternatives = processSearchResults(diverseResults);
 
-    // 8. Analyze political diversity + query bias (pass gap fill info for accurate warnings)
+    // 8. Analyze political diversity + query bias
     // Include input URL in diversity analysis so warnings account for the user's source
     const inputUrl = hasUrl ? body.url.trim() : undefined;
-    const diversityAnalysis = analyzePoliticalDiversity(alternatives, {
-      attempted: gapFillAttempted,
-      found: gapFillFound,
-    }, inputUrl);
+    const diversityAnalysis = analyzePoliticalDiversity(alternatives, undefined, inputUrl);
     const queryBiasWarning = detectQueryBias(searchQuery);
     console.log(`[Diversity] Left: ${diversityAnalysis.leftCount}, Center: ${diversityAnalysis.centerCount}, Right: ${diversityAnalysis.rightCount}, Balanced: ${diversityAnalysis.isBalanced}`);
     if (queryBiasWarning) console.log(`[QueryBias] Warning: ${queryBiasWarning}`);

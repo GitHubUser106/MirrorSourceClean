@@ -280,3 +280,27 @@ export const RIGHT_LEANING_DOMAINS = SOURCES
 export const LEFT_LEANING_DOMAINS = SOURCES
   .filter(s => s.lean === 'left' || s.lean === 'center-left')
   .map(s => s.domain);
+
+// =============================================================================
+// BALANCED DOMAINS - Optimized distribution for single-query balanced search
+// Distribution: 2 Left, 2 Center-Left, 2 Center, 3 Center-Right, 3 Right
+// =============================================================================
+export const BALANCED_DOMAINS = [
+  // Left (2)
+  'huffpost.com',
+  'vox.com',
+  // Center-Left (2)
+  'nytimes.com',
+  'cnn.com',
+  // Center (2)
+  'reuters.com',
+  'bbc.com',
+  // Center-Right (3)
+  'washingtonexaminer.com',
+  'washingtontimes.com',
+  'nypost.com',
+  // Right (3)
+  'foxnews.com',
+  'dailywire.com',
+  'breitbart.com',
+];
