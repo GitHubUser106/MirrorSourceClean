@@ -248,17 +248,35 @@ export function getSourcesByLean(): Record<PoliticalLean, Array<{ name: string; 
 }
 
 // =============================================================================
-// DOMAIN LISTS - For Gap Fill targeting
+// DOMAIN LISTS - For Gap Fill targeting (5-category system)
 // =============================================================================
 
+// Individual category lists (for precise gap fill targeting)
+export const LEFT_DOMAINS = SOURCES
+  .filter(s => s.lean === 'left')
+  .map(s => s.domain);
+
+export const CENTER_LEFT_DOMAINS = SOURCES
+  .filter(s => s.lean === 'center-left')
+  .map(s => s.domain);
+
+export const CENTER_DOMAINS = SOURCES
+  .filter(s => s.lean === 'center')
+  .map(s => s.domain);
+
+export const CENTER_RIGHT_DOMAINS = SOURCES
+  .filter(s => s.lean === 'center-right')
+  .map(s => s.domain);
+
+export const RIGHT_DOMAINS = SOURCES
+  .filter(s => s.lean === 'right')
+  .map(s => s.domain);
+
+// Combined lists (for broader searches - legacy compatibility)
 export const RIGHT_LEANING_DOMAINS = SOURCES
   .filter(s => s.lean === 'right' || s.lean === 'center-right')
   .map(s => s.domain);
 
 export const LEFT_LEANING_DOMAINS = SOURCES
   .filter(s => s.lean === 'left' || s.lean === 'center-left')
-  .map(s => s.domain);
-
-export const CENTER_DOMAINS = SOURCES
-  .filter(s => s.lean === 'center')
   .map(s => s.domain);
