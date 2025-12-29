@@ -2578,6 +2578,12 @@ export async function POST(req: NextRequest) {
 
     console.log(`[GapFill] Gap fill queue (categories with 0 sources): ${gapFillQueue.map(t => t.label).join(', ') || 'none needed'}`);
 
+    // Initial delay before starting gap fill - gives Brave API breathing room after initial search
+    if (gapFillQueue.length > 0) {
+      console.log('[GapFill] Waiting 800ms before starting gap fill searches...');
+      await new Promise(resolve => setTimeout(resolve, 800));
+    }
+
     // Execute gap fill for each missing category (max 3 attempts total)
     for (const target of gapFillQueue) {
       if (gapFillRateLimited || gapFillAttempts >= MAX_GAP_FILL_ATTEMPTS) {
