@@ -245,7 +245,7 @@ export default function ResultsDisplay({ results, selectedIds = [], onToggleSele
                   <img 
                     src={favicon} 
                     alt="" 
-                    className="w-5 h-5 object-contain flex-shrink-0 rounded"
+                    className="w-5 h-5 object-contain flex-shrink-0 rounded-md"
                     onError={(e) => { 
                       (e.target as HTMLImageElement).style.display = 'none'; 
                     }} 

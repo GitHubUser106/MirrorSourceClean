@@ -1270,7 +1270,7 @@ function HomeContent() {
                           <img
                             src={`https://www.google.com/s2/favicons?domain=${source?.sourceDomain}&sz=32`}
                             alt=""
-                            className="w-5 h-5 rounded flex-shrink-0"
+                            className="w-5 h-5 rounded-md flex-shrink-0"
                           />
                           <span className="font-semibold text-slate-900">{sourceName}</span>
                           {source?.countryCode && (
