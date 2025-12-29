@@ -1962,8 +1962,7 @@ function diversifyResults(results: CSEResult[], maxResults: number = 15): CSERes
 
   for (const result of results) {
     if (!result || !result.domain) continue;
-    const info = getSourceInfo(result.domain);
-    const lean = info.lean || 'unknown';
+    const lean = getPoliticalLean(result.domain);
     byLean[lean].push(result);
   }
 
@@ -1990,12 +1989,11 @@ function diversifyResults(results: CSEResult[], maxResults: number = 15): CSERes
 
   // Log lean breakdown for debugging
   console.log('[CSE] Lean breakdown:', {
-    right: diverse.filter(r => getSourceInfo(r.domain).lean === 'right').length,
-    centerRight: diverse.filter(r => getSourceInfo(r.domain).lean === 'center-right').length,
-    center: diverse.filter(r => getSourceInfo(r.domain).lean === 'center').length,
-    centerLeft: diverse.filter(r => getSourceInfo(r.domain).lean === 'center-left').length,
-    left: diverse.filter(r => getSourceInfo(r.domain).lean === 'left').length,
-    unknown: diverse.filter(r => !getSourceInfo(r.domain).lean).length,
+    right: diverse.filter(r => getPoliticalLean(r.domain) === 'right').length,
+    centerRight: diverse.filter(r => getPoliticalLean(r.domain) === 'center-right').length,
+    center: diverse.filter(r => getPoliticalLean(r.domain) === 'center').length,
+    centerLeft: diverse.filter(r => getPoliticalLean(r.domain) === 'center-left').length,
+    left: diverse.filter(r => getPoliticalLean(r.domain) === 'left').length,
   });
 
   return diverse;
@@ -2215,8 +2213,7 @@ function analyzePoliticalDiversity(
 
   for (const result of results) {
     const domain = result.sourceDomain || '';
-    const info = getSourceInfo(domain);
-    const lean = info.lean || 'center';
+    const lean = getPoliticalLean(domain);
 
     console.log(`[Diversity] ${domain} -> lean: ${lean}`);
 
