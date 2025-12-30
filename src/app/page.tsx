@@ -7,7 +7,7 @@ import Link from "next/link";
 import UrlInputForm from "@/components/UrlInputForm";
 import SourceFlipCard from "@/components/SourceFlipCard";
 import type { GroundingSource } from "@/types";
-import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, FileText, BarChart3, Sparkles } from "lucide-react";
+import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, BarChart3 } from "lucide-react";
 import { getPoliticalLean, LEAN_COLORS, LEAN_LABELS, type PoliticalLean } from "@/lib/sourceData";
 
 // Political lean spectrum order for sorting (Left → Right)
@@ -844,65 +844,6 @@ function HomeContent() {
         </section>
       )}
 
-      {/* Features Grid - Only show on empty homepage */}
-      {!hasContent && !loading && (
-        <section className="container mx-auto px-4 pb-16 md:pb-24">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold mb-4 tracking-tight text-slate-900">Understanding the full picture</h2>
-              <p className="text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
-                Get comprehensive insights into how stories are covered across the political spectrum
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Feature 1: Summary */}
-              <div className="bg-white border-2 border-slate-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
-                <div className="w-12 h-12 bg-[color:var(--primary)]/10 rounded-lg flex items-center justify-center mb-4">
-                  <FileText className="w-6 h-6 text-[color:var(--primary)]" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2 text-slate-900">Summary</h3>
-                <p className="text-slate-600 leading-relaxed">
-                  AI-generated overview of the core facts and key points from all sources
-                </p>
-              </div>
-
-              {/* Feature 2: Intel Brief */}
-              <div className="bg-white border-2 border-slate-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
-                <div className="w-12 h-12 bg-[color:var(--primary)]/10 rounded-lg flex items-center justify-center mb-4">
-                  <AlertCircle className="w-6 h-6 text-[color:var(--primary)]" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2 text-slate-900">Intel Brief</h3>
-                <p className="text-slate-600 leading-relaxed">
-                  Critical divergence points where coverage differs significantly across outlets
-                </p>
-              </div>
-
-              {/* Feature 3: Coverage Distribution */}
-              <div className="bg-white border-2 border-slate-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
-                <div className="w-12 h-12 bg-[color:var(--primary)]/10 rounded-lg flex items-center justify-center mb-4">
-                  <BarChart3 className="w-6 h-6 text-[color:var(--primary)]" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2 text-slate-900">Coverage Distribution</h3>
-                <p className="text-slate-600 leading-relaxed">
-                  Visual breakdown of source coverage across Left, Center, and Right perspectives
-                </p>
-              </div>
-
-              {/* Feature 4: Source Compare */}
-              <div className="bg-white border-2 border-slate-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
-                <div className="w-12 h-12 bg-[color:var(--primary)]/10 rounded-lg flex items-center justify-center mb-4">
-                  <Sparkles className="w-6 h-6 text-[color:var(--primary)]" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2 text-slate-900">Source Compare</h3>
-                <p className="text-slate-600 leading-relaxed">
-                  Side-by-side comparison showing how each outlet frames the narrative
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* Opaque URL detected - proactive headline prompt (no error) */}
       {showKeywordFallback && !error && (
