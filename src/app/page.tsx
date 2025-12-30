@@ -73,10 +73,6 @@ function parseMarkdownBold(text: string, variant: 'summary' | 'intel' = 'summary
   });
 }
 
-function getHighResFavicon(domain: string): string {
-  return `https://www.google.com/s2/favicons?domain=${domain.replace(/^www\./, '')}&sz=128`;
-}
-
 // Divergence level indicator for Intel Brief
 function getDivergenceLevel(keyDifferences: KeyDifference[] | string | null): { level: string; color: string; bg: string; icon: string; description: string } {
   if (Array.isArray(keyDifferences)) {
@@ -753,7 +749,6 @@ function HomeContent() {
   }
 
   const hasContent = summary || results.length > 0;
-  const isActive = loading || hasContent;
   const todaysStory = getDailyStory();
 
   return (
@@ -803,26 +798,36 @@ function HomeContent() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className={`transition-all duration-500 flex flex-col items-center px-4 ${isActive ? 'pt-8 pb-4' : 'pt-16 md:pt-24 pb-16 md:pb-20'}`}>
-        <div className="max-w-4xl mx-auto text-center">
-          {/* Headline */}
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 text-slate-900">
-            See the whole story.
-          </h1>
-          <p className="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Compare how different sources cover the same news. Get AI-powered summaries and see the full political spectrum.
-          </p>
-
-          {/* Card-based URL Input */}
-          <div className="max-w-2xl mx-auto mb-6">
-            <div className="bg-white border-2 border-slate-200 rounded-lg shadow-lg p-6">
+      {/* Sticky Search Bar - When loading or results exist */}
+      {(hasContent || loading) && (
+        <div className="sticky top-[65px] z-40 bg-slate-50/95 backdrop-blur-sm py-3 px-4 shadow-sm border-b border-slate-200">
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white border-2 border-slate-200 rounded-lg shadow-lg p-4">
               <UrlInputForm onSubmit={handleSubmit} isLoading={loading} value={currentUrl} onChange={setCurrentUrl} buttonLabel={loading ? "Analyzing..." : "Analyze"} />
             </div>
           </div>
+        </div>
+      )}
 
-          {/* Try an example link */}
-          {!hasContent && !loading && (
+      {/* Hero Section - Only shown in idle state */}
+      {!hasContent && !loading && (
+        <section className="transition-all duration-300 flex flex-col items-center px-4 pt-16 md:pt-24 pb-16 md:pb-20">
+          <div className="max-w-4xl mx-auto text-center w-full">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 text-slate-900">
+              See the whole story.
+            </h1>
+            <p className="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+              Compare how different sources cover the same news. Get AI-powered summaries and see the full political spectrum.
+            </p>
+
+            {/* Card-based URL Input */}
+            <div className="max-w-2xl mx-auto mb-6">
+              <div className="bg-white border-2 border-slate-200 rounded-lg shadow-lg p-6">
+                <UrlInputForm onSubmit={handleSubmit} isLoading={loading} value={currentUrl} onChange={setCurrentUrl} buttonLabel={loading ? "Analyzing..." : "Analyze"} />
+              </div>
+            </div>
+
+            {/* Try an example link */}
             <p className="text-sm text-slate-500">
               Try an example:{' '}
               <button
@@ -835,10 +840,9 @@ function HomeContent() {
                 {todaysStory.topic} Article
               </button>
             </p>
-          )}
-
-        </div>
-      </section>
+          </div>
+        </section>
+      )}
 
       {/* Features Grid - Only show on empty homepage */}
       {!hasContent && !loading && (
@@ -1005,63 +1009,16 @@ function HomeContent() {
           </div>
         )}
 
-      {/* Loading */}
+      {/* Loading - Simplified skeleton preview */}
       {loading && (
-        <div className="flex flex-col items-center px-4 pt-6 pb-12 animate-in fade-in duration-500">
-          {/* Progress section */}
-          <div className="flex flex-col items-center gap-4 mb-8">
-            {/* Media Tiles - simultaneous flashing */}
-            <div className="flex items-center gap-3 mb-2 animate-pulse">
-              {[
-                { domain: "msnbc.com", name: "MSNBC", color: "#2563eb" },        // Left - blue
-                { domain: "nytimes.com", name: "NYT", color: "#06b6d4" },        // Center-Left - cyan
-                { domain: "reuters.com", name: "Reuters", color: "#a855f7" },    // Center - purple
-                { domain: "wsj.com", name: "WSJ", color: "#f97316" },            // Center-Right - orange
-                { domain: "foxnews.com", name: "Fox", color: "#dc2626" },        // Right - red
-              ].map((source) => (
-                <div
-                  key={source.domain}
-                  className="w-12 h-12 md:w-14 md:h-14 rounded-lg border-2 bg-white shadow-md flex items-center justify-center overflow-hidden"
-                  style={{ borderColor: source.color }}
-                >
-                  <img
-                    src={getHighResFavicon(source.domain)}
-                    alt={source.name}
-                    className="w-8 h-8 md:w-10 md:h-10 object-contain"
-                    onError={(e) => { (e.target as HTMLImageElement).src = '/favicon.ico'; }}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* Status text */}
-            <div className="text-center">
-              <p className="text-cyan-600 font-semibold text-sm uppercase tracking-wider mb-1">Scanning...</p>
-              <p className="text-slate-500 text-sm">{loadingFacts[loadingFactIndex]}</p>
-            </div>
-
-            {/* Progress bar */}
-            <div className="w-64 md:w-80">
-              <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-red-500 rounded-full animate-progress"></div>
-              </div>
-              <p className="text-xs text-slate-400 text-center mt-2">Usually takes 10-15 seconds</p>
-              <p className="text-xs text-slate-400 text-center mt-1">Results vary — tap "Try Again" if needed</p>
-            </div>
+        <div className="flex flex-col items-center px-4 pt-2 pb-12 animate-in fade-in duration-500">
+          {/* Minimal status indicator */}
+          <div className="text-center mb-6">
+            <p className="text-slate-500 text-sm">{loadingFacts[loadingFactIndex]}</p>
           </div>
 
           {/* Skeleton preview - shows what's coming */}
-          <div className="w-full max-w-4xl space-y-4 opacity-40">
-            {/* Skeleton source tiles */}
-            <div className="flex flex-wrap justify-center gap-3 py-4">
-              {[1,2,3,4,5].map((i) => (
-                <div
-                  key={i}
-                  className="w-12 h-12 md:w-14 md:h-14 rounded-lg border border-slate-200 bg-slate-100 animate-pulse"
-                />
-              ))}
-            </div>
-            
+          <div className="w-full max-w-4xl space-y-4">
             {/* Skeleton summary card */}
             <div className="bg-white rounded-2xl border border-slate-200 p-6">
               <div className="h-5 w-24 bg-slate-200 rounded animate-pulse mb-4"></div>
@@ -1090,6 +1047,19 @@ function HomeContent() {
                     <div className="h-3 bg-orange-100 rounded animate-pulse w-2/3"></div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Skeleton Coverage Distribution */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-6">
+              <div className="h-5 w-40 bg-slate-200 rounded animate-pulse mb-4"></div>
+              <div className="flex justify-center gap-4">
+                {[1,2,3,4,5].map((i) => (
+                  <div key={i} className="flex flex-col items-center">
+                    <div className="w-10 bg-slate-200 rounded-t animate-pulse" style={{ height: `${30 + i * 15}px` }}></div>
+                    <div className="h-3 w-12 bg-slate-100 rounded animate-pulse mt-2"></div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
