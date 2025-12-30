@@ -163,7 +163,8 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean }: SourceFli
           {/* Flip Indicator */}
           <div className="absolute bottom-3 right-3 text-slate-400 flex items-center gap-1 text-xs">
             <Info size={12} />
-            <span>Tap for info</span>
+            <span className="md:hidden">Tap for info</span>
+            <span className="hidden md:inline">Click for info</span>
           </div>
         </div>
 
@@ -217,7 +218,8 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean }: SourceFli
               <ExternalLink size={14} />
             </a>
             <div className="text-slate-400 flex items-center gap-1 text-xs mt-1">
-              <span>Tap to flip back</span>
+              <span className="md:hidden">Tap to flip back</span>
+              <span className="hidden md:inline">Click to flip back</span>
             </div>
           </div>
         </div>

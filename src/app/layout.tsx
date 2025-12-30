@@ -61,6 +61,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="google-site-verification" content="Obu9ZJp1ML2sUHm2P5LfOGNNX4FjlX9p9wDI-s_N3Qo" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
