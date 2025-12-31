@@ -1,229 +1,387 @@
-# 🎯 MirrorSource Mini Sprint: A+ Design Polish
+# 🎯 MirrorSource Feature Sprint: Story Provenance Tracking
 
 ## 1. Global Context & Rules
 * **App Name:** MirrorSource
-* **Core Stack:** Next.js 14, TypeScript 5, Tailwind 3.4
-* **Current Grade:** A (from Design Review)
-* **Target Grade:** A+
-* **Estimated Time:** 30-45 minutes
+* **Core Stack:** Next.js 14, TypeScript 5, Tailwind 3.4, Brave Search API, Gemini AI
+* **Feature Branch:** `feature/story-provenance`
+* **Primary Rule:** DO NOT hallucinate file paths. Always check `ls` before editing.
+* **Coding Style:** "Vibecoding" — prioritize speed and functioning prototypes.
 
 ## 2. Current Sprint (The "Active" Sheet Music)
-**Goal:** Fix 5 minor issues identified in Design Review to achieve A+ grade
+**Goal:** Add Story Provenance tracking to identify where news stories originate
 
 ### Context
-> **The Situation:** Design Review returned Grade A with no functional issues. Five minor polish items identified that would elevate to A+.
-> **The Approach:** Quick surgical fixes, no major refactoring.
-> **The Outcome:** Cleaner console, better mobile UX, improved perceived performance.
+> **The Problem:** Users see 10 articles covering the same story but can't tell which outlet actually broke the news vs. which ones are just rewriting wire copy. This obscures who's doing real journalism vs. who's aggregating.
+> **The Solution:** Analyze story origins and display provenance information — wire service detection, original reporting identification, and aggregator flagging.
+> **The Outcome:** Users understand the information supply chain: "This story came from AP, was enriched by NYT and WSJ, and was rewritten by 7 other outlets."
+> **Competitive Advantage:** No competitor (Ground News, AllSides, Media Bias Fact Check) offers this. MirrorSource would be first.
 
-### Fixes Overview
-| # | Fix | File | Effort | Priority |
-|---|-----|------|--------|----------|
-| 1 | PWA manifest warnings | `layout.tsx`, `manifest.json` | 5 min | Low |
-| 2 | "Your article" missing on mobile | `page.tsx` | 10 min | **High** |
-| 3 | ~~Sticky search animation~~ | — | — | SKIP |
-| 4 | Instant skeleton feedback | `page.tsx` | 10 min | Medium |
-| 5 | "Click" vs "Tap" responsive text | `SourceFlipCard.tsx` | 5 min | Low |
+### User Value Proposition
+| User Question | Provenance Answers |
+|---------------|-------------------|
+| "I'm reading 5 articles that say the same thing" | "That's because they're all rewriting AP" |
+| "Which outlet actually broke this story?" | Shows the original source |
+| "Is this outlet doing real journalism?" | Exposes who aggregates vs. who reports |
+| "Why does everyone have the same quote?" | "It's from a press release" |
 
 ---
 
-## Execution Checklist
+## 3. Technical Approach
 
-### Step 1: Fix PWA Warnings (5 min)
+### What's Detectable (MVP Scope)
+| Signal | Detection Method | Difficulty |
+|--------|------------------|------------|
+| Wire service origin | Text matching — AP/Reuters/AFP stories appear verbatim | Easy |
+| Attribution phrases | Regex: "according to [Source]", "first reported by", "as reported by" | Easy |
+| Publish timestamps | Brave Search returns timestamps — earliest = likely origin | Easy |
+| Press release origin | Detect PR Newswire, Business Wire, company newsroom URLs | Easy |
+| Original vs. rewrite | Gemini analysis of unique content/quotes/interviews | Medium |
 
-- [ ] **1a. Open `src/app/layout.tsx`**
-    * Find the `<meta name="apple-mobile-web-app-capable" ...>` tag
-    * Replace with modern equivalent:
-```tsx
-// BEFORE (deprecated)
-<meta name="apple-mobile-web-app-capable" content="yes" />
+### What's Out of Scope (V2+)
+| Signal | Challenge |
+|--------|-----------|
+| Twitter/X origin | Would need X API integration |
+| Substack/Newsletter origin | Growing trend but harder to detect |
+| Embargoed stories | Release simultaneously, hard to trace |
 
-// AFTER (modern)
-<meta name="mobile-web-app-capable" content="yes" />
-```
+---
 
-- [ ] **1b. Open `public/manifest.json`** (or `src/app/manifest.json`)
-    * Add enctype field if missing:
-```json
-{
-  "name": "MirrorSource",
-  "short_name": "MirrorSource",
-  "enctype": "application/x-www-form-urlencoded",
-  ...
+## 4. Implementation Plan
+
+### Phase 1: Backend - Gemini Prompt Enhancement
+
+- [ ] **Step 1.1: Update Gemini synthesis prompt in `route.ts`**
+    * Add provenance analysis to the existing prompt:
+```typescript
+const prompt = `You are a news intelligence analyst...
+
+// ... existing prompt content ...
+
+ADDITIONAL ANALYSIS - STORY PROVENANCE:
+Analyze the sources to determine story origin:
+1. Is this wire service content? Look for verbatim text across multiple sources (AP, Reuters, AFP pattern)
+2. Can you identify the likely original source? (earliest timestamp, "first reported by" phrases, unique details)
+3. Which outlets have ORIGINAL reporting (unique quotes, interviews, investigation)?
+4. Which outlets are AGGREGATING (rewriting wire copy, no original content)?
+
+Add to your JSON response:
+"provenance": {
+  "origin": "wire_service" | "single_outlet" | "press_release" | "unknown",
+  "originSource": "AP" | "Reuters" | "Wall Street Journal" | null,
+  "originConfidence": "high" | "medium" | "low",
+  "originalReporting": ["outlet1", "outlet2"],  // Outlets with unique content
+  "aggregators": ["outlet3", "outlet4"],         // Outlets just rewriting
+  "explanation": "Brief explanation of how you determined origin"
 }
 ```
 
-- [ ] **1c. Verify:** Refresh page, check console for warnings → Should be gone
+- [ ] **Step 1.2: Update response interface**
+```typescript
+interface ProvenanceInfo {
+  origin: 'wire_service' | 'single_outlet' | 'press_release' | 'unknown';
+  originSource: string | null;
+  originConfidence: 'high' | 'medium' | 'low';
+  originalReporting: string[];
+  aggregators: string[];
+  explanation: string;
+}
+
+interface IntelBrief {
+  summary: string;
+  commonGround: CommonGroundFact[] | string;
+  keyDifferences: KeyDifference[] | string;
+  provenance?: ProvenanceInfo;  // NEW
+}
+```
+
+- [ ] **Step 1.3: Parse provenance from Gemini response**
+    * Extract `provenance` object from JSON response
+    * Handle missing/malformed provenance gracefully (default to null)
 
 ---
 
-### Step 2: Fix "Your Article" Missing on Mobile (10 min) ⭐ HIGH PRIORITY
+### Phase 2: Frontend - Provenance Display
 
-- [ ] **2a. Open `src/app/page.tsx`**
-    * Find the Coverage Distribution section
-    * Locate the "Your article: [Source] [Badge]" line
-    * It likely has a class like `hidden md:block` or `hidden sm:flex`
-
-- [ ] **2b. Remove the responsive hiding:**
+- [ ] **Step 2.1: Create ProvenanceCard component**
+    * File: `src/components/ProvenanceCard.tsx`
 ```tsx
-// BEFORE (hidden on mobile)
-<div className="hidden md:flex items-center gap-2 mb-4">
-  <span className="text-red-500">📍</span>
-  <span>Your article:</span>
-  <span className="font-medium">{inputSourceName}</span>
-  <Badge>{inputSourceLean}</Badge>
-</div>
+interface ProvenanceCardProps {
+  provenance: ProvenanceInfo;
+}
 
-// AFTER (always visible)
-<div className="flex items-center gap-2 mb-4 text-sm">
-  <span className="text-red-500">📍</span>
-  <span>Your article:</span>
-  <span className="font-medium">{inputSourceName}</span>
-  <Badge>{inputSourceLean}</Badge>
-</div>
-```
+export function ProvenanceCard({ provenance }: ProvenanceCardProps) {
+  // Origin type icon
+  const originIcon = {
+    wire_service: '📡',
+    single_outlet: '🎯',
+    press_release: '📋',
+    unknown: '❓'
+  }[provenance.origin];
 
-- [ ] **2c. Optional - Compact on mobile:**
-    * If space is tight, consider smaller text on mobile:
-```tsx
-<div className="flex items-center gap-2 mb-4 text-xs sm:text-sm">
-```
+  // Origin type label
+  const originLabel = {
+    wire_service: 'Wire Service Story',
+    single_outlet: 'Original Scoop',
+    press_release: 'Press Release',
+    unknown: 'Origin Unknown'
+  }[provenance.origin];
 
-- [ ] **2d. Verify:** Test on 390px viewport → "Your article" should be visible
+  return (
+    <div className="bg-white rounded-lg border p-4 mb-4">
+      <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-3">
+        📡 Story Origin
+      </h3>
+      
+      {/* Origin Badge */}
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xl">{originIcon}</span>
+        <span className="font-medium">{originLabel}</span>
+        {provenance.originSource && (
+          <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-sm">
+            {provenance.originSource}
+          </span>
+        )}
+        <ConfidenceBadge level={provenance.originConfidence} />
+      </div>
 
----
+      {/* Original Reporters */}
+      {provenance.originalReporting.length > 0 && (
+        <div className="mb-2">
+          <span className="text-sm text-gray-600">🔍 Original reporting: </span>
+          <span className="text-sm font-medium">
+            {provenance.originalReporting.join(', ')}
+          </span>
+        </div>
+      )}
 
-### Step 3: SKIP - Sticky Search Animation
-> Skipping for now. The current instant transition is acceptable. Can revisit later if desired.
+      {/* Aggregators */}
+      {provenance.aggregators.length > 0 && (
+        <div className="mb-2">
+          <span className="text-sm text-gray-600">📋 Rewrites: </span>
+          <span className="text-sm text-gray-500">
+            {provenance.aggregators.join(', ')}
+          </span>
+        </div>
+      )}
 
----
+      {/* Explanation */}
+      <p className="text-xs text-gray-500 mt-2 italic">
+        {provenance.explanation}
+      </p>
+    </div>
+  );
+}
 
-### Step 4: Instant Skeleton Feedback (10 min)
+function ConfidenceBadge({ level }: { level: string }) {
+  const styles = {
+    high: 'bg-green-100 text-green-800',
+    medium: 'bg-yellow-100 text-yellow-800',
+    low: 'bg-gray-100 text-gray-600'
+  }[level] || 'bg-gray-100 text-gray-600';
 
-- [ ] **4a. Open `src/app/page.tsx`**
-    * Find the `handleAnalyze` or `handleSubmit` function
-
-- [ ] **4b. Ensure loading state is set BEFORE any async work:**
-```tsx
-const handleAnalyze = async () => {
-  // IMMEDIATELY set loading state (before any await)
-  setIsLoading(true);
-  setResults(null);  // Clear previous results
-  setError(null);    // Clear any errors
-  
-  try {
-    const response = await fetch('/api/find', { ... });
-    const data = await response.json();
-    setResults(data);
-  } catch (err) {
-    setError('Something went wrong');
-  } finally {
-    setIsLoading(false);
-  }
-};
-```
-
-- [ ] **4c. Verify skeleton appears immediately:**
-    * Check that a loading skeleton/shimmer shows the instant the button is clicked
-    * There should be NO delay between click and visual feedback
-    * If skeleton doesn't exist, ensure `isLoading && <Skeleton />` is in the JSX
-
-- [ ] **4d. Button should also show spinner:**
-```tsx
-<button disabled={isLoading} className="...">
-  {isLoading ? (
-    <span className="flex items-center justify-center">
-      <svg className="animate-spin -ml-1 mr-2 h-4 w-4" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-      </svg>
-      Analyzing...
+  return (
+    <span className={`px-2 py-0.5 rounded text-xs ${styles}`}>
+      {level} confidence
     </span>
-  ) : (
-    <>Analyze <span aria-hidden="true">→</span></>
-  )}
-</button>
+  );
+}
 ```
 
----
-
-### Step 5: "Click" vs "Tap" Responsive Text (5 min)
-
-- [ ] **5a. Open `src/components/SourceFlipCard.tsx`**
-    * Find the "Tap for info" text (likely near bottom of card)
-
-- [ ] **5b. Make it responsive:**
+- [ ] **Step 2.2: Add ProvenanceCard to page.tsx**
+    * Place between Summary and Intel Brief (or inside Intel Brief)
 ```tsx
-// BEFORE (always says "Tap")
-<span className="text-xs text-gray-400">
-  ⓘ Tap for info
-</span>
-
-// AFTER (device-appropriate)
-<span className="text-xs text-gray-400">
-  <span className="md:hidden">ⓘ Tap for info</span>
-  <span className="hidden md:inline">ⓘ Click for info</span>
-</span>
+{results?.provenance && (
+  <ProvenanceCard provenance={results.provenance} />
+)}
 ```
 
-- [ ] **5c. Alternative - simpler approach:**
+- [ ] **Step 2.3: Alternative - Integrate into Intel Brief**
+    * Instead of separate card, add as first section of Intel Brief:
 ```tsx
-// Use generic language that works for both
-<span className="text-xs text-gray-400">
-  ⓘ Flip for details
-</span>
-```
-
-- [ ] **5d. Verify:** Check desktop shows "Click", mobile shows "Tap" (or use generic)
-
----
-
-## Step 6: Final Verification
-
-- [ ] **6a. Run Design Reviewer again:**
-```
-Use Playwright to audit localhost:3000
-```
-
-- [ ] **6b. Check console:** Should have 0 errors, 0 warnings (or only non-blocking)
-
-- [ ] **6c. Test mobile (390px):**
-    * "Your article" visible in Coverage Distribution ✓
-    * "Tap for info" on cards ✓
-    * Skeleton appears instantly on Analyze click ✓
-
-- [ ] **6d. Test desktop (1440px):**
-    * "Click for info" on cards ✓
-    * All previous functionality intact ✓
-
----
-
-## Step 7: Commit
-
-```bash
-git add . && git commit -m "Polish: A+ design fixes - PWA warnings, mobile Your Article indicator, instant loading feedback, responsive card text" && git push
+// Inside Intel Brief card
+<div className="border-b pb-3 mb-3">
+  <div className="flex items-center gap-2 text-sm">
+    <span>📡</span>
+    <span className="text-gray-600">Origin:</span>
+    <span className="font-medium">{provenance.originSource || 'Unknown'}</span>
+    {provenance.origin === 'wire_service' && (
+      <span className="text-gray-500">
+        (wire story, {provenance.aggregators.length} outlets rewriting)
+      </span>
+    )}
+  </div>
+</div>
 ```
 
 ---
 
-## Success Criteria
-- [ ] Console shows 0 PWA warnings
-- [ ] "Your article: [Source]" visible on mobile Coverage Distribution
-- [ ] Skeleton/loading state appears instantly when Analyze is clicked
-- [ ] Source cards show "Click for info" on desktop, "Tap for info" on mobile
-- [ ] Design Review grade: A+
+### Phase 3: Enhanced Detection (Optional)
+
+- [ ] **Step 3.1: Wire service text matching**
+    * Add utility function to detect verbatim wire content:
+```typescript
+// src/lib/provenanceDetection.ts
+
+const WIRE_SIGNATURES = [
+  /\(AP\)\s*[—–-]/,           // (AP) — 
+  /\(Reuters\)\s*[—–-]/,       // (Reuters) —
+  /\(AFP\)\s*[—–-]/,           // (AFP) —
+  /Associated Press/i,
+  /Reuters\s+reported/i,
+];
+
+export function detectWireService(text: string): string | null {
+  for (const pattern of WIRE_SIGNATURES) {
+    if (pattern.test(text)) {
+      if (/\(AP\)|Associated Press/i.test(text)) return 'AP';
+      if (/\(Reuters\)|Reuters/i.test(text)) return 'Reuters';
+      if (/\(AFP\)|Agence France/i.test(text)) return 'AFP';
+    }
+  }
+  return null;
+}
+```
+
+- [ ] **Step 3.2: Attribution phrase extraction**
+```typescript
+const ATTRIBUTION_PATTERNS = [
+  /first reported by ([A-Z][a-zA-Z\s]+)/i,
+  /according to ([A-Z][a-zA-Z\s]+)/i,
+  /as reported by ([A-Z][a-zA-Z\s]+)/i,
+  /([A-Z][a-zA-Z\s]+) first reported/i,
+];
+
+export function extractAttributions(text: string): string[] {
+  const attributions: string[] = [];
+  for (const pattern of ATTRIBUTION_PATTERNS) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      attributions.push(match[1].trim());
+    }
+  }
+  return attributions;
+}
+```
+
+- [ ] **Step 3.3: Timestamp analysis**
+    * Use Brave Search timestamps to identify earliest source
+    * Pass timestamp data to Gemini for analysis
 
 ---
 
-## Files to Modify
+## 5. UI Mockup
+
+### Option A: Standalone Card (Below Summary)
+```
+┌─────────────────────────────────────────────────────┐
+│ 📡 Story Origin                                     │
+│                                                     │
+│ 📡 Wire Service Story    [AP]    [high confidence]  │
+│                                                     │
+│ 🔍 Original reporting: WSJ, NYT (added interviews)  │
+│ 📋 Rewrites: CNN, Fox News, HuffPost, Daily Mail    │
+│                                                     │
+│ ℹ️ This story originated from an AP wire report.    │
+│    WSJ and NYT added original interviews.           │
+└─────────────────────────────────────────────────────┘
+```
+
+### Option B: Integrated into Intel Brief
+```
+┌─────────────────────────────────────────────────────┐
+│ 📊 Intel Brief                                      │
+│                                                     │
+│ 📡 Origin: AP wire → enriched by WSJ, NYT          │
+│ ─────────────────────────────────────────────────── │
+│ 🟡 Moderate Divergence — Sources agree on facts...  │
+│                                                     │
+│ ┌─────────────────┐  ┌─────────────────┐           │
+│ │ COMMON GROUND   │  │ KEY DIFFERENCES │           │
+│ └─────────────────┘  └─────────────────┘           │
+└─────────────────────────────────────────────────────┘
+```
+
+### Option C: Badge on Source Cards
+```
+┌─────────────────────┐  ┌─────────────────────┐
+│ REUTERS             │  │ CNN                 │
+│ [Center] [Wire] 📡  │  │ [Center-Left]       │
+│                     │  │ [Rewrite] 📋        │
+│ "Trump meets..."    │  │ "Trump meets..."    │
+└─────────────────────┘  └─────────────────────┘
+```
+
+**Recommendation:** Start with Option B (integrated into Intel Brief) for MVP. Add Option C badges in V2.
+
+---
+
+## 6. Execution Checklist Summary
+
+### MVP (This Sprint)
+- [x] Update Gemini prompt with provenance analysis
+- [x] Add ProvenanceInfo interface
+- [x] Parse provenance from API response
+- [x] Display provenance in Intel Brief section
+- [ ] Test with wire service story (AP/Reuters)
+- [ ] Test with original scoop (e.g., investigative piece)
+- [ ] Test with press release story
+
+### V2 (Future Sprint)
+- [ ] Wire signature detection utility
+- [ ] Attribution phrase extraction
+- [ ] Timestamp-based origin detection
+- [ ] "Original" vs "Rewrite" badges on Source Cards
+- [ ] Provenance confidence scoring
+
+---
+
+## 7. Success Criteria
+
+- [ ] Gemini returns provenance data for each analysis
+- [ ] Wire service stories correctly identified (AP, Reuters, AFP)
+- [ ] Original reporting outlets highlighted
+- [ ] Aggregator outlets flagged
+- [ ] UI displays provenance clearly without cluttering
+- [ ] No performance regression (provenance analysis in same Gemini call)
+
+---
+
+## 8. Files to Modify
+
 | File | Changes |
 |------|---------|
-| `src/app/layout.tsx` | Update deprecated meta tag |
-| `public/manifest.json` | Add enctype field |
-| `src/app/page.tsx` | Fix "Your article" visibility, ensure instant loading state |
-| `src/components/SourceFlipCard.tsx` | Responsive "Click/Tap" text |
+| `src/app/api/find/route.ts` | Update Gemini prompt, parse provenance |
+| `src/app/page.tsx` | Display provenance in Intel Brief |
+| `src/components/ProvenanceCard.tsx` | NEW - Provenance display component (optional) |
+| `src/lib/provenanceDetection.ts` | NEW - Wire/attribution detection utilities (V2) |
+
+---
+
+## 9. Risk Mitigation
+
+| Risk | Mitigation |
+|------|------------|
+| Gemini hallucinating provenance | Add confidence levels, verify against known wire signatures |
+| Slowing down API response | Provenance in same prompt, not separate call |
+| UI clutter | Start minimal (one line in Intel Brief), expand if users want more |
+| Incorrect origin detection | Show confidence level, allow "unknown" as valid answer |
+
+---
+
+## 10. Competitive Positioning
+
+| Competitor | Has Provenance? | MirrorSource Advantage |
+|------------|-----------------|------------------------|
+| Ground News | ❌ No | First to market |
+| AllSides | ❌ No | Unique differentiator |
+| Media Bias Fact Check | ❌ No | Actionable insight |
+| Google News | ❌ No | Transparency focus |
+
+**Tagline opportunity:** *"See where the story started."*
 
 ---
 
 **Date:** December 30, 2025
 **Status:** Ready for Builder
-**Estimated Time:** 30-45 minutes
+**Estimated Time:** 2-3 hours (MVP)
+**Priority:** High — Unique feature, competitive advantage

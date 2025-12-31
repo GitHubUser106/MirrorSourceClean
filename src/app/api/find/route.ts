@@ -474,10 +474,21 @@ interface KeyDifference {
   value: string;
 }
 
+// NEW: Story Provenance tracking - identifies where news stories originate
+interface ProvenanceInfo {
+  origin: 'wire_service' | 'single_outlet' | 'press_release' | 'unknown';
+  originSource: string | null;
+  originConfidence: 'high' | 'medium' | 'low';
+  originalReporting: string[];
+  aggregators: string[];
+  explanation: string;
+}
+
 interface IntelBrief {
   summary: string;
   commonGround: CommonGroundFact[] | string;  // Array preferred, string for backward compatibility
   keyDifferences: KeyDifference[] | string;   // Array for differences, string for consensus message
+  provenance?: ProvenanceInfo;  // NEW: Story origin tracking
 }
 
 async function synthesizeWithGemini(searchResults: CSEResult[], originalQuery: string, timeoutMs: number = 18000): Promise<IntelBrief | null> {
@@ -502,7 +513,15 @@ RESPOND IN JSON FORMAT:
 {
   "summary": "3-4 sentences summarizing THE PRIMARY EVENT ONLY. Grade 6-8 reading level. Bold only the KEY TAKEAWAY of each sentence using **bold** syntax. Max 4 bold phrases. Do NOT include unrelated historical events.",
   "commonGround": [{"label": "Short category", "value": "What sources agree on ABOUT THE PRIMARY EVENT"}, ...],
-  "keyDifferences": [{"label": "Topic", "value": "How sources differ ON THE PRIMARY EVENT"}, ...] OR "Sources present a consistent narrative on this story."
+  "keyDifferences": [{"label": "Topic", "value": "How sources differ ON THE PRIMARY EVENT"}, ...] OR "Sources present a consistent narrative on this story.",
+  "provenance": {
+    "origin": "wire_service" | "single_outlet" | "press_release" | "unknown",
+    "originSource": "AP" | "Reuters" | "Wall Street Journal" | null,
+    "originConfidence": "high" | "medium" | "low",
+    "originalReporting": ["outlet1", "outlet2"],
+    "aggregators": ["outlet3", "outlet4"],
+    "explanation": "Brief explanation of how you determined origin"
+  }
 }
 
 RULES:
@@ -522,6 +541,18 @@ RULES:
 - CONSENSUS RULE: Only return a consensus string when there are genuinely NO meaningful differences in framing or tone. If you identified ANY keyDifferences, do NOT also claim consensus. Default to finding differences - consensus should be rare.
 - Use simple language
 - Be concise - prioritize speed over length.
+
+STORY PROVENANCE ANALYSIS:
+Analyze the sources to determine where this story originated:
+1. WIRE SERVICE: Is this wire service content? Look for verbatim text across multiple sources, "(AP)", "(Reuters)", "(AFP)" markers, or identical quotes/phrasing.
+2. SINGLE OUTLET: Can you identify which outlet broke the story? Look for "first reported by", "exclusive", unique interviews, or original investigation.
+3. PRESS RELEASE: Is this from a press release? Look for PR Newswire, Business Wire, official statements, or corporate newsroom language.
+4. ORIGINAL vs AGGREGATOR: Which outlets have ORIGINAL reporting (unique quotes, interviews, on-the-ground coverage)? Which are AGGREGATING (rewriting wire copy, no original content)?
+
+Set originConfidence based on evidence strength:
+- "high": Clear wire markers, explicit attribution, or obvious original scoop
+- "medium": Strong indicators but not definitive
+- "low": Best guess based on limited evidence
 
 FINAL CHECK: Before responding, verify you have not included any "(Source" or "Source 1" text anywhere in your response.`.trim();
 
@@ -587,10 +618,34 @@ FINAL CHECK: Before responding, verify you have not included any "(Source" or "S
       keyDifferences = parsed.keyDifferences.trim();
     }
 
+    // Parse provenance data (handle missing/malformed gracefully)
+    let provenance: ProvenanceInfo | undefined;
+    if (parsed.provenance && typeof parsed.provenance === 'object') {
+      const p = parsed.provenance;
+      // Validate origin type
+      const validOrigins = ['wire_service', 'single_outlet', 'press_release', 'unknown'];
+      const origin = validOrigins.includes(p.origin) ? p.origin : 'unknown';
+
+      // Validate confidence level
+      const validConfidence = ['high', 'medium', 'low'];
+      const confidence = validConfidence.includes(p.originConfidence) ? p.originConfidence : 'low';
+
+      provenance = {
+        origin: origin as ProvenanceInfo['origin'],
+        originSource: typeof p.originSource === 'string' ? p.originSource : null,
+        originConfidence: confidence as ProvenanceInfo['originConfidence'],
+        originalReporting: Array.isArray(p.originalReporting) ? p.originalReporting.filter((s: any) => typeof s === 'string') : [],
+        aggregators: Array.isArray(p.aggregators) ? p.aggregators.filter((s: any) => typeof s === 'string') : [],
+        explanation: typeof p.explanation === 'string' ? p.explanation.trim() : 'Unable to determine story origin.',
+      };
+      console.log('[Gemini] Provenance detected:', provenance.origin, '->', provenance.originSource || 'unknown source');
+    }
+
     return {
       summary: (parsed.summary || '').trim(),
       commonGround,
       keyDifferences,
+      provenance,
     };
   } catch (error: any) {
     console.error('[Gemini] Synthesis error:', error?.message);
@@ -1078,6 +1133,7 @@ export async function POST(req: NextRequest) {
       summary: intelBrief.summary,
       commonGround: intelBrief.commonGround || null,
       keyDifferences: finalKeyDifferences || null,
+      provenance: intelBrief.provenance || null,  // NEW: Story origin tracking
       alternatives,
       isPaywalled,
       usage: usageInfo,

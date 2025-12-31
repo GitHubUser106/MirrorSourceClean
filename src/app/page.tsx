@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import UrlInputForm from "@/components/UrlInputForm";
 import SourceFlipCard from "@/components/SourceFlipCard";
+import { ProvenanceCard } from "@/components/ProvenanceCard";
 import type { GroundingSource } from "@/types";
 import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, BarChart3 } from "lucide-react";
 import { getPoliticalLean, LEAN_COLORS, LEAN_LABELS, type PoliticalLean } from "@/lib/sourceData";
@@ -22,6 +23,14 @@ const LEAN_ORDER: Record<string, number> = {
 type Usage = { used: number; remaining: number; limit: number; resetAt: string };
 type CommonGroundFact = { label: string; value: string };
 type KeyDifference = { label: string; value: string };
+type ProvenanceInfo = {
+  origin: 'wire_service' | 'single_outlet' | 'press_release' | 'unknown';
+  originSource: string | null;
+  originConfidence: 'high' | 'medium' | 'low';
+  originalReporting: string[];
+  aggregators: string[];
+  explanation: string;
+};
 
 const loadingFacts = [
   "Scanning news sources...",
@@ -312,6 +321,7 @@ function HomeContent() {
   const [summary, setSummary] = useState<string | null>(null);
   const [commonGround, setCommonGround] = useState<CommonGroundFact[] | string | null>(null);
   const [keyDifferences, setKeyDifferences] = useState<KeyDifference[] | string | null>(null);
+  const [provenance, setProvenance] = useState<ProvenanceInfo | null>(null);
   const [results, setResults] = useState<GroundingSource[]>([]);
   const [isPaywalled, setIsPaywalled] = useState(false);
   const [diversityWarning, setDiversityWarning] = useState<string | null>(null);
@@ -535,6 +545,7 @@ function HomeContent() {
       setSummary(data.summary ?? null);
       setCommonGround(data.commonGround ?? null);
       setKeyDifferences(data.keyDifferences ?? null);
+      setProvenance(data.provenance ?? null);
       setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
       setIsPaywalled(data.isPaywalled ?? false);
       setDiversityWarning(data.diversityAnalysis?.warning ?? null);
@@ -548,6 +559,7 @@ function HomeContent() {
         queryBiasWarning: data.queryBiasWarning ?? null,
         commonGround: data.commonGround,
         keyDifferences: data.keyDifferences,
+        provenance: data.provenance,
         results: data.alternatives,
         isPaywalled: data.isPaywalled
       }));
@@ -600,6 +612,7 @@ function HomeContent() {
       setSummary(data.summary ?? null);
       setCommonGround(data.commonGround ?? null);
       setKeyDifferences(data.keyDifferences ?? null);
+      setProvenance(data.provenance ?? null);
       setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
       setIsPaywalled(data.isPaywalled ?? false);
       setDiversityWarning(data.diversityAnalysis?.warning ?? null);
@@ -613,6 +626,7 @@ function HomeContent() {
         queryBiasWarning: data.queryBiasWarning ?? null,
         commonGround: data.commonGround,
         keyDifferences: data.keyDifferences,
+        provenance: data.provenance,
         results: data.alternatives,
         isPaywalled: data.isPaywalled
       }));
@@ -685,6 +699,7 @@ function HomeContent() {
         setSummary(data.summary);
         setCommonGround(data.commonGround);
         setKeyDifferences(data.keyDifferences);
+        setProvenance(data.provenance || null);
         setResults(data.results || []);
         setIsPaywalled(data.isPaywalled || false);
         setDiversityWarning(data.diversityWarning || null);
@@ -733,6 +748,7 @@ function HomeContent() {
     setSummary(null);
     setCommonGround(null);
     setKeyDifferences(null);
+    setProvenance(null);
     setResults([]);
     setIsPaywalled(false);
     setError(null);
@@ -1039,6 +1055,11 @@ function HomeContent() {
                   <svg className="w-5 h-5 md:w-6 md:h-6 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></svg>
                   <h2 className="text-xl md:text-2xl font-bold text-slate-900">Intel Brief</h2>
                 </div>
+
+                {/* Story Provenance - Where did this story originate? */}
+                {provenance && (
+                  <ProvenanceCard provenance={provenance} />
+                )}
 
                 {/* Divergence Meter */}
                 <div className={`mb-6 px-4 py-2.5 rounded-lg ${getDivergenceLevel(keyDifferences).bg} flex items-center gap-2 flex-wrap`}>
