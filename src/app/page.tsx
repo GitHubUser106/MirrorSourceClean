@@ -7,6 +7,7 @@ import Link from "next/link";
 import UrlInputForm from "@/components/UrlInputForm";
 import SourceFlipCard from "@/components/SourceFlipCard";
 import { ProvenanceCard } from "@/components/ProvenanceCard";
+import { NarrativeCard } from "@/components/NarrativeCard";
 import type { GroundingSource } from "@/types";
 import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, BarChart3 } from "lucide-react";
 import { getPoliticalLean, LEAN_COLORS, LEAN_LABELS, type PoliticalLean } from "@/lib/sourceData";
@@ -30,6 +31,12 @@ type ProvenanceInfo = {
   originalReporting: string[];
   aggregators: string[];
   explanation: string;
+};
+type NarrativeType = 'policy' | 'horse_race' | 'culture_war' | 'scandal' | 'human_interest';
+type NarrativeAnalysis = {
+  emotionalIntensity: number;
+  narrativeType: NarrativeType;
+  isClickbait: boolean;
 };
 
 const loadingFacts = [
@@ -322,6 +329,7 @@ function HomeContent() {
   const [commonGround, setCommonGround] = useState<CommonGroundFact[] | string | null>(null);
   const [keyDifferences, setKeyDifferences] = useState<KeyDifference[] | string | null>(null);
   const [provenance, setProvenance] = useState<ProvenanceInfo | null>(null);
+  const [narrative, setNarrative] = useState<NarrativeAnalysis | null>(null);
   const [results, setResults] = useState<GroundingSource[]>([]);
   const [isPaywalled, setIsPaywalled] = useState(false);
   const [diversityWarning, setDiversityWarning] = useState<string | null>(null);
@@ -546,6 +554,7 @@ function HomeContent() {
       setCommonGround(data.commonGround ?? null);
       setKeyDifferences(data.keyDifferences ?? null);
       setProvenance(data.provenance ?? null);
+      setNarrative(data.narrative ?? null);
       setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
       setIsPaywalled(data.isPaywalled ?? false);
       setDiversityWarning(data.diversityAnalysis?.warning ?? null);
@@ -560,6 +569,7 @@ function HomeContent() {
         commonGround: data.commonGround,
         keyDifferences: data.keyDifferences,
         provenance: data.provenance,
+        narrative: data.narrative,
         results: data.alternatives,
         isPaywalled: data.isPaywalled
       }));
@@ -613,6 +623,7 @@ function HomeContent() {
       setCommonGround(data.commonGround ?? null);
       setKeyDifferences(data.keyDifferences ?? null);
       setProvenance(data.provenance ?? null);
+      setNarrative(data.narrative ?? null);
       setResults(Array.isArray(data.alternatives) ? data.alternatives : []);
       setIsPaywalled(data.isPaywalled ?? false);
       setDiversityWarning(data.diversityAnalysis?.warning ?? null);
@@ -627,6 +638,7 @@ function HomeContent() {
         commonGround: data.commonGround,
         keyDifferences: data.keyDifferences,
         provenance: data.provenance,
+        narrative: data.narrative,
         results: data.alternatives,
         isPaywalled: data.isPaywalled
       }));
@@ -700,6 +712,7 @@ function HomeContent() {
         setCommonGround(data.commonGround);
         setKeyDifferences(data.keyDifferences);
         setProvenance(data.provenance || null);
+        setNarrative(data.narrative || null);
         setResults(data.results || []);
         setIsPaywalled(data.isPaywalled || false);
         setDiversityWarning(data.diversityWarning || null);
@@ -749,6 +762,7 @@ function HomeContent() {
     setCommonGround(null);
     setKeyDifferences(null);
     setProvenance(null);
+    setNarrative(null);
     setResults([]);
     setIsPaywalled(false);
     setError(null);
@@ -1059,6 +1073,11 @@ function HomeContent() {
                 {/* Story Provenance - Where did this story originate? */}
                 {provenance && (
                   <ProvenanceCard provenance={provenance} />
+                )}
+
+                {/* Narrative Style - How is this story being framed? */}
+                {narrative && (
+                  <NarrativeCard narrative={narrative} />
                 )}
 
                 {/* Divergence Meter */}

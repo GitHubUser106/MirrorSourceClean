@@ -43,6 +43,16 @@ export type SourceType =
 // Political lean type
 export type PoliticalLean = 'left' | 'center-left' | 'center' | 'center-right' | 'right';
 
+// Narrative analysis type
+export type NarrativeType = 'policy' | 'horse_race' | 'culture_war' | 'scandal' | 'human_interest';
+
+// Narrative analysis - tone and coverage type
+export interface NarrativeAnalysis {
+  emotionalIntensity: number; // 1-10
+  narrativeType: NarrativeType;
+  isClickbait: boolean;
+}
+
 // Main source interface returned from the API
 export interface GroundingSource {
   uri: string;

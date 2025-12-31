@@ -484,11 +484,21 @@ interface ProvenanceInfo {
   explanation: string;
 }
 
+// NEW: Narrative Analysis - tone and coverage type
+type NarrativeType = 'policy' | 'horse_race' | 'culture_war' | 'scandal' | 'human_interest';
+
+interface NarrativeAnalysis {
+  emotionalIntensity: number; // 1-10
+  narrativeType: NarrativeType;
+  isClickbait: boolean;
+}
+
 interface IntelBrief {
   summary: string;
   commonGround: CommonGroundFact[] | string;  // Array preferred, string for backward compatibility
   keyDifferences: KeyDifference[] | string;   // Array for differences, string for consensus message
-  provenance?: ProvenanceInfo;  // NEW: Story origin tracking
+  provenance?: ProvenanceInfo;  // Story origin tracking
+  narrative?: NarrativeAnalysis;  // NEW: Narrative tone analysis
 }
 
 async function synthesizeWithGemini(searchResults: CSEResult[], originalQuery: string, timeoutMs: number = 18000): Promise<IntelBrief | null> {
@@ -521,6 +531,11 @@ RESPOND IN JSON FORMAT:
     "originalReporting": ["outlet1", "outlet2"],
     "aggregators": ["outlet3", "outlet4"],
     "explanation": "Brief explanation of how you determined origin"
+  },
+  "narrative": {
+    "emotionalIntensity": <number 1-10>,
+    "narrativeType": "policy" | "horse_race" | "culture_war" | "scandal" | "human_interest",
+    "isClickbait": <boolean>
   }
 }
 
@@ -553,6 +568,25 @@ Set originConfidence based on evidence strength:
 - "high": Clear wire markers, explicit attribution, or obvious original scoop
 - "medium": Strong indicators but not definitive
 - "low": Best guess based on limited evidence
+
+NARRATIVE ANALYSIS:
+Analyze the tone and type of coverage:
+
+1. EMOTIONAL INTENSITY (1-10):
+   - 1-3: Neutral, factual, measured ("reported," "announced," "said")
+   - 4-6: Some perspective, moderate language ("claimed," "argued," "warned")
+   - 7-10: Charged, inflammatory ("slammed," "destroyed," "catastrophic")
+
+2. NARRATIVE TYPE (pick the dominant one):
+   - "policy": Substantive focus on legislation, regulations, policy details
+   - "horse_race": Focus on polls, strategy, who's winning/losing, optics
+   - "culture_war": Focus on identity, values, tribal divisions
+   - "scandal": Focus on wrongdoing, accusations, investigations
+   - "human_interest": Focus on personal stories, emotional impact
+
+3. CLICKBAIT CHECK:
+   - true if: Question headlines, "BREAKING", superlatives, emotional hooks
+   - false if: Straightforward factual headlines
 
 FINAL CHECK: Before responding, verify you have not included any "(Source" or "Source 1" text anywhere in your response.`.trim();
 
@@ -641,11 +675,33 @@ FINAL CHECK: Before responding, verify you have not included any "(Source" or "S
       console.log('[Gemini] Provenance detected:', provenance.origin, '->', provenance.originSource || 'unknown source');
     }
 
+    // Parse narrative analysis (handle missing/malformed gracefully)
+    let narrative: NarrativeAnalysis | undefined;
+    if (parsed.narrative && typeof parsed.narrative === 'object') {
+      const n = parsed.narrative;
+      // Validate narrative type
+      const validTypes: NarrativeType[] = ['policy', 'horse_race', 'culture_war', 'scandal', 'human_interest'];
+      const narrativeType = validTypes.includes(n.narrativeType) ? n.narrativeType : 'policy';
+
+      // Clamp intensity to 1-10
+      const intensity = typeof n.emotionalIntensity === 'number'
+        ? Math.max(1, Math.min(10, Math.round(n.emotionalIntensity)))
+        : 5;
+
+      narrative = {
+        emotionalIntensity: intensity,
+        narrativeType: narrativeType as NarrativeType,
+        isClickbait: n.isClickbait === true,
+      };
+      console.log('[Gemini] Narrative detected:', narrative.narrativeType, `intensity=${narrative.emotionalIntensity}`, narrative.isClickbait ? 'CLICKBAIT' : '');
+    }
+
     return {
       summary: (parsed.summary || '').trim(),
       commonGround,
       keyDifferences,
       provenance,
+      narrative,
     };
   } catch (error: any) {
     console.error('[Gemini] Synthesis error:', error?.message);
@@ -1134,6 +1190,7 @@ export async function POST(req: NextRequest) {
       commonGround: intelBrief.commonGround || null,
       keyDifferences: finalKeyDifferences || null,
       provenance: intelBrief.provenance || null,  // NEW: Story origin tracking
+      narrative: intelBrief.narrative || null,   // NEW: Narrative tone analysis
       alternatives,
       isPaywalled,
       usage: usageInfo,
