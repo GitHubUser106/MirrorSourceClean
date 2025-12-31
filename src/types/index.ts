@@ -53,6 +53,23 @@ export interface NarrativeAnalysis {
   isClickbait: boolean;
 }
 
+// Author Intelligence types
+export interface AuthorInfo {
+  name: string;
+  isStaff: boolean;  // true if "Staff", "AP", "Reuters", etc.
+}
+
+export type AuthorVerdict = 'deep_reporter' | 'moderate' | 'high_volume' | 'unknown';
+
+export interface AuthorAnalysis {
+  name: string;
+  outlet: string;
+  articleCount: number;      // Articles in last 30 days
+  timeframeDays: number;     // 30
+  verdict: AuthorVerdict;
+  searchQuery: string;       // The Brave query used
+}
+
 // Main source interface returned from the API
 export interface GroundingSource {
   uri: string;
@@ -68,6 +85,8 @@ export interface GroundingSource {
   funding?: FundingInfo;
   // Political lean for comparison feature
   politicalLean?: PoliticalLean;
+  // Author Intelligence
+  author?: AuthorInfo;
 }
 
 // API Response structure

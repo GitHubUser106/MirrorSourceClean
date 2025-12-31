@@ -493,12 +493,19 @@ interface NarrativeAnalysis {
   isClickbait: boolean;
 }
 
+// Author info for per-source bylines
+interface AuthorInfo {
+  name: string;
+  isStaff: boolean;
+}
+
 interface IntelBrief {
   summary: string;
   commonGround: CommonGroundFact[] | string;  // Array preferred, string for backward compatibility
   keyDifferences: KeyDifference[] | string;   // Array for differences, string for consensus message
   provenance?: ProvenanceInfo;  // Story origin tracking
   narrative?: NarrativeAnalysis;  // NEW: Narrative tone analysis
+  authors?: Record<string, AuthorInfo>;  // NEW: Per-source author bylines
 }
 
 async function synthesizeWithGemini(searchResults: CSEResult[], originalQuery: string, timeoutMs: number = 18000): Promise<IntelBrief | null> {
@@ -587,6 +594,19 @@ Analyze the tone and type of coverage:
 3. CLICKBAIT CHECK:
    - true if: Question headlines, "BREAKING", superlatives, emotional hooks
    - false if: Straightforward factual headlines
+
+AUTHOR/BYLINE EXTRACTION:
+For each source, look for author bylines in the title or snippet:
+- Common patterns: "By John Smith", "John Smith reports", author names at end of snippets
+- If byline is "Staff", "Staff Report", "AP", "Reuters", "AFP", or similar wire/staff attribution, set isStaff: true
+- If a real person's name is found, set isStaff: false
+- If no byline is detectable, omit that source from the authors object
+
+Add to your JSON response:
+"authors": {
+  "domain.com": {"name": "Author Name", "isStaff": false},
+  "reuters.com": {"name": "Reuters Staff", "isStaff": true}
+}
 
 FINAL CHECK: Before responding, verify you have not included any "(Source" or "Source 1" text anywhere in your response.`.trim();
 
@@ -696,12 +716,31 @@ FINAL CHECK: Before responding, verify you have not included any "(Source" or "S
       console.log('[Gemini] Narrative detected:', narrative.narrativeType, `intensity=${narrative.emotionalIntensity}`, narrative.isClickbait ? 'CLICKBAIT' : '');
     }
 
+    // Parse author bylines (handle missing/malformed gracefully)
+    let authors: Record<string, AuthorInfo> | undefined;
+    if (parsed.authors && typeof parsed.authors === 'object') {
+      authors = {};
+      for (const [domain, authorData] of Object.entries(parsed.authors)) {
+        if (authorData && typeof authorData === 'object') {
+          const a = authorData as { name?: string; isStaff?: boolean };
+          if (typeof a.name === 'string' && a.name.trim()) {
+            authors[domain] = {
+              name: a.name.trim(),
+              isStaff: a.isStaff === true,
+            };
+          }
+        }
+      }
+      console.log('[Gemini] Authors detected:', Object.keys(authors).length, 'sources with bylines');
+    }
+
     return {
       summary: (parsed.summary || '').trim(),
       commonGround,
       keyDifferences,
       provenance,
       narrative,
+      authors,
     };
   } catch (error: any) {
     console.error('[Gemini] Synthesis error:', error?.message);
@@ -726,6 +765,8 @@ interface ProcessedSource {
   funding?: FundingInfo;
   // Political lean for comparison feature
   politicalLean?: PoliticalLean;
+  // Author Intelligence
+  author?: AuthorInfo;
 }
 
 // Detect opinion-laden or characterization language in search query
@@ -822,7 +863,7 @@ function analyzePoliticalDiversity(
   return { isBalanced, leftCount, centerCount, rightCount, warning };
 }
 
-function processSearchResults(cseResults: CSEResult[]): ProcessedSource[] {
+function processSearchResults(cseResults: CSEResult[], authors?: Record<string, AuthorInfo>): ProcessedSource[] {
   const seen = new Set<string>();
   const processed: ProcessedSource[] = [];
 
@@ -831,7 +872,19 @@ function processSearchResults(cseResults: CSEResult[]): ProcessedSource[] {
     seen.add(result.domain);
 
     const sourceInfo = getSourceInfo(result.domain);
-    
+
+    // Find author for this domain (check both with and without www.)
+    const domainVariants = [result.domain, result.domain.replace('www.', ''), 'www.' + result.domain];
+    let author: AuthorInfo | undefined;
+    if (authors) {
+      for (const variant of domainVariants) {
+        if (authors[variant]) {
+          author = authors[variant];
+          break;
+        }
+      }
+    }
+
     processed.push({
       uri: result.url,
       title: result.title,
@@ -845,6 +898,8 @@ function processSearchResults(cseResults: CSEResult[]): ProcessedSource[] {
       ownership: sourceInfo.ownership,
       funding: sourceInfo.funding,
       politicalLean: sourceInfo.lean,
+      // Author Intelligence
+      author,
     });
   }
 
@@ -1130,8 +1185,8 @@ export async function POST(req: NextRequest) {
     console.log(`[Gemini] Synthesizing ${diverseResults.length} sources...`);
     const intelBrief = await synthesizeWithGemini(diverseResults, searchQuery);
 
-    // 7. STEP 3: Process results with badges + transparency
-    const alternatives = processSearchResults(diverseResults);
+    // 7. STEP 3: Process results with badges + transparency + author info
+    const alternatives = processSearchResults(diverseResults, intelBrief?.authors);
 
     // 8. Analyze political diversity + query bias
     // Include input URL in diversity analysis so warnings account for the user's source

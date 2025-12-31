@@ -8,6 +8,7 @@ import UrlInputForm from "@/components/UrlInputForm";
 import SourceFlipCard from "@/components/SourceFlipCard";
 import { ProvenanceCard } from "@/components/ProvenanceCard";
 import { NarrativeCard } from "@/components/NarrativeCard";
+import { AuthorModal } from "@/components/AuthorModal";
 import type { GroundingSource } from "@/types";
 import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, BarChart3 } from "lucide-react";
 import { getPoliticalLean, LEAN_COLORS, LEAN_LABELS, type PoliticalLean } from "@/lib/sourceData";
@@ -330,6 +331,7 @@ function HomeContent() {
   const [keyDifferences, setKeyDifferences] = useState<KeyDifference[] | string | null>(null);
   const [provenance, setProvenance] = useState<ProvenanceInfo | null>(null);
   const [narrative, setNarrative] = useState<NarrativeAnalysis | null>(null);
+  const [authorModal, setAuthorModal] = useState<{ name: string; outlet: string } | null>(null);
   const [results, setResults] = useState<GroundingSource[]>([]);
   const [isPaywalled, setIsPaywalled] = useState(false);
   const [diversityWarning, setDiversityWarning] = useState<string | null>(null);
@@ -1197,6 +1199,7 @@ function HomeContent() {
                         source={source}
                         analysis={analysis}
                         getPoliticalLean={getPoliticalLean}
+                        onAuthorClick={(name, outlet) => setAuthorModal({ name, outlet })}
                       />
                     );
                   })}
@@ -1256,6 +1259,14 @@ function HomeContent() {
         </div>
       </footer>
 
+      {/* Author Modal */}
+      {authorModal && (
+        <AuthorModal
+          authorName={authorModal.name}
+          outlet={authorModal.outlet}
+          onClose={() => setAuthorModal(null)}
+        />
+      )}
     </main>
   );
 }

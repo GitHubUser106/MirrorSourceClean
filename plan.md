@@ -1,387 +1,549 @@
-# 🎯 MirrorSource Feature Sprint: Story Provenance Tracking
+# ✍️ MirrorSource Feature Sprint: Author Intelligence (MVP)
 
 ## 1. Global Context & Rules
 * **App Name:** MirrorSource
 * **Core Stack:** Next.js 14, TypeScript 5, Tailwind 3.4, Brave Search API, Gemini AI
-* **Feature Branch:** `feature/story-provenance`
+* **Feature Branch:** `feature/author-intelligence`
+* **Prerequisites:** Provenance (✅), Narrative Decoder (✅)
 * **Primary Rule:** DO NOT hallucinate file paths. Always check `ls` before editing.
 * **Coding Style:** "Vibecoding" — prioritize speed and functioning prototypes.
 
 ## 2. Current Sprint (The "Active" Sheet Music)
-**Goal:** Add Story Provenance tracking to identify where news stories originate
+**Goal:** Add Author Intelligence with lazy-load "Churnalism Detection"
 
 ### Context
-> **The Problem:** Users see 10 articles covering the same story but can't tell which outlet actually broke the news vs. which ones are just rewriting wire copy. This obscures who's doing real journalism vs. who's aggregating.
-> **The Solution:** Analyze story origins and display provenance information — wire service detection, original reporting identification, and aggregator flagging.
-> **The Outcome:** Users understand the information supply chain: "This story came from AP, was enriched by NYT and WSJ, and was rewritten by 7 other outlets."
-> **Competitive Advantage:** No competitor (Ground News, AllSides, Media Bias Fact Check) offers this. MirrorSource would be first.
+> **The Problem:** Users see outlet names but not the humans behind the stories. A "New York Times" article could be from a Pulitzer-winning beat reporter or a content mill rewriter. Nick Davies (Flat Earth News) shows that reporter output volume directly correlates with quality — real reporting takes time.
+> **The Solution:** Extract and display bylines (Tier 1), then offer on-demand author analysis when clicked (Tier 2).
+> **The Outcome:** Users can distinguish "Deep Dive Reporters" from "Hamster Wheel Churnalists" without slowing down the initial search.
 
-### User Value Proposition
-| User Question | Provenance Answers |
-|---------------|-------------------|
-| "I'm reading 5 articles that say the same thing" | "That's because they're all rewriting AP" |
-| "Which outlet actually broke this story?" | Shows the original source |
-| "Is this outlet doing real journalism?" | Exposes who aggregates vs. who reports |
-| "Why does everyone have the same quote?" | "It's from a press release" |
+### The Architect's Compromise
+We avoid the "Tier 3 Trap" (building a journalist database) by using **lazy-load**:
 
----
+| Tier | What | When | Cost |
+|------|------|------|------|
+| **Tier 1** | Show byline | Always (initial search) | Free — already in article |
+| **Tier 2** | Output count + verdict | On click | 1 Brave search |
+| ~~Tier 3~~ | Full author profile, rolodex | ~~Never (for now)~~ | ~~Database required~~ |
 
-## 3. Technical Approach
-
-### What's Detectable (MVP Scope)
-| Signal | Detection Method | Difficulty |
-|--------|------------------|------------|
-| Wire service origin | Text matching — AP/Reuters/AFP stories appear verbatim | Easy |
-| Attribution phrases | Regex: "according to [Source]", "first reported by", "as reported by" | Easy |
-| Publish timestamps | Brave Search returns timestamps — earliest = likely origin | Easy |
-| Press release origin | Detect PR Newswire, Business Wire, company newsroom URLs | Easy |
-| Original vs. rewrite | Gemini analysis of unique content/quotes/interviews | Medium |
-
-### What's Out of Scope (V2+)
-| Signal | Challenge |
-|--------|-----------|
-| Twitter/X origin | Would need X API integration |
-| Substack/Newsletter origin | Growing trend but harder to detect |
-| Embargoed stories | Release simultaneously, hard to trace |
+### Why This Works
+- **Fast initial load** — No extra API calls on first search
+- **Value on demand** — Users who care can click to investigate
+- **No infrastructure** — Just Brave search, no database
+- **Exposes churnalism** — High output = likely rewrites
 
 ---
 
-## 4. Implementation Plan
+## 3. Execution Checklist
 
-### Phase 1: Backend - Gemini Prompt Enhancement
+### Step 0: Prerequisites (Conductor Action)
+- [ ] Pull latest main: `git pull origin main`
+- [ ] Create feature branch: `git checkout -b feature/author-intelligence`
+- [ ] Verify `npm run dev` works
 
-- [ ] **Step 1.1: Update Gemini synthesis prompt in `route.ts`**
-    * Add provenance analysis to the existing prompt:
+---
+
+### Step 1: Define Types
+
+- [ ] **1a. Add Author types to `src/types/index.ts`:**
+
 ```typescript
-const prompt = `You are a news intelligence analyst...
+export interface AuthorInfo {
+  name: string;
+  isStaff: boolean;  // true if "Staff", "AP", "Reuters", etc.
+}
 
-// ... existing prompt content ...
-
-ADDITIONAL ANALYSIS - STORY PROVENANCE:
-Analyze the sources to determine story origin:
-1. Is this wire service content? Look for verbatim text across multiple sources (AP, Reuters, AFP pattern)
-2. Can you identify the likely original source? (earliest timestamp, "first reported by" phrases, unique details)
-3. Which outlets have ORIGINAL reporting (unique quotes, interviews, investigation)?
-4. Which outlets are AGGREGATING (rewriting wire copy, no original content)?
-
-Add to your JSON response:
-"provenance": {
-  "origin": "wire_service" | "single_outlet" | "press_release" | "unknown",
-  "originSource": "AP" | "Reuters" | "Wall Street Journal" | null,
-  "originConfidence": "high" | "medium" | "low",
-  "originalReporting": ["outlet1", "outlet2"],  // Outlets with unique content
-  "aggregators": ["outlet3", "outlet4"],         // Outlets just rewriting
-  "explanation": "Brief explanation of how you determined origin"
+export interface AuthorAnalysis {
+  name: string;
+  outlet: string;
+  articleCount: number;      // Articles in last 30 days
+  timeframeDays: number;     // 30
+  verdict: 'deep_reporter' | 'moderate' | 'high_volume' | 'unknown';
+  searchQuery: string;       // The Brave query used
 }
 ```
 
-- [ ] **Step 1.2: Update response interface**
+- [ ] **1b. Update Source type to include author:**
+
 ```typescript
-interface ProvenanceInfo {
-  origin: 'wire_service' | 'single_outlet' | 'press_release' | 'unknown';
-  originSource: string | null;
-  originConfidence: 'high' | 'medium' | 'low';
-  originalReporting: string[];
-  aggregators: string[];
-  explanation: string;
-}
-
-interface IntelBrief {
-  summary: string;
-  commonGround: CommonGroundFact[] | string;
-  keyDifferences: KeyDifference[] | string;
-  provenance?: ProvenanceInfo;  // NEW
+export interface Alternative {
+  // ... existing fields
+  author?: AuthorInfo;  // NEW
 }
 ```
-
-- [ ] **Step 1.3: Parse provenance from Gemini response**
-    * Extract `provenance` object from JSON response
-    * Handle missing/malformed provenance gracefully (default to null)
 
 ---
 
-### Phase 2: Frontend - Provenance Display
+### Step 2: Extract Bylines (Tier 1)
 
-- [ ] **Step 2.1: Create ProvenanceCard component**
-    * File: `src/components/ProvenanceCard.tsx`
-```tsx
-interface ProvenanceCardProps {
-  provenance: ProvenanceInfo;
-}
+- [ ] **2a. Update Gemini prompt in `route.ts`**
+    * Add byline extraction to the per-source analysis:
 
-export function ProvenanceCard({ provenance }: ProvenanceCardProps) {
-  // Origin type icon
-  const originIcon = {
-    wire_service: '📡',
-    single_outlet: '🎯',
-    press_release: '📋',
-    unknown: '❓'
-  }[provenance.origin];
+```typescript
+For each source, also extract:
+- author: The byline/author name if present (e.g., "Maggie Haberman", "John Smith and Jane Doe")
+- If the byline is "Staff", "AP", "Reuters", "AFP", or similar, note isStaff: true
+- If no byline is found, set author to null
 
-  // Origin type label
-  const originLabel = {
-    wire_service: 'Wire Service Story',
-    single_outlet: 'Original Scoop',
-    press_release: 'Press Release',
-    unknown: 'Origin Unknown'
-  }[provenance.origin];
-
-  return (
-    <div className="bg-white rounded-lg border p-4 mb-4">
-      <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-3">
-        📡 Story Origin
-      </h3>
-      
-      {/* Origin Badge */}
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-xl">{originIcon}</span>
-        <span className="font-medium">{originLabel}</span>
-        {provenance.originSource && (
-          <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-sm">
-            {provenance.originSource}
-          </span>
-        )}
-        <ConfidenceBadge level={provenance.originConfidence} />
-      </div>
-
-      {/* Original Reporters */}
-      {provenance.originalReporting.length > 0 && (
-        <div className="mb-2">
-          <span className="text-sm text-gray-600">🔍 Original reporting: </span>
-          <span className="text-sm font-medium">
-            {provenance.originalReporting.join(', ')}
-          </span>
-        </div>
-      )}
-
-      {/* Aggregators */}
-      {provenance.aggregators.length > 0 && (
-        <div className="mb-2">
-          <span className="text-sm text-gray-600">📋 Rewrites: </span>
-          <span className="text-sm text-gray-500">
-            {provenance.aggregators.join(', ')}
-          </span>
-        </div>
-      )}
-
-      {/* Explanation */}
-      <p className="text-xs text-gray-500 mt-2 italic">
-        {provenance.explanation}
-      </p>
-    </div>
-  );
-}
-
-function ConfidenceBadge({ level }: { level: string }) {
-  const styles = {
-    high: 'bg-green-100 text-green-800',
-    medium: 'bg-yellow-100 text-yellow-800',
-    low: 'bg-gray-100 text-gray-600'
-  }[level] || 'bg-gray-100 text-gray-600';
-
-  return (
-    <span className={`px-2 py-0.5 rounded text-xs ${styles}`}>
-      {level} confidence
-    </span>
-  );
+Add to each source in JSON:
+"author": {
+  "name": "Author Name" | null,
+  "isStaff": boolean
 }
 ```
 
-- [ ] **Step 2.2: Add ProvenanceCard to page.tsx**
-    * Place between Summary and Intel Brief (or inside Intel Brief)
+- [ ] **2b. Parse author from Gemini response**
+
+```typescript
+// In source parsing
+const author: AuthorInfo | null = source.author ? {
+  name: source.author.name || 'Unknown',
+  isStaff: source.author.isStaff || false,
+} : null;
+```
+
+- [ ] **2c. Include author in source data passed to frontend**
+
+---
+
+### Step 3: Display Bylines on Source Cards
+
+- [ ] **3a. Update `SourceFlipCard.tsx` (or equivalent)**
+    * Add byline display below outlet name:
+
 ```tsx
-{results?.provenance && (
-  <ProvenanceCard provenance={results.provenance} />
+{/* Author Byline */}
+{source.author && (
+  <div className="text-xs text-gray-500 mt-1">
+    {source.author.isStaff ? (
+      <span className="flex items-center gap-1">
+        <span>✍️ {source.author.name}</span>
+        <span className="text-orange-500" title="Wire/Staff - No individual accountability">
+          ⚠️
+        </span>
+      </span>
+    ) : (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onAuthorClick?.(source.author.name, source.outlet);
+        }}
+        className="flex items-center gap-1 hover:text-blue-600 hover:underline cursor-pointer"
+      >
+        <span>✍️ {source.author.name}</span>
+        <span className="text-blue-400">🔍</span>
+      </button>
+    )}
+  </div>
 )}
 ```
 
-- [ ] **Step 2.3: Alternative - Integrate into Intel Brief**
-    * Instead of separate card, add as first section of Intel Brief:
+- [ ] **3b. Add visual distinction:**
+
+| Byline Type | Display | Meaning |
+|-------------|---------|---------|
+| Named author | `✍️ Maggie Haberman 🔍` (clickable) | Accountable, can investigate |
+| Staff/Wire | `✍️ Staff ⚠️` (not clickable) | Anonymous, low accountability |
+| No byline | (don't show) | Unknown |
+
+---
+
+### Step 4: Create Author Analysis API Route (Tier 2)
+
+- [ ] **4a. Create `src/app/api/author/route.ts`:**
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const authorName = searchParams.get('name');
+  const outlet = searchParams.get('outlet');
+  
+  if (!authorName || !outlet) {
+    return NextResponse.json({ error: 'Missing name or outlet' }, { status: 400 });
+  }
+
+  // Extract domain from outlet name (rough mapping)
+  const domainMap: Record<string, string> = {
+    'New York Times': 'nytimes.com',
+    'Washington Post': 'washingtonpost.com',
+    'CNN': 'cnn.com',
+    'Fox News': 'foxnews.com',
+    'BBC': 'bbc.com',
+    'Reuters': 'reuters.com',
+    'AP': 'apnews.com',
+    // Add more as needed
+  };
+  
+  const domain = domainMap[outlet] || outlet.toLowerCase().replace(/\s+/g, '') + '.com';
+  
+  // Build search query for last 30 days
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
+  
+  const searchQuery = `site:${domain} "${authorName}" after:${dateStr}`;
+  
+  try {
+    // Call Brave Search API
+    const braveResponse = await fetch(
+      `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(searchQuery)}&count=20`,
+      {
+        headers: {
+          'X-Subscription-Token': process.env.BRAVE_API_KEY || '',
+        },
+      }
+    );
+    
+    const data = await braveResponse.json();
+    const articleCount = data.web?.results?.length || 0;
+    
+    // Determine verdict based on output volume
+    let verdict: 'deep_reporter' | 'moderate' | 'high_volume' | 'unknown';
+    if (articleCount === 0) {
+      verdict = 'unknown';
+    } else if (articleCount <= 4) {
+      verdict = 'deep_reporter';  // ~1/week = thorough
+    } else if (articleCount <= 12) {
+      verdict = 'moderate';       // ~3/week = normal
+    } else {
+      verdict = 'high_volume';    // 12+ in 30 days = churnalist
+    }
+    
+    const analysis: AuthorAnalysis = {
+      name: authorName,
+      outlet,
+      articleCount,
+      timeframeDays: 30,
+      verdict,
+      searchQuery,
+    };
+    
+    return NextResponse.json(analysis);
+    
+  } catch (error) {
+    console.error('Author analysis error:', error);
+    return NextResponse.json({ error: 'Failed to analyze author' }, { status: 500 });
+  }
+}
+```
+
+---
+
+### Step 5: Create Author Modal Component
+
+- [ ] **5a. Create `src/components/AuthorModal.tsx`:**
+
 ```tsx
-// Inside Intel Brief card
-<div className="border-b pb-3 mb-3">
-  <div className="flex items-center gap-2 text-sm">
-    <span>📡</span>
-    <span className="text-gray-600">Origin:</span>
-    <span className="font-medium">{provenance.originSource || 'Unknown'}</span>
-    {provenance.origin === 'wire_service' && (
-      <span className="text-gray-500">
-        (wire story, {provenance.aggregators.length} outlets rewriting)
-      </span>
-    )}
-  </div>
-</div>
-```
+'use client';
 
----
+import { useState, useEffect } from 'react';
 
-### Phase 3: Enhanced Detection (Optional)
+interface AuthorAnalysis {
+  name: string;
+  outlet: string;
+  articleCount: number;
+  timeframeDays: number;
+  verdict: 'deep_reporter' | 'moderate' | 'high_volume' | 'unknown';
+  searchQuery: string;
+}
 
-- [ ] **Step 3.1: Wire service text matching**
-    * Add utility function to detect verbatim wire content:
-```typescript
-// src/lib/provenanceDetection.ts
+interface AuthorModalProps {
+  authorName: string;
+  outlet: string;
+  onClose: () => void;
+}
 
-const WIRE_SIGNATURES = [
-  /\(AP\)\s*[—–-]/,           // (AP) — 
-  /\(Reuters\)\s*[—–-]/,       // (Reuters) —
-  /\(AFP\)\s*[—–-]/,           // (AFP) —
-  /Associated Press/i,
-  /Reuters\s+reported/i,
-];
+export function AuthorModal({ authorName, outlet, onClose }: AuthorModalProps) {
+  const [analysis, setAnalysis] = useState<AuthorAnalysis | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-export function detectWireService(text: string): string | null {
-  for (const pattern of WIRE_SIGNATURES) {
-    if (pattern.test(text)) {
-      if (/\(AP\)|Associated Press/i.test(text)) return 'AP';
-      if (/\(Reuters\)|Reuters/i.test(text)) return 'Reuters';
-      if (/\(AFP\)|Agence France/i.test(text)) return 'AFP';
+  useEffect(() => {
+    async function fetchAnalysis() {
+      try {
+        const res = await fetch(
+          `/api/author?name=${encodeURIComponent(authorName)}&outlet=${encodeURIComponent(outlet)}`
+        );
+        if (!res.ok) throw new Error('Failed to fetch');
+        const data = await res.json();
+        setAnalysis(data);
+      } catch (err) {
+        setError('Could not analyze author');
+      } finally {
+        setLoading(false);
+      }
     }
-  }
-  return null;
+    fetchAnalysis();
+  }, [authorName, outlet]);
+
+  const verdictConfig = {
+    deep_reporter: {
+      icon: '🎯',
+      label: 'Deep Dive Reporter',
+      color: 'text-green-700 bg-green-100',
+      description: 'Low output suggests thorough, original reporting',
+    },
+    moderate: {
+      icon: '📝',
+      label: 'Regular Reporter',
+      color: 'text-blue-700 bg-blue-100',
+      description: 'Normal output for a working journalist',
+    },
+    high_volume: {
+      icon: '🐹',
+      label: 'High Volume',
+      color: 'text-orange-700 bg-orange-100',
+      description: 'High output may indicate rewrites or aggregation',
+    },
+    unknown: {
+      icon: '❓',
+      label: 'Unknown',
+      color: 'text-gray-700 bg-gray-100',
+      description: 'Could not determine output pattern',
+    },
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">👤 {authorName}</h2>
+            <p className="text-sm text-gray-500">{outlet}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-xl"
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Content */}
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-3 text-gray-600">Analyzing author output...</span>
+          </div>
+        ) : error ? (
+          <div className="text-center py-8 text-red-600">{error}</div>
+        ) : analysis ? (
+          <div className="space-y-4">
+            {/* Output Stats */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="text-3xl font-bold text-gray-900">
+                {analysis.articleCount}
+              </div>
+              <div className="text-sm text-gray-500">
+                articles in the last {analysis.timeframeDays} days
+              </div>
+            </div>
+
+            {/* Verdict Badge */}
+            <div className={`rounded-lg p-4 ${verdictConfig[analysis.verdict].color}`}>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">{verdictConfig[analysis.verdict].icon}</span>
+                <span className="font-semibold">{verdictConfig[analysis.verdict].label}</span>
+              </div>
+              <p className="text-sm mt-1 opacity-80">
+                {verdictConfig[analysis.verdict].description}
+              </p>
+            </div>
+
+            {/* Context from Flat Earth News */}
+            <p className="text-xs text-gray-500 italic">
+              💡 Per Nick Davies (Flat Earth News): Real reporting takes time. 
+              High-volume output often indicates wire rewrites rather than original journalism.
+            </p>
+
+            {/* Search Query (for transparency) */}
+            <details className="text-xs text-gray-400">
+              <summary className="cursor-pointer hover:text-gray-600">
+                How we calculated this
+              </summary>
+              <code className="block mt-2 p-2 bg-gray-100 rounded text-xs break-all">
+                {analysis.searchQuery}
+              </code>
+            </details>
+          </div>
+        ) : null}
+
+        {/* Footer */}
+        <div className="mt-6 pt-4 border-t">
+          <button
+            onClick={onClose}
+            className="w-full py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 font-medium"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 ```
 
-- [ ] **Step 3.2: Attribution phrase extraction**
-```typescript
-const ATTRIBUTION_PATTERNS = [
-  /first reported by ([A-Z][a-zA-Z\s]+)/i,
-  /according to ([A-Z][a-zA-Z\s]+)/i,
-  /as reported by ([A-Z][a-zA-Z\s]+)/i,
-  /([A-Z][a-zA-Z\s]+) first reported/i,
-];
+---
 
-export function extractAttributions(text: string): string[] {
-  const attributions: string[] = [];
-  for (const pattern of ATTRIBUTION_PATTERNS) {
-    const match = text.match(pattern);
-    if (match && match[1]) {
-      attributions.push(match[1].trim());
-    }
-  }
-  return attributions;
-}
+### Step 6: Integrate Modal into Page
+
+- [ ] **6a. Add state to `page.tsx`:**
+
+```tsx
+const [authorModal, setAuthorModal] = useState<{
+  name: string;
+  outlet: string;
+} | null>(null);
 ```
 
-- [ ] **Step 3.3: Timestamp analysis**
-    * Use Brave Search timestamps to identify earliest source
-    * Pass timestamp data to Gemini for analysis
+- [ ] **6b. Pass handler to Source Cards:**
+
+```tsx
+<SourceCard
+  source={source}
+  onAuthorClick={(name, outlet) => setAuthorModal({ name, outlet })}
+/>
+```
+
+- [ ] **6c. Render modal:**
+
+```tsx
+{authorModal && (
+  <AuthorModal
+    authorName={authorModal.name}
+    outlet={authorModal.outlet}
+    onClose={() => setAuthorModal(null)}
+  />
+)}
+```
 
 ---
 
-## 5. UI Mockup
+### Step 7: Test & Deploy
 
-### Option A: Standalone Card (Below Summary)
-```
-┌─────────────────────────────────────────────────────┐
-│ 📡 Story Origin                                     │
-│                                                     │
-│ 📡 Wire Service Story    [AP]    [high confidence]  │
-│                                                     │
-│ 🔍 Original reporting: WSJ, NYT (added interviews)  │
-│ 📋 Rewrites: CNN, Fox News, HuffPost, Daily Mail    │
-│                                                     │
-│ ℹ️ This story originated from an AP wire report.    │
-│    WSJ and NYT added original interviews.           │
-└─────────────────────────────────────────────────────┘
-```
+- [ ] **7a. Start dev server:** `npm run dev`
+- [ ] **7b. Test scenarios:**
+    * Article with named author → Byline shows, clickable
+    * Article with "Staff" or "AP" → Byline shows with ⚠️, not clickable
+    * Click author → Modal loads → Shows output count + verdict
+    * High-volume author → "🐹 High Volume" warning
+    * Low-volume author → "🎯 Deep Dive Reporter" badge
 
-### Option B: Integrated into Intel Brief
-```
-┌─────────────────────────────────────────────────────┐
-│ 📊 Intel Brief                                      │
-│                                                     │
-│ 📡 Origin: AP wire → enriched by WSJ, NYT          │
-│ ─────────────────────────────────────────────────── │
-│ 🟡 Moderate Divergence — Sources agree on facts...  │
-│                                                     │
-│ ┌─────────────────┐  ┌─────────────────┐           │
-│ │ COMMON GROUND   │  │ KEY DIFFERENCES │           │
-│ └─────────────────┘  └─────────────────┘           │
-└─────────────────────────────────────────────────────┘
-```
+- [ ] **7c. Commit and deploy:**
 
-### Option C: Badge on Source Cards
+```bash
+git add .
+git commit -m "feat: Add Author Intelligence - bylines + lazy-load churnalism detection"
+git push origin feature/author-intelligence
 ```
-┌─────────────────────┐  ┌─────────────────────┐
-│ REUTERS             │  │ CNN                 │
-│ [Center] [Wire] 📡  │  │ [Center-Left]       │
-│                     │  │ [Rewrite] 📋        │
-│ "Trump meets..."    │  │ "Trump meets..."    │
-└─────────────────────┘  └─────────────────────┘
-```
-
-**Recommendation:** Start with Option B (integrated into Intel Brief) for MVP. Add Option C badges in V2.
 
 ---
 
-## 6. Execution Checklist Summary
+## 4. Success Criteria
 
-### MVP (This Sprint)
-- [x] Update Gemini prompt with provenance analysis
-- [x] Add ProvenanceInfo interface
-- [x] Parse provenance from API response
-- [x] Display provenance in Intel Brief section
-- [ ] Test with wire service story (AP/Reuters)
-- [ ] Test with original scoop (e.g., investigative piece)
-- [ ] Test with press release story
-
-### V2 (Future Sprint)
-- [ ] Wire signature detection utility
-- [ ] Attribution phrase extraction
-- [ ] Timestamp-based origin detection
-- [ ] "Original" vs "Rewrite" badges on Source Cards
-- [ ] Provenance confidence scoring
+- [ ] Bylines display on Source Cards (when available)
+- [ ] "Staff/Wire" bylines show warning icon, not clickable
+- [ ] Named authors are clickable
+- [ ] Clicking author opens modal with loading state
+- [ ] Modal shows article count + verdict
+- [ ] Verdict correctly categorizes output volume
+- [ ] Modal explains methodology (transparency)
+- [ ] No slowdown to initial search (lazy load works)
 
 ---
 
-## 7. Success Criteria
+## 5. Files to Create/Modify
 
-- [ ] Gemini returns provenance data for each analysis
-- [ ] Wire service stories correctly identified (AP, Reuters, AFP)
-- [ ] Original reporting outlets highlighted
-- [ ] Aggregator outlets flagged
-- [ ] UI displays provenance clearly without cluttering
-- [ ] No performance regression (provenance analysis in same Gemini call)
-
----
-
-## 8. Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/app/api/find/route.ts` | Update Gemini prompt, parse provenance |
-| `src/app/page.tsx` | Display provenance in Intel Brief |
-| `src/components/ProvenanceCard.tsx` | NEW - Provenance display component (optional) |
-| `src/lib/provenanceDetection.ts` | NEW - Wire/attribution detection utilities (V2) |
+| File | Action | Changes |
+|------|--------|---------|
+| `src/types/index.ts` | Update | Add `AuthorInfo`, `AuthorAnalysis` |
+| `src/app/api/find/route.ts` | Update | Add author extraction to Gemini prompt |
+| `src/app/api/author/route.ts` | **NEW** | Author analysis endpoint |
+| `src/components/SourceFlipCard.tsx` | Update | Display byline, add click handler |
+| `src/components/AuthorModal.tsx` | **NEW** | Author analysis modal |
+| `src/app/page.tsx` | Update | Add modal state and rendering |
 
 ---
 
-## 9. Risk Mitigation
+## 6. UI Flow
 
-| Risk | Mitigation |
-|------|------------|
-| Gemini hallucinating provenance | Add confidence levels, verify against known wire signatures |
-| Slowing down API response | Provenance in same prompt, not separate call |
-| UI clutter | Start minimal (one line in Intel Brief), expand if users want more |
-| Incorrect origin detection | Show confidence level, allow "unknown" as valid answer |
+### Initial State (Tier 1):
+```
+┌─────────────────────────────┐
+│ 📰 New York Times           │
+│ [Center-Left] [Public Co.]  │
+│                             │
+│ ✍️ Maggie Haberman 🔍       │  ← Clickable
+│                             │
+│ "Trump claims..."           │
+└─────────────────────────────┘
+
+┌─────────────────────────────┐
+│ 📰 Reuters                  │
+│ [Center] [Wire Service]     │
+│                             │
+│ ✍️ Staff ⚠️                 │  ← Not clickable, warning
+│                             │
+│ "President meets..."        │
+└─────────────────────────────┘
+```
+
+### On Click (Tier 2 - Modal):
+```
+┌─────────────────────────────────────┐
+│ 👤 Maggie Haberman              ✕  │
+│ New York Times                      │
+├─────────────────────────────────────┤
+│                                     │
+│        ┌─────────────────┐          │
+│        │       4         │          │
+│        │ articles in 30d │          │
+│        └─────────────────┘          │
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │ 🎯 Deep Dive Reporter       │    │
+│  │ Low output suggests         │    │
+│  │ thorough, original reporting│    │
+│  └─────────────────────────────┘    │
+│                                     │
+│  💡 Per Nick Davies: Real reporting │
+│     takes time...                   │
+│                                     │
+│  ▶ How we calculated this           │
+│                                     │
+│        [ Close ]                    │
+└─────────────────────────────────────┘
+```
 
 ---
 
-## 10. Competitive Positioning
+## 7. Verdict Thresholds
 
-| Competitor | Has Provenance? | MirrorSource Advantage |
-|------------|-----------------|------------------------|
-| Ground News | ❌ No | First to market |
-| AllSides | ❌ No | Unique differentiator |
-| Media Bias Fact Check | ❌ No | Actionable insight |
-| Google News | ❌ No | Transparency focus |
-
-**Tagline opportunity:** *"See where the story started."*
+| Articles in 30 Days | Verdict | Icon | Reasoning |
+|---------------------|---------|------|-----------|
+| 0 | Unknown | ❓ | Can't determine |
+| 1-4 | Deep Dive Reporter | 🎯 | ~1/week = thorough research |
+| 5-12 | Regular Reporter | 📝 | ~2-3/week = normal workload |
+| 13+ | High Volume | 🐹 | ~3+/week = likely aggregation |
 
 ---
 
-**Date:** December 30, 2025
+## 8. Future Enhancements (Tier 3 - NOT this sprint)
+
+Parking these for when/if we build a database:
+
+- [ ] Beat detection ("80% Foreign Policy")
+- [ ] Source Cloud ("Relies on unnamed officials")
+- [ ] Historical tracking across months
+- [ ] Author comparison across outlets
+- [ ] Originality scoring vs. wire copy
+
+---
+
+**Date:** December 31, 2025
 **Status:** Ready for Builder
-**Estimated Time:** 2-3 hours (MVP)
-**Priority:** High — Unique feature, competitive advantage
+**Estimated Time:** 2-3 hours
+**Priority:** Medium-High — Unique feature, exposes churnalism
+**Depends On:** Provenance (✅), Narrative Decoder (✅)

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ExternalLink, Info } from 'lucide-react';
 import { LEAN_COLORS, LEAN_LABELS, getWikiLink } from '@/lib/sourceData';
-import type { GroundingSource, PoliticalLean, OwnershipType } from '@/types';
+import type { GroundingSource, PoliticalLean, OwnershipType, AuthorInfo } from '@/types';
 
 // Strip HTML tags from Brave Search snippets
 const cleanSnippet = (text: string) => {
@@ -59,9 +59,10 @@ interface SourceFlipCardProps {
     notCovered?: string;
   };
   getPoliticalLean: (domain: string) => PoliticalLean;
+  onAuthorClick?: (authorName: string, outlet: string) => void;
 }
 
-export function SourceFlipCard({ source, analysis, getPoliticalLean }: SourceFlipCardProps) {
+export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorClick }: SourceFlipCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
 
   const lean = (source.politicalLean?.toLowerCase() || getPoliticalLean(source.sourceDomain || '')) as PoliticalLean;
@@ -104,7 +105,7 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean }: SourceFli
           </div>
 
           {/* Badges Row */}
-          <div className="flex flex-wrap gap-1.5 mb-3">
+          <div className="flex flex-wrap gap-1.5 mb-2">
             <span className={`text-xs px-2 py-0.5 rounded font-medium ${leanColors.bg} ${leanColors.text}`}>
               {leanLabel}
             </span>
@@ -112,6 +113,29 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean }: SourceFli
               {ownershipLabel}
             </span>
           </div>
+
+          {/* Author Byline */}
+          {source.author && (
+            <div className="text-xs text-slate-500 mb-3">
+              {source.author.isStaff ? (
+                <span className="flex items-center gap-1">
+                  <span>✍️ {source.author.name}</span>
+                  <span className="text-amber-500" title="Wire/Staff - No individual accountability">⚠️</span>
+                </span>
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAuthorClick?.(source.author!.name, sourceName);
+                  }}
+                  className="flex items-center gap-1 hover:text-blue-600 hover:underline cursor-pointer py-1 -my-1"
+                >
+                  <span>✍️ {source.author.name}</span>
+                  <span className="text-blue-400">🔍</span>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Content Area - AI analysis OR fallback */}
           {analysis?.headline ? (
