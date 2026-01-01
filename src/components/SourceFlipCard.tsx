@@ -5,16 +5,19 @@ import { ExternalLink, Info } from 'lucide-react';
 import { LEAN_COLORS, LEAN_LABELS, getWikiLink } from '@/lib/sourceData';
 import type { GroundingSource, PoliticalLean, OwnershipType, AuthorInfo } from '@/types';
 
-// Strip HTML tags from Brave Search snippets
+// Strip HTML tags and decode entities from Brave Search snippets
 const cleanSnippet = (text: string) => {
   if (!text) return '';
   return text
     .replace(/<[^>]*>?/gm, '')
+    .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"');
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
 };
 
 // Ownership type labels - clearer naming for users
@@ -77,7 +80,7 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
 
   return (
     <div
-      className="relative h-[320px] cursor-pointer perspective-1000"
+      className="relative h-[380px] cursor-pointer perspective-1000"
       onClick={() => setIsFlipped(!isFlipped)}
     >
       <div
@@ -86,7 +89,7 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
       >
         {/* FRONT */}
         <div
-          className="absolute inset-0 backface-hidden border border-slate-200 rounded-xl p-5 bg-white hover:shadow-md transition-shadow"
+          className="absolute inset-0 backface-hidden border border-slate-200 rounded-xl p-6 bg-white hover:shadow-md transition-shadow"
           style={{ backfaceVisibility: 'hidden' }}
         >
           {/* Source Header */}
@@ -96,7 +99,15 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
               alt=""
               className="w-6 h-6 rounded-md flex-shrink-0"
             />
-            <span className="font-semibold text-slate-900 truncate">{sourceName}</span>
+            <a
+              href={`https://${source.sourceDomain}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-slate-900 truncate hover:text-blue-600 hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {sourceName}
+            </a>
             {source.countryCode && (
               <span className="text-xs flex-shrink-0">
                 {source.countryCode === 'US' ? '🇺🇸' : source.countryCode === 'GB' ? '🇬🇧' : source.countryCode === 'CA' ? '🇨🇦' : '🌍'}
@@ -142,7 +153,7 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
             <>
               {/* Headline from AI */}
               <p className="font-medium text-slate-900 leading-snug text-sm mb-3 line-clamp-2">
-                "{analysis.headline}"
+                "{cleanSnippet(analysis.headline)}"
               </p>
 
               {/* Tone Badge */}
@@ -156,14 +167,14 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
                       ? 'bg-green-100 text-green-700'
                       : 'bg-blue-100 text-blue-700'
                   }`}>
-                    {analysis.tone}
+                    {cleanSnippet(analysis.tone)}
                   </span>
                 </div>
               )}
 
               {/* Focus */}
               {analysis?.focus && (
-                <p className="text-xs text-slate-600 leading-relaxed line-clamp-2 mb-3">{analysis.focus}</p>
+                <p className="text-xs text-slate-600 leading-relaxed line-clamp-2 mb-3">{cleanSnippet(analysis.focus)}</p>
               )}
             </>
           ) : (
@@ -194,7 +205,7 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
 
         {/* BACK */}
         <div
-          className="absolute inset-0 backface-hidden border border-slate-200 rounded-xl p-5 bg-slate-50 rotate-y-180 flex flex-col h-full"
+          className="absolute inset-0 backface-hidden border border-slate-200 rounded-xl p-6 bg-slate-50 rotate-y-180 flex flex-col h-full"
           style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
         >
           {/* Header */}

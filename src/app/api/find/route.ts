@@ -248,60 +248,77 @@ interface CSEResult {
 }
 
 // =============================================================================
-// BRAVE SEARCH - Primary search engine
+// BRAVE SEARCH - Primary search engine with retry + exponential backoff
 // =============================================================================
-async function searchWithBrave(query: string): Promise<CSEResult[]> {
+async function searchWithBrave(query: string, maxRetries = 2): Promise<CSEResult[]> {
   if (!BRAVE_API_KEY) {
     console.log('[Brave] No API key configured, skipping');
     return [];
   }
 
-  try {
-    const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=20&search_lang=en&country=us&freshness=pw`;
+  const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=20&search_lang=en&country=us&freshness=pw`;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    const response = await fetch(url, {
-      headers: {
-        'Accept': 'application/json',
-        'X-Subscription-Token': BRAVE_API_KEY,
-      },
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
+      const response = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'X-Subscription-Token': BRAVE_API_KEY,
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      console.log('[Brave] API error:', response.status);
+      // Handle rate limiting with exponential backoff
+      if (response.status === 429) {
+        const waitMs = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+        console.log(`[Brave] Rate limited (429). Attempt ${attempt + 1}/${maxRetries + 1}. Waiting ${waitMs}ms...`);
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, waitMs));
+          continue; // Retry
+        }
+        console.log('[Brave] Rate limit retries exhausted');
+        return [];
+      }
+
+      if (!response.ok) {
+        console.log('[Brave] API error:', response.status);
+        return [];
+      }
+
+      const data = await response.json();
+
+      const results: CSEResult[] = (data.web?.results || []).map((item: any) => {
+        let domain = '';
+        try { domain = new URL(item.url).hostname.replace(/^www\./, ''); } catch {}
+
+        return {
+          url: item.url,
+          title: item.title || '',
+          snippet: item.description || '',
+          domain,
+          source: 'brave' as const,
+        };
+      });
+
+      console.log('[Brave] Found', results.length, 'results');
+      return results;
+
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('[Brave] Search timeout');
+      } else {
+        console.error('[Brave] Search error:', error);
+      }
+      // Don't retry on timeout/network errors - just fail
       return [];
     }
-
-    const data = await response.json();
-
-    const results: CSEResult[] = (data.web?.results || []).map((item: any) => {
-      let domain = '';
-      try { domain = new URL(item.url).hostname.replace(/^www\./, ''); } catch {}
-
-      return {
-        url: item.url,
-        title: item.title || '',
-        snippet: item.description || '',
-        domain,
-        source: 'brave' as const,
-      };
-    });
-
-    console.log('[Brave] Found', results.length, 'results');
-    return results;
-
-  } catch (error: any) {
-    if (error.name === 'AbortError') {
-      console.log('[Brave] Search timeout');
-    } else {
-      console.error('[Brave] Search error:', error);
-    }
-    return [];
   }
+
+  return [];
 }
 
 // Filter out low-quality results using 50% keyword match ratio
@@ -389,8 +406,10 @@ function filterQualityResults(results: CSEResult[], searchQuery: string): CSERes
       passed = matchRatio >= 0.4;
     }
 
+    // Only require title match for short queries (2-3 words)
+    // Longer queries from article titles often don't match alternative headlines
     const titleHasMatch = queryWords.some(w => titleLower.includes(w));
-    if (queryWords.length > 1 && !titleHasMatch) {
+    if (queryWords.length >= 2 && queryWords.length <= 3 && !titleHasMatch) {
       passed = false;
     }
 
