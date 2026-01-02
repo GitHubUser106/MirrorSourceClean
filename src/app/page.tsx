@@ -879,7 +879,7 @@ function HomeContent() {
 
       {/* Opaque URL detected - proactive headline prompt (no error) */}
       {showKeywordFallback && !error && (
-          <div className="mt-6 w-full max-w-2xl lg:max-w-3xl bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-200 rounded-xl p-6">
+          <div className="mt-6 w-full max-w-2xl lg:max-w-3xl mx-auto bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-200 rounded-xl p-6">
             <div className="text-center mb-4">
               {keywordFallbackType === 'share' ? (
                 <>
