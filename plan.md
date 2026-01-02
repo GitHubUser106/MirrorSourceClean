@@ -37,6 +37,24 @@
 - After fixes: 4+ sources returned (Reuters, NYT, Fox, CNN)
 - Coverage distribution working across political spectrum
 
+### Sprint 5: Source Card UX Fixes (Jan 1, 2026)
+
+#### Issues Fixed
+- [x] **Source name clickable** - Source name now links to homepage (opens in new tab, doesn't flip card)
+- [x] **Premium Link Detected centered** - Changed `inline-flex` → `flex justify-center` for detected badges
+- [x] **HTML entity decoding** - Added numeric entity decoding (`&#x27;` → apostrophe, `&#39;`, etc.) to cleanSnippet
+- [x] **Cards less congested** - Increased card height (320px → 380px) and padding (p-5 → p-6)
+
+#### Files Changed
+- `src/components/SourceFlipCard.tsx` - Clickable source name, entity decoding, larger cards
+- `src/app/page.tsx` - Centered Premium/Shared Link Detected badges
+
+#### Verification
+- Desktop: Source links open in new tab without flipping card
+- Mobile: Single column layout, "Tap for info" text displays
+- Console: No errors
+- Production: https://mirrorsource.app
+
 ---
 
 ## Section 3: Current Architecture
