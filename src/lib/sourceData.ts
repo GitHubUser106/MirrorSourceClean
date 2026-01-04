@@ -2541,8 +2541,8 @@ export const LEAN_LABELS: Record<PoliticalLean, string> = {
 // GROUPED DATA - For Sources page display
 // =============================================================================
 
-export function getSourcesByLean(): Record<PoliticalLean, Array<{ name: string; domain: string; type: LegacyOwnershipType }>> {
-  const grouped: Record<PoliticalLean, Array<{ name: string; domain: string; type: LegacyOwnershipType }>> = {
+export function getSourcesByLean(): Record<PoliticalLean, Array<{ name: string; domain: string; type: LegacyOwnershipType; isIndependent?: boolean }>> {
+  const grouped: Record<PoliticalLean, Array<{ name: string; domain: string; type: LegacyOwnershipType; isIndependent?: boolean }>> = {
     'left': [],
     'center-left': [],
     'center': [],
@@ -2560,6 +2560,7 @@ export function getSourcesByLean(): Record<PoliticalLean, Array<{ name: string; 
         name: source.name,
         domain: source.domain,
         type: source.legacyType,
+        isIndependent: source.isIndependent,
       });
     }
   }

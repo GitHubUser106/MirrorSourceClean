@@ -22,6 +22,7 @@ const badgeColors: Record<string, string> = {
   Analysis: "bg-indigo-100 text-indigo-700",
   Specialized: "bg-orange-100 text-orange-700",
   Local: "bg-stone-100 text-stone-700",
+  Independent: "bg-emerald-100 text-emerald-700",
 };
 
 // Badge descriptions
@@ -36,6 +37,7 @@ const badgeDescriptions: Record<string, string> = {
   Magazine: "Long-form journalism and in-depth analysis",
   Analysis: "Think tanks, policy experts, and investigative outlets",
   Specialized: "Industry-focused or financial news outlets",
+  Independent: "Creator-driven media, often crowdfunded or subscription-based",
 };
 
 // Lean column styling - uses shared LEAN_COLORS from sourceData.ts
@@ -104,11 +106,18 @@ export default function SourcesPage() {
                         {source.name}
                       </span>
                     </div>
-                    <span
-                      className={`inline-block text-xs px-2 py-0.5 rounded-full ${badgeColors[source.type] || "bg-gray-100 text-gray-700"}`}
-                    >
-                      {source.type}
-                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      <span
+                        className={`inline-block text-xs px-2 py-0.5 rounded-full ${badgeColors[source.type] || "bg-gray-100 text-gray-700"}`}
+                      >
+                        {source.type}
+                      </span>
+                      {source.isIndependent && (
+                        <span className={`inline-block text-xs px-2 py-0.5 rounded-full ${badgeColors.Independent}`}>
+                          Independent
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
