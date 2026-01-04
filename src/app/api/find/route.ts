@@ -134,6 +134,103 @@ function isPaywalledSource(url: string): boolean {
 
 // Helper alias for backward compatibility with existing code
 const getSourceInfo = getFullSourceInfo;
+
+// =============================================================================
+// YOUTUBE CHANNEL ATTRIBUTION
+// Maps known news YouTube channels to their parent outlet for proper bias/transparency
+// =============================================================================
+const YOUTUBE_CHANNEL_MAP: Record<string, string> = {
+  // Major News Networks
+  'nbc news': 'nbcnews.com',
+  'cbs news': 'cbsnews.com',
+  'abc news': 'abcnews.go.com',
+  'cnn': 'cnn.com',
+  'fox news': 'foxnews.com',
+  'msnbc': 'msnbc.com',
+  'fox business': 'foxbusiness.com',
+  'cnbc': 'cnbc.com',
+  'bloomberg': 'bloomberg.com',
+  // Wire Services
+  'associated press': 'apnews.com',
+  'reuters': 'reuters.com',
+  'afp': 'afp.com',
+  // International
+  'bbc news': 'bbc.com',
+  'bbc': 'bbc.com',
+  'sky news': 'news.sky.com',
+  'al jazeera english': 'aljazeera.com',
+  'al jazeera': 'aljazeera.com',
+  'dw news': 'dw.com',
+  'france 24': 'france24.com',
+  'channel 4 news': 'channel4.com',
+  'global news': 'globalnews.ca',
+  'cbc news': 'cbc.ca',
+  'ctv news': 'ctvnews.ca',
+  // Print / Digital
+  'the washington post': 'washingtonpost.com',
+  'washington post': 'washingtonpost.com',
+  'the new york times': 'nytimes.com',
+  'new york times': 'nytimes.com',
+  'wall street journal': 'wsj.com',
+  'the guardian': 'theguardian.com',
+  'the telegraph': 'telegraph.co.uk',
+  'los angeles times': 'latimes.com',
+  'usa today': 'usatoday.com',
+  'politico': 'politico.com',
+  'the hill': 'thehill.com',
+  'axios': 'axios.com',
+  'vox': 'vox.com',
+  // Independent / Commentary
+  'breaking points': 'breakingpoints.com',
+  'the young turks': 'tyt.com',
+  'daily wire': 'dailywire.com',
+  'the daily wire': 'dailywire.com',
+  'rebel news': 'rebelnews.com',
+  'the free press': 'thefp.com',
+  'real clear politics': 'realclearpolitics.com',
+  'newsmax': 'newsmax.com',
+  'newsnation': 'newsnationnow.com',
+  'newsnation live': 'newsnationnow.com',
+  'newsnation now': 'newsnationnow.com',
+  // Canadian
+  'true north': 'tnc.news',
+  'true north centre': 'tnc.news',
+  // PBS
+  'pbs newshour': 'pbs.org',
+  'pbs': 'pbs.org',
+  // C-SPAN
+  'c-span': 'c-span.org',
+  'cspan': 'c-span.org',
+};
+
+// Extract YouTube channel name from video title
+// Common formats: "Video Title | Channel Name", "Video Title - Channel Name"
+function extractYouTubeChannel(title: string): string | null {
+  if (!title) return null;
+
+  // Try common separators: |, -, –, —
+  const separators = [' | ', ' - ', ' – ', ' — '];
+  for (const sep of separators) {
+    const idx = title.lastIndexOf(sep);
+    if (idx > 0) {
+      let channel = title.substring(idx + sep.length).trim();
+      // Strip common YouTube suffixes
+      channel = channel.replace(/\s*-?\s*YouTube$/i, '').trim();
+      // Validate it looks like a channel name (not too long, not too short)
+      if (channel.length >= 2 && channel.length <= 50) {
+        return channel;
+      }
+    }
+  }
+  return null;
+}
+
+// Look up YouTube channel to get actual source domain
+function resolveYouTubeChannel(channelName: string): string | null {
+  if (!channelName) return null;
+  const normalized = channelName.toLowerCase().trim();
+  return YOUTUBE_CHANNEL_MAP[normalized] || null;
+}
 // --- Fetch Article Title from URL ---
 async function fetchArticleTitle(url: string): Promise<string | null> {
   try {
@@ -888,12 +985,37 @@ function processSearchResults(cseResults: CSEResult[], authors?: Record<string, 
 
   for (const result of cseResults) {
     if (!result.domain || seen.has(result.domain)) continue;
-    seen.add(result.domain);
 
-    const sourceInfo = getSourceInfo(result.domain);
+    let effectiveDomain = result.domain;
+    let effectiveDisplayName: string | undefined;
+
+    // YOUTUBE CHANNEL ATTRIBUTION
+    // If this is a YouTube result, try to resolve the actual news channel
+    if (result.domain === 'youtube.com' || result.domain === 'www.youtube.com') {
+      const channelName = extractYouTubeChannel(result.title);
+      if (channelName) {
+        const resolvedDomain = resolveYouTubeChannel(channelName);
+        if (resolvedDomain) {
+          // Skip if we already have this source from their main domain
+          if (seen.has(resolvedDomain)) {
+            console.log(`[YouTube] Skipping duplicate - already have ${resolvedDomain}`);
+            continue;
+          }
+          effectiveDomain = resolvedDomain;
+          console.log(`[YouTube] Resolved "${channelName}" -> ${resolvedDomain}`);
+        } else {
+          // Unknown channel - use channel name as display name
+          effectiveDisplayName = channelName.toUpperCase();
+          console.log(`[YouTube] Unknown channel: "${channelName}" - keeping as YouTube`);
+        }
+      }
+    }
+
+    seen.add(effectiveDomain);
+    const sourceInfo = getSourceInfo(effectiveDomain);
 
     // Find author for this domain (check both with and without www.)
-    const domainVariants = [result.domain, result.domain.replace('www.', ''), 'www.' + result.domain];
+    const domainVariants = [effectiveDomain, effectiveDomain.replace('www.', ''), 'www.' + effectiveDomain];
     let author: AuthorInfo | undefined;
     if (authors) {
       for (const variant of domainVariants) {
@@ -908,8 +1030,8 @@ function processSearchResults(cseResults: CSEResult[], authors?: Record<string, 
       uri: result.url,
       title: result.title,
       snippet: result.snippet || '',
-      displayName: sourceInfo.displayName,
-      sourceDomain: result.domain,
+      displayName: effectiveDisplayName || sourceInfo.displayName,
+      sourceDomain: effectiveDomain,
       sourceType: sourceInfo.type,
       countryCode: sourceInfo.countryCode,
       isSyndicated: false,

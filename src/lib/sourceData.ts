@@ -2587,29 +2587,43 @@ export const LEFT_LEANING_DOMAINS = SOURCES
 
 // =============================================================================
 // BALANCED DOMAINS - Optimized distribution for single-query balanced search
-// Distribution: 2 Left, 3 Center-Left, 3 Center, 3 Center-Right, 3 Right
-// Includes mainstream + independent media for diversity
+// Expanded to include more independent media sources for diversity
 // =============================================================================
 export const BALANCED_DOMAINS = [
-  // Left (2) - mainstream + indie
+  // LEFT - mainstream + indie
   'huffpost.com',
   'pressprogress.ca',
-  // Center-Left (3) - mainstream + indie
+  'jacobin.com',
+  'theintercept.com',
+  'commondreams.org',
+  'democracynow.org',
+  // CENTER-LEFT - mainstream + indie
   'nytimes.com',
   'cnn.com',
   'canadaland.com',
-  // Center (3) - mainstream + indie
+  'washingtonpost.com',
+  'msnbc.com',
+  'propublica.org',
+  // CENTER - mainstream + indie
   'reuters.com',
   'bbc.com',
   'breakingpoints.com',
-  // Center-Right (3) - mainstream + indie
+  'apnews.com',
+  'thehill.com',
+  'npr.org',
+  // CENTER-RIGHT - mainstream + indie
   'washingtonexaminer.com',
   'nypost.com',
   'thefp.com',
-  // Right (3) - mainstream + indie
+  'reason.com',
+  'wsj.com',
+  // RIGHT - mainstream + indie
   'foxnews.com',
   'dailywire.com',
   'rebelnews.com',
+  'breitbart.com',
+  'thefederalist.com',
+  'nationalreview.com',
 ];
 
 // =============================================================================
