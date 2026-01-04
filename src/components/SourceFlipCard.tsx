@@ -131,6 +131,11 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
             <span className={`text-xs px-2 py-0.5 rounded font-medium ${ownershipColors.bg} ${ownershipColors.text}`}>
               {ownershipLabel}
             </span>
+            {source.isIndependent && (
+              <span className="text-xs px-2 py-0.5 rounded font-medium bg-emerald-100 text-emerald-700">
+                Independent
+              </span>
+            )}
           </div>
 
           {/* Author Byline */}

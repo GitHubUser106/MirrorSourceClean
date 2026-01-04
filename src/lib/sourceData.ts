@@ -68,6 +68,7 @@ export interface Source {
   countryCode?: string;
   ownership?: OwnershipInfo;
   funding?: FundingInfo;
+  isIndependent?: boolean;  // Creator-driven/indie media
 }
 
 // =============================================================================
@@ -2158,6 +2159,7 @@ export const SOURCES: Source[] = [
     countryCode: 'CA',
     ownership: { owner: 'Rebel News Network Ltd.', type: 'private', note: 'Founded by Ezra Levant in 2015; crowdfunded independent media' },
     funding: { model: 'Viewer donations, merchandise & crowdfunding campaigns' },
+    isIndependent: true,
   },
   {
     domain: 'tnc.news',
@@ -2169,6 +2171,7 @@ export const SOURCES: Source[] = [
     countryCode: 'CA',
     ownership: { owner: 'True North Centre for Public Policy', type: 'nonprofit', note: 'Founded by Candice Malcolm in 2018' },
     funding: { model: 'Donations & subscriptions' },
+    isIndependent: true,
   },
   {
     domain: 'canadaland.com',
@@ -2180,6 +2183,7 @@ export const SOURCES: Source[] = [
     countryCode: 'CA',
     ownership: { owner: 'Canadaland Media Inc.', type: 'private', note: 'Founded by Jesse Brown in 2013; investigative journalism focus' },
     funding: { model: 'Listener donations, Patreon & advertising' },
+    isIndependent: true,
   },
   {
     domain: 'breachmedia.ca',
@@ -2191,6 +2195,7 @@ export const SOURCES: Source[] = [
     countryCode: 'CA',
     ownership: { owner: 'The Breach Media Inc.', type: 'nonprofit', note: 'Progressive independent outlet founded 2021' },
     funding: { model: 'Reader donations & foundation grants' },
+    isIndependent: true,
   },
   {
     domain: 'westernstandardonline.com',
@@ -2202,6 +2207,7 @@ export const SOURCES: Source[] = [
     countryCode: 'CA',
     ownership: { owner: 'Western Standard New Media Corp.', type: 'private', note: 'Relaunched 2019; Alberta-focused conservative news' },
     funding: { model: 'Subscriptions, advertising & donations' },
+    isIndependent: true,
   },
   {
     domain: 'blacklocks.ca',
@@ -2213,6 +2219,7 @@ export const SOURCES: Source[] = [
     countryCode: 'CA',
     ownership: { owner: "Blacklock's Reporter Inc.", type: 'private', note: 'Founded by Holly Doan & Tom Korski; parliamentary press gallery focus' },
     funding: { model: 'Subscriptions only - no advertising' },
+    isIndependent: true,
   },
   {
     domain: 'pressprogress.ca',
@@ -2224,6 +2231,7 @@ export const SOURCES: Source[] = [
     countryCode: 'CA',
     ownership: { owner: 'Broadbent Institute', type: 'nonprofit', note: 'Progressive think tank journalism project' },
     funding: { model: 'Broadbent Institute funding & donations' },
+    isIndependent: true,
   },
   {
     domain: 'thecountersignal.com',
@@ -2235,6 +2243,7 @@ export const SOURCES: Source[] = [
     countryCode: 'CA',
     ownership: { owner: 'The Counter Signal Media Inc.', type: 'private', note: 'Founded by Keean Bexte; populist conservative outlet' },
     funding: { model: 'Subscriptions & donations' },
+    isIndependent: true,
   },
 
   // US INDEPENDENT
@@ -2248,6 +2257,7 @@ export const SOURCES: Source[] = [
     countryCode: 'US',
     ownership: { owner: 'Breaking Points Media LLC', type: 'private', note: 'Founded by Krystal Ball & Saagar Enjeti in 2021; left-right duo format' },
     funding: { model: 'Subscriptions, YouTube ads & Superstore merchandise' },
+    isIndependent: true,
   },
   {
     domain: 'racket.news',
@@ -2259,6 +2269,7 @@ export const SOURCES: Source[] = [
     countryCode: 'US',
     ownership: { owner: 'Matt Taibbi', type: 'private', note: 'Independent journalist; former Rolling Stone writer; Twitter Files reporter' },
     funding: { model: 'Substack subscriptions' },
+    isIndependent: true,
   },
   {
     domain: 'greenwald.substack.com',
@@ -2270,6 +2281,7 @@ export const SOURCES: Source[] = [
     countryCode: 'US',
     ownership: { owner: 'Glenn Greenwald', type: 'private', note: 'Independent journalist; Intercept co-founder; Pulitzer winner (Snowden)' },
     funding: { model: 'Substack subscriptions & Rumble partnership' },
+    isIndependent: true,
   },
   {
     domain: 'thefp.com',
@@ -2281,6 +2293,7 @@ export const SOURCES: Source[] = [
     countryCode: 'US',
     ownership: { owner: 'The Free Press Media Inc.', type: 'private', note: 'Founded by Bari Weiss in 2021; centrist independent journalism' },
     funding: { model: 'Subscriptions & events' },
+    isIndependent: true,
   },
   {
     domain: 'timcast.com',
@@ -2292,6 +2305,7 @@ export const SOURCES: Source[] = [
     countryCode: 'US',
     ownership: { owner: 'Timcast Media', type: 'private', note: 'Founded by Tim Pool; multi-show network including Timcast IRL' },
     funding: { model: 'YouTube ads, Rumble partnership & merchandise' },
+    isIndependent: true,
   },
   {
     domain: 'rumble.com',
@@ -2438,6 +2452,7 @@ export interface FullSourceInfo {
   ownership?: OwnershipInfo;
   funding?: FundingInfo;
   lean?: PoliticalLean;
+  isIndependent?: boolean;
 }
 
 /**
@@ -2457,6 +2472,7 @@ export function getFullSourceInfo(domain: string): FullSourceInfo {
       ownership: source.ownership,
       funding: source.funding,
       lean: source.lean,
+      isIndependent: source.isIndependent,
     };
   }
 

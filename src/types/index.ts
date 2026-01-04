@@ -87,6 +87,8 @@ export interface GroundingSource {
   politicalLean?: PoliticalLean;
   // Author Intelligence
   author?: AuthorInfo;
+  // Independent/creator-driven media
+  isIndependent?: boolean;
 }
 
 // API Response structure

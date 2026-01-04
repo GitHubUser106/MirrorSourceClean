@@ -937,6 +937,8 @@ interface ProcessedSource {
   politicalLean?: PoliticalLean;
   // Author Intelligence
   author?: AuthorInfo;
+  // Independent/creator-driven media
+  isIndependent?: boolean;
 }
 
 // Detect opinion-laden or characterization language in search query
@@ -1093,6 +1095,7 @@ function processSearchResults(cseResults: CSEResult[], authors?: Record<string, 
       ownership: sourceInfo.ownership,
       funding: sourceInfo.funding,
       politicalLean: sourceInfo.lean,
+      isIndependent: sourceInfo.isIndependent,
       // Author Intelligence
       author,
     });
