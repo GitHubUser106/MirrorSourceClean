@@ -80,55 +80,26 @@
 
 ## Section 4: Current Sprint
 
-### Sprint 7: Source Card Layout Improvements (Jan 4, 2026)
+### Sprint 9: Brave Response Caching (Jan 4, 2026) ✅ COMPLETE
 
 #### Problem
-Source names are truncated ("GLOBE A...", "NATIONAL...", "THENATI...") making sources hard to identify. Cards feel cramped with 4-column layout.
+Repeated searches and rate limits (429) were causing slow responses and failed searches.
 
-#### Tasks
-- [ ] **3 cards per row** - Change grid from 4 columns to 3 on desktop (lg breakpoint)
-  - Desktop (lg): 3 cards
-  - Tablet (md): 2 cards
-  - Mobile: 1 card
-  
-- [ ] **Move country flag to badge row** - Flag competes with source name for header space
-  - Current: `[Logo] [Name...] [🇨🇦]` + `[Bias] [Ownership]`
-  - New: `[Logo] [Full Name]` + `[🇨🇦] [Bias] [Ownership]`
+#### Solution Implemented
+- [x] **Main result cache** - Uses `globalThis` for persistence across Next.js hot reloads
+- [x] **Brave response cache** - 15-minute TTL, 200 max entries for raw Brave API responses
+- [x] **Cache debugging** - Added size/key logging for troubleshooting
 
-- [ ] **Relax text truncation** - Let content breathe in wider cards
-  - Source name: No truncation (full name visible)
-  - Headline: Allow 2-3 lines before truncating
-  - Summary: Allow 3-4 lines before truncating
+#### Performance Results
+- First search: ~5700ms (full API calls)
+- Cached search: ~104ms (55x faster!)
 
-#### Files to Modify
-- `src/components/SourceFlipCard.tsx` - Card layout, flag position, truncation
-- Possibly `src/components/SourceAnalysis.tsx` or parent grid component
-
-#### Tailwind Changes
-```tsx
-// Grid: 4 cols → 3 cols
-// Before:
-className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
-// After:
-className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-
-// Truncation: Remove or relax
-// Look for: line-clamp-1, truncate, max-w-* on text elements
-// Headline: line-clamp-2 or line-clamp-3
-// Summary: line-clamp-3 or line-clamp-4
-```
-
-#### Acceptance Criteria
-- [ ] Source names fully visible (Globe and Mail, National Post, etc.)
-- [ ] Country flag in badge row with bias/ownership badges
-- [ ] Headlines wrap naturally (2-3 lines)
-- [ ] Summaries wrap naturally (3-4 lines)
-- [ ] Cards don't look empty - content fills space
-- [ ] Responsive: 3 → 2 → 1 columns as viewport shrinks
+#### Files Changed
+- `src/app/api/find/route.ts` - Added globalThis caching for both main results and Brave responses
 
 ---
 
-### Sprint 8: YouTube Attribution + Independent Sources (Jan 4, 2026)
+### Sprint 8: YouTube Attribution + Independent Sources (Jan 4, 2026) ✅ COMPLETE
 
 #### Problem 1: YouTube Channel Attribution ✅
 YouTube results showed generic "YOUTUBE" with "Center" bias, even when the video was from a known news channel.
@@ -172,13 +143,12 @@ BALANCED_DOMAINS only had 14 domains, missing most indie sources.
 ## Section 5: Future Work
 
 ### Potential Improvements
-- [ ] Add Brave response caching (separate from final result cache)
 - [ ] Author intelligence improvements (byline extraction)
 - [ ] Source Transparency Cards (ownership, funding info)
 
 ### Known Issues
 - Some URLs with numeric IDs (e.g., BBC) can't extract keywords
-- Rate limits on Brave API during high traffic (mitigated with backoff)
+- Rate limits on Brave API during high traffic (mitigated with backoff + caching)
 
 ---
 

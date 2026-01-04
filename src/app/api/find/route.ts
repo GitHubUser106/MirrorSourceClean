@@ -29,11 +29,20 @@ const corsHeaders = {
 
 // =============================================================================
 // SIMPLE IN-MEMORY CACHE (1 hour TTL, resets on cold start)
+// Uses globalThis to persist across Next.js dev mode hot reloads
 // =============================================================================
-const searchCache = new Map<string, { data: any; timestamp: number }>();
+const globalForCache = globalThis as unknown as {
+  searchCache: Map<string, { data: any; timestamp: number }>;
+  braveCache: Map<string, { results: any[]; timestamp: number }>;
+};
+globalForCache.searchCache = globalForCache.searchCache || new Map();
+globalForCache.braveCache = globalForCache.braveCache || new Map();
+
+const searchCache = globalForCache.searchCache;
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 function getCachedResult(query: string): any | null {
+  console.log('[Cache] Checking cache, size:', searchCache.size, 'key:', query.toLowerCase().substring(0, 40));
   const cached = searchCache.get(query.toLowerCase());
   if (!cached) return null;
 
@@ -56,6 +65,39 @@ function setCachedResult(query: string, data: any): void {
 
   searchCache.set(query.toLowerCase(), { data, timestamp: Date.now() });
   console.log('[Cache] SET:', query);
+}
+
+// =============================================================================
+// BRAVE RESPONSE CACHE (15 min TTL) - Caches raw Brave API responses
+// Reduces API calls for repeated/similar searches and helps during rate limits
+// =============================================================================
+const braveCache = globalForCache.braveCache;
+const BRAVE_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes (news freshness)
+const BRAVE_CACHE_MAX_SIZE = 200;
+
+function getBraveCached(query: string): any[] | null {
+  const cached = braveCache.get(query.toLowerCase());
+  if (!cached) return null;
+
+  if (Date.now() - cached.timestamp > BRAVE_CACHE_TTL_MS) {
+    braveCache.delete(query.toLowerCase());
+    console.log('[BraveCache] Expired:', query.substring(0, 50));
+    return null;
+  }
+
+  console.log('[BraveCache] HIT:', query.substring(0, 50), `(${cached.results.length} results)`);
+  return cached.results;
+}
+
+function setBraveCached(query: string, results: any[]): void {
+  // Limit cache size
+  if (braveCache.size >= BRAVE_CACHE_MAX_SIZE) {
+    const oldest = braveCache.keys().next().value;
+    if (oldest) braveCache.delete(oldest);
+  }
+
+  braveCache.set(query.toLowerCase(), { results, timestamp: Date.now() });
+  console.log('[BraveCache] SET:', query.substring(0, 50), `(${results.length} results)`);
 }
 
 export async function OPTIONS() {
@@ -345,12 +387,18 @@ interface CSEResult {
 }
 
 // =============================================================================
-// BRAVE SEARCH - Primary search engine with retry + exponential backoff
+// BRAVE SEARCH - Primary search engine with retry + exponential backoff + caching
 // =============================================================================
 async function searchWithBrave(query: string, maxRetries = 2): Promise<CSEResult[]> {
   if (!BRAVE_API_KEY) {
     console.log('[Brave] No API key configured, skipping');
     return [];
+  }
+
+  // Check cache first
+  const cached = getBraveCached(query);
+  if (cached) {
+    return cached;
   }
 
   const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=20&search_lang=en&country=us&freshness=pw`;
@@ -402,6 +450,12 @@ async function searchWithBrave(query: string, maxRetries = 2): Promise<CSEResult
       });
 
       console.log('[Brave] Found', results.length, 'results');
+
+      // Cache successful results
+      if (results.length > 0) {
+        setBraveCached(query, results);
+      }
+
       return results;
 
     } catch (error: any) {
