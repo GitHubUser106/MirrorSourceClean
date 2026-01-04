@@ -177,26 +177,29 @@ const BAR_COLORS: Record<string, string> = {
 };
 
 // Static vertical bar for Coverage Distribution
-function VerticalBar({ count, maxCount, label, colorKey }: { count: number; maxCount: number; label: string; colorKey: string }) {
-  const heightPercent = maxCount > 0 ? Math.max((count / maxCount) * 100, count > 0 ? 25 : 0) : 0;
+function VerticalBar({ count, maxCount, label, colorKey, isHighlighted }: { count: number; maxCount: number; label: string; colorKey: string; isHighlighted?: boolean }) {
+  const heightPercent = maxCount > 0 ? Math.max((count / maxCount) * 100, count > 0 ? 25 : 8) : 8;
 
   return (
-    <div className="text-center flex-shrink-0">
-      <div className="h-28 flex items-end justify-center mb-2">
+    <div className={`text-center flex-shrink-0 ${isHighlighted ? 'relative' : ''}`}>
+      {isHighlighted && (
+        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs text-blue-600 font-medium whitespace-nowrap">
+          📍 You
+        </div>
+      )}
+      <div className="h-32 sm:h-28 flex items-end justify-center mb-2">
         <div
-          className="w-10 sm:w-12 md:w-14 rounded-t-lg flex items-end justify-center pb-2"
+          className={`w-10 sm:w-12 md:w-14 rounded-t-lg flex items-end justify-center pb-2 transition-all duration-300 ${isHighlighted ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
           style={{
-            backgroundColor: BAR_COLORS[colorKey] || BAR_COLORS['center'],
+            backgroundColor: count > 0 ? (BAR_COLORS[colorKey] || BAR_COLORS['center']) : '#e2e8f0',
             height: `${heightPercent}%`,
-            minHeight: count > 0 ? '2.5rem' : '0'
+            minHeight: '1.5rem'
           }}
         >
-          {count > 0 && (
-            <span className="text-white font-bold text-xs sm:text-sm">{count}</span>
-          )}
+          <span className={`font-bold text-xs sm:text-sm ${count > 0 ? 'text-white' : 'text-slate-400'}`}>{count}</span>
         </div>
       </div>
-      <span className="text-[10px] sm:text-xs text-slate-600 font-medium whitespace-nowrap">{label}</span>
+      <span className={`text-[10px] sm:text-xs font-medium whitespace-nowrap ${isHighlighted ? 'text-blue-600' : 'text-slate-600'}`}>{label}</span>
     </div>
   );
 }
@@ -225,22 +228,22 @@ function CoverageDistributionChart({ results, lastSubmittedUrl }: { results: Gro
 
       {/* Input source indicator */}
       {inputSourceName && dist.inputLean && (
-        <p className="text-sm text-gray-500 mb-4 flex items-center gap-2 flex-wrap">
-          <span>📍 Your article:</span>
-          <span className="font-medium text-slate-700">{inputSourceName}</span>
-          <span className={`text-xs px-1.5 py-0.5 rounded ${LEAN_COLORS[dist.inputLean].bg} ${LEAN_COLORS[dist.inputLean].text}`}>
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg inline-flex items-center gap-2 flex-wrap">
+          <span className="text-blue-600 font-medium text-sm">📍 Your article:</span>
+          <span className="font-semibold text-slate-800">{inputSourceName}</span>
+          <span className={`text-xs px-2 py-0.5 rounded font-medium ${LEAN_COLORS[dist.inputLean].bg} ${LEAN_COLORS[dist.inputLean].text}`}>
             {LEAN_LABELS[dist.inputLean]}
           </span>
-        </p>
+        </div>
       )}
 
       {/* Vertical bar chart */}
-      <div className="flex justify-center gap-2 sm:gap-4 md:gap-6">
-        <VerticalBar key="left" count={dist.left} maxCount={maxCount} label="Left" colorKey="left" />
-        <VerticalBar key="center-left" count={dist.centerLeft} maxCount={maxCount} label="Center-Left" colorKey="center-left" />
-        <VerticalBar key="center" count={dist.center} maxCount={maxCount} label="Center" colorKey="center" />
-        <VerticalBar key="center-right" count={dist.centerRight} maxCount={maxCount} label="Center-Right" colorKey="center-right" />
-        <VerticalBar key="right" count={dist.right} maxCount={maxCount} label="Right" colorKey="right" />
+      <div className="flex justify-center gap-2 sm:gap-4 md:gap-6 pt-6">
+        <VerticalBar key="left" count={dist.left} maxCount={maxCount} label="Left" colorKey="left" isHighlighted={dist.inputLean === 'left'} />
+        <VerticalBar key="center-left" count={dist.centerLeft} maxCount={maxCount} label="Center-Left" colorKey="center-left" isHighlighted={dist.inputLean === 'center-left'} />
+        <VerticalBar key="center" count={dist.center} maxCount={maxCount} label="Center" colorKey="center" isHighlighted={dist.inputLean === 'center'} />
+        <VerticalBar key="center-right" count={dist.centerRight} maxCount={maxCount} label="Center-Right" colorKey="center-right" isHighlighted={dist.inputLean === 'center-right'} />
+        <VerticalBar key="right" count={dist.right} maxCount={maxCount} label="Right" colorKey="right" isHighlighted={dist.inputLean === 'right'} />
       </div>
 
       {/* Gap warnings */}

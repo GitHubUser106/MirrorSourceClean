@@ -80,16 +80,24 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
 
   return (
     <div
-      className="relative h-[380px] cursor-pointer perspective-1000"
+      className="relative h-[380px] cursor-pointer perspective-1000 group"
       onClick={() => setIsFlipped(!isFlipped)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsFlipped(!isFlipped); } }}
+      tabIndex={0}
+      role="button"
+      aria-label={`${sourceName} - ${leanLabel} - ${ownershipLabel}. ${isFlipped ? 'Showing source transparency. Press to see article details.' : 'Press to see source transparency details.'}`}
+      aria-pressed={isFlipped}
     >
+      {/* Focus ring for keyboard navigation */}
+      <div className="absolute inset-0 rounded-xl ring-0 group-focus-visible:ring-2 group-focus-visible:ring-blue-500 group-focus-visible:ring-offset-2 pointer-events-none z-10" />
+
       <div
-        className={`relative w-full h-full transition-transform duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}
+        className={`relative w-full h-full transition-all duration-500 ease-out transform-style-3d ${isFlipped ? 'rotate-y-180' : 'group-hover:-translate-y-1 group-hover:shadow-lg'}`}
         style={{ transformStyle: 'preserve-3d' }}
       >
         {/* FRONT */}
         <div
-          className="absolute inset-0 backface-hidden border border-slate-200 rounded-xl p-6 bg-white hover:shadow-md transition-shadow"
+          className="absolute inset-0 backface-hidden border border-slate-200 rounded-xl p-6 bg-white transition-shadow"
           style={{ backfaceVisibility: 'hidden' }}
         >
           {/* Source Header */}
@@ -179,17 +187,22 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
             </>
           ) : (
             /* Fallback content when no AI analysis */
-            <p className="text-sm text-slate-500 leading-relaxed line-clamp-4 mb-3">
-              {cleanSnippet(source.snippet) || `Click to read full coverage from ${sourceName}.`}
-            </p>
+            <div className="mb-3">
+              <p className="text-sm text-slate-600 leading-relaxed line-clamp-4">
+                {cleanSnippet(source.snippet) || `Click to read full coverage from ${sourceName}.`}
+              </p>
+              <p className="text-xs text-slate-400 mt-2 italic">
+                Snippet from search results
+              </p>
+            </div>
           )}
 
-          {/* Read Article Link - 44px min tap target for mobile */}
+          {/* Read Article Link - 48px tap target for mobile */}
           <a
             href={source.uri}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 text-sm hover:underline inline-flex items-center gap-1.5 py-2 px-3 -ml-3 min-h-[44px] rounded-lg hover:bg-blue-50 transition-colors"
+            className="text-blue-600 text-sm font-medium hover:underline inline-flex items-center gap-1.5 py-3 px-4 -ml-4 min-h-[48px] rounded-lg hover:bg-blue-50 active:bg-blue-100 transition-colors"
             onClick={(e) => e.stopPropagation()}
           >
             Read article <ExternalLink size={14} />
@@ -240,13 +253,13 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
             </div>
           </div>
 
-          {/* Fixed Footer - 44px min tap target for mobile */}
+          {/* Fixed Footer - 48px tap target for mobile */}
           <div className="pt-2 mt-auto border-t border-slate-200">
             <a
               href={getWikiLink(sourceName)}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline font-medium py-2 px-3 -ml-3 min-h-[44px] rounded-lg hover:bg-blue-50 transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline font-medium py-3 px-4 -ml-4 min-h-[48px] rounded-lg hover:bg-blue-50 active:bg-blue-100 transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
               🔗 Verify on Wikipedia
