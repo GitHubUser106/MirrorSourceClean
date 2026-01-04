@@ -93,7 +93,7 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
           style={{ backfaceVisibility: 'hidden' }}
         >
           {/* Source Header */}
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-2">
             <img
               src={`https://www.google.com/s2/favicons?domain=${source.sourceDomain}&sz=32`}
               alt=""
@@ -103,20 +103,20 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
               href={`https://${source.sourceDomain}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-semibold text-slate-900 truncate hover:text-blue-600 hover:underline"
+              className="font-semibold text-slate-900 hover:text-blue-600 hover:underline leading-tight"
               onClick={(e) => e.stopPropagation()}
             >
               {sourceName}
             </a>
+          </div>
+
+          {/* Badges Row - includes country flag */}
+          <div className="flex flex-wrap gap-1.5 mb-3">
             {source.countryCode && (
-              <span className="text-xs flex-shrink-0">
+              <span className="text-sm">
                 {source.countryCode === 'US' ? '🇺🇸' : source.countryCode === 'GB' ? '🇬🇧' : source.countryCode === 'CA' ? '🇨🇦' : '🌍'}
               </span>
             )}
-          </div>
-
-          {/* Badges Row */}
-          <div className="flex flex-wrap gap-1.5 mb-2">
             <span className={`text-xs px-2 py-0.5 rounded font-medium ${leanColors.bg} ${leanColors.text}`}>
               {leanLabel}
             </span>
@@ -152,7 +152,7 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
           {analysis?.headline ? (
             <>
               {/* Headline from AI */}
-              <p className="font-medium text-slate-900 leading-snug text-sm mb-3 line-clamp-2">
+              <p className="font-medium text-slate-900 leading-snug text-sm mb-3 line-clamp-3">
                 "{cleanSnippet(analysis.headline)}"
               </p>
 
@@ -174,12 +174,12 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
 
               {/* Focus */}
               {analysis?.focus && (
-                <p className="text-xs text-slate-600 leading-relaxed line-clamp-2 mb-3">{cleanSnippet(analysis.focus)}</p>
+                <p className="text-xs text-slate-600 leading-relaxed line-clamp-3 mb-3">{cleanSnippet(analysis.focus)}</p>
               )}
             </>
           ) : (
             /* Fallback content when no AI analysis */
-            <p className="text-sm text-slate-500 leading-relaxed line-clamp-3 mb-3">
+            <p className="text-sm text-slate-500 leading-relaxed line-clamp-4 mb-3">
               {cleanSnippet(source.snippet) || `Click to read full coverage from ${sourceName}.`}
             </p>
           )}

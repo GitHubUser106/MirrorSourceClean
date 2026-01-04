@@ -1211,7 +1211,7 @@ function HomeContent() {
                   <p className="text-slate-500 text-sm">Tap any card to see ownership transparency</p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {results.map((source, idx) => {
                     // Find analysis for this source if it exists (from inline comparison)
                     const analysisIdx = inlineComparison?.sortedSourceUrls?.findIndex((url: string) => url === source.uri);

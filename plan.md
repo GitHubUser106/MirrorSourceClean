@@ -78,6 +78,40 @@
 
 ## Section 4: Future Work
 
+### Current Sprint: Source Card Layout Improvements (Jan 4, 2026)
+
+#### Problem
+Source names are truncated ("GLOBE A...", "NATIONAL...", "THENATI...") making sources hard to identify. Cards feel cramped with 4-column layout.
+
+#### Tasks
+- [x] **3 cards per row** - Change grid from 4 columns to 3 on desktop (lg breakpoint)
+  - Desktop (lg): 3 cards
+  - Tablet (md): 2 cards
+  - Mobile: 1 card
+
+- [x] **Move country flag to badge row** - Flag competes with source name for header space
+  - Current: `[Logo] [Name...] [🇨🇦]` + `[Bias] [Ownership]`
+  - New: `[Logo] [Full Name]` + `[🇨🇦] [Bias] [Ownership]`
+
+- [x] **Relax text truncation** - Let content breathe in wider cards
+  - Source name: No truncation (full name visible)
+  - Headline: Allow 2-3 lines before truncating
+  - Summary: Allow 3-4 lines before truncating
+
+#### Files to Modify
+- `src/components/SourceFlipCard.tsx` - Card layout, flag position, truncation
+- `src/app/page.tsx` - Grid columns
+
+#### Acceptance Criteria
+- [x] Source names fully visible (Globe and Mail, National Post, etc.)
+- [x] Country flag in badge row with bias/ownership badges
+- [x] Headlines wrap naturally (2-3 lines)
+- [x] Summaries wrap naturally (3-4 lines)
+- [x] Cards don't look empty - content fills space
+- [x] Responsive: 3 → 2 → 1 columns as viewport shrinks
+
+---
+
 ### Potential Improvements
 - [ ] Add Brave response caching (separate from final result cache)
 - [ ] Improve indie source matching in BALANCED_DOMAINS
