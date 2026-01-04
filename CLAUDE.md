@@ -7,6 +7,10 @@
     2.  Execute changes autonomously.
     3.  **Commit Protocol:** If using "Auto-Accept," stage changes but ask for a final "Conductor Affirmation" before pushing to origin.
 * **Vibecoding Philosophy:** Prioritize working prototypes and speed over academic perfection. Avoid over-engineering.
+* **Completion Signal:** When a task is complete and ready for review, ALWAYS:
+    1. Output `🔔 READY FOR REVIEW` as a clear visual marker
+    2. Run `printf '\a'` to trigger the terminal bell
+    3. Provide a brief summary of what was done
 
 ## 2. Project Context
 * **App Name:** MirrorSource
