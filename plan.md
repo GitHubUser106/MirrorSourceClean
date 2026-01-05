@@ -67,6 +67,12 @@
 
 **Result:** Source count reduced from 193+ to **187+ sources**
 
+### Sprint 7: Source Card Layout Improvements (Jan 4, 2026)
+
+- [x] **3 cards per row** - `lg:grid-cols-3` on source analysis grid
+- [x] **Country flag in badge row** - Flag emoji appears alongside lean/ownership badges
+- [x] **Text truncation relaxed** - Cards use `line-clamp-3` and `line-clamp-4` for readable content
+
 ---
 
 ## Section 3: Current Architecture
@@ -95,11 +101,6 @@
 ---
 
 ## Section 5: Pending Sprints
-
-### Sprint 7: Source Card Layout Improvements
-- 3 cards per row
-- Move country flag to badge row
-- Relax text truncation
 
 ### Sprint 8: YouTube Attribution + Independent Sources
 - Extract YouTube channel names
