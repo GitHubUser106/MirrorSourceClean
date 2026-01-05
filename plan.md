@@ -45,13 +45,35 @@
 - [x] **Added "Extension" to header nav**
 - [x] **Added extension CTA on homepage**
 
+### Sprint 9: Data Quality Audit & Fixes (Jan 4, 2026)
+
+#### Duplicates Removed
+- [x] `globeandmail.com` (kept `theglobeandmail.com`)
+- [x] `thestar.com` (kept `torontostar.com`)
+- [x] `theepochtimes.com` (kept `epochtimes.com`)
+- [x] `news.sky.com` (kept `sky.com`)
+- [x] `wikipedia.org` and `en.wikipedia.org` (removed - not a news source)
+
+#### Names Disambiguated
+- [x] "The Independent" → "The Independent (UK)"
+- [x] "The Times" → "The Times (UK)"
+
+#### Platform Handling
+- [x] Rumble and Substack already have `sourceType: 'platform'`
+- [x] YouTube, X, TikTok not in database (correctly excluded as platforms)
+
+#### Ownership Taxonomy
+- [x] Already standardized: nonprofit, public, family, billionaire, corporate, government, cooperative
+
+**Result:** Source count reduced from 193+ to **187+ sources**
+
 ---
 
 ## Section 3: Current Architecture
 
 ### Key Files
 - `src/app/api/find/route.ts` - Main search API with Brave + Gemini
-- `src/lib/sourceData.ts` - 193+ news sources with political lean data
+- `src/lib/sourceData.ts` - 187+ news sources with political lean data
 - `src/lib/independentSourceData.ts` - 16 indie media sources
 - `src/lib/articleFetcher.ts` - Opportunistic article content extraction
 - `src/lib/authenticitySignals.ts` - Suspicion scoring for sources
@@ -68,173 +90,11 @@
 
 ## Section 4: Current Sprint
 
-### Sprint 9: Data Quality Audit & Fixes (Jan 4, 2026)
-
-#### Context
-After adding the "Independent" label, several data quality issues were discovered on the /sources page. This sprint audits and fixes all issues before proceeding with UI changes.
+*No active sprint. Ready for next task.*
 
 ---
 
-#### Problem 1: Duplicate Sources
-
-**Known Duplicates to Find & Remove:**
-- [ ] **Wikipedia** - Appears multiple times
-- [ ] **Globe and Mail** - Appears multiple times
-- [ ] Any other duplicates
-
-**Task:**
-```bash
-# Run in sourceData.ts to find duplicates
-# Look for identical domains or names
-```
-
-- [ ] Search `sourceData.ts` for duplicate `domain` values
-- [ ] Search `sourceData.ts` for duplicate `name` values
-- [ ] Remove duplicates, keeping the most complete entry
-- [ ] Verify no duplicates remain
-
----
-
-#### Problem 2: Naming Collisions (Ambiguous Names)
-
-**Generic names that need geographic disambiguation:**
-
-| Current Name | Ambiguity Risk | Fix To |
-|--------------|----------------|--------|
-| The National | UAE vs CBC vs US | "The National (UAE)" |
-| The Star | Toronto vs UK vs others | "Toronto Star" |
-| The Times | UK vs NYT vs others | "The Times (UK)" |
-| The Independent | UK paper vs "Indie" badge | "The Independent (UK)" |
-| Guardian | UK vs PEI Guardian | "The Guardian (UK)" |
-| Global News | Could confuse with Globe | Keep but ensure distinct logo |
-
-**Task:**
-- [ ] Audit `sourceData.ts` for generic names
-- [ ] Append geographic identifiers where needed
-- [ ] Ensure "The Independent (UK)" won't conflict with new "Independent" badge
-
----
-
-#### Problem 3: Platform vs Publisher Logic
-
-**Issue:** YouTube is labeled "Center" bias and "Corporate" ownership. But YouTube is a **platform**, not a publisher - it hosts all viewpoints.
-
-**Affected Platforms:**
-- YouTube
-- X (Twitter)
-- Substack
-- Rumble
-- TikTok
-
-**Fix Options:**
-
-| Field | Current | Proposed |
-|-------|---------|----------|
-| Bias | "Center" | "Platform" or "Varies" |
-| Ownership | "Corporate" | "Big Tech" or "Platform" |
-
-**Task:**
-- [ ] Add new bias category: `"Platform"` for non-editorial aggregators
-- [ ] Update YouTube, X, Substack, Rumble entries
-- [ ] Update UI to show gray "Platform" badge instead of political lean
-- [ ] Consider: Should platforms even appear in Source Analysis results?
-
----
-
-#### Problem 4: Inconsistent Ownership Taxonomy
-
-**Current Terms (Confusing):**
-- "Private" (e.g., Globe - Woodbridge Company)
-- "Public Co." (e.g., Postmedia - TSX listed)
-- "Corporate" (e.g., YouTube - but Google is also Public)
-
-**User Confusion:** "Corporate" and "Public Co." sound like the same thing.
-
-**Proposed Standardized Taxonomy:**
-
-| New Term | Definition | Examples |
-|----------|------------|----------|
-| `Publicly Traded` | Listed on stock exchange | NYT, Postmedia, Google |
-| `Private` | Privately held company | Globe & Mail (Woodbridge) |
-| `Independent` | Creator/founder owned | Substack writers, indie outlets |
-| `Nonprofit` | 501(c)(3) or equivalent | ProPublica, NPR |
-| `State-Funded` | Government funded | CBC, BBC, Al Jazeera |
-| `Big Tech` | Platform companies | YouTube, X, TikTok |
-
-**Task:**
-- [ ] Define canonical ownership types in code
-- [ ] Audit all sources and reclassify
-- [ ] Update `sourceData.ts` with consistent taxonomy
-- [ ] Update UI badges to match new terms
-
----
-
-#### Problem 5: Wikipedia Shouldn't Be a News Source
-
-**Issue:** Wikipedia appears in the sources list, but it's an encyclopedia, not a news source.
-
-**Task:**
-- [ ] Remove Wikipedia from `sourceData.ts` entirely
-- [ ] Or move to a separate "Reference" category if needed
-
----
-
-### Audit Checklist
-
-Run these checks on `sourceData.ts`:
-
-```typescript
-// 1. Find duplicate domains
-const domains = SOURCES.map(s => s.domain);
-const duplicateDomains = domains.filter((d, i) => domains.indexOf(d) !== i);
-console.log("Duplicate domains:", duplicateDomains);
-
-// 2. Find duplicate names
-const names = SOURCES.map(s => s.name);
-const duplicateNames = names.filter((n, i) => names.indexOf(n) !== i);
-console.log("Duplicate names:", duplicateNames);
-
-// 3. Find generic names needing disambiguation
-const genericNames = ["The National", "The Star", "The Times", "The Independent", "Guardian", "Tribune", "Post", "Herald"];
-const needsDisambiguation = SOURCES.filter(s => 
-  genericNames.some(g => s.name.includes(g))
-);
-console.log("Needs disambiguation:", needsDisambiguation.map(s => s.name));
-
-// 4. Find platform entries
-const platforms = SOURCES.filter(s => 
-  ["youtube.com", "twitter.com", "x.com", "substack.com", "rumble.com", "tiktok.com"].some(p => s.domain.includes(p))
-);
-console.log("Platforms:", platforms.map(s => s.name));
-
-// 5. Check ownership taxonomy
-const ownershipTypes = [...new Set(SOURCES.map(s => s.ownershipType))];
-console.log("Current ownership types:", ownershipTypes);
-```
-
----
-
-### Acceptance Criteria
-
-- [ ] Zero duplicate sources in `sourceData.ts`
-- [ ] All generic names disambiguated with geography
-- [ ] Platforms (YouTube, X, etc.) have "Platform" bias, not "Center"
-- [ ] Ownership taxonomy standardized (6 canonical types)
-- [ ] Wikipedia removed or recategorized
-- [ ] /sources page displays correctly with no duplicates
-- [ ] All changes deployed to production
-
----
-
-### Files to Modify
-- `src/lib/sourceData.ts` - Primary data file
-- `src/lib/independentSourceData.ts` - Verify no conflicts
-- `src/components/SourceFlipCard.tsx` - Badge display logic for new types
-- `src/app/sources/page.tsx` - Sources listing page
-
----
-
-## Section 5: Pending Sprints (Do After Sprint 9)
+## Section 5: Pending Sprints
 
 ### Sprint 7: Source Card Layout Improvements
 - 3 cards per row
@@ -253,6 +113,7 @@ console.log("Current ownership types:", ownershipTypes);
 - [ ] Add Brave response caching
 - [ ] Author intelligence improvements
 - [ ] Source Transparency Cards (ownership, funding info)
+- [ ] Add "Platform" political lean type for Rumble/Substack (deferred - requires UI changes)
 
 ---
 
