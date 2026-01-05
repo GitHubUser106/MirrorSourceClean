@@ -73,6 +73,38 @@
 - [x] **Country flag in badge row** - Flag emoji appears alongside lean/ownership badges
 - [x] **Text truncation relaxed** - Cards use `line-clamp-3` and `line-clamp-4` for readable content
 
+### Sprint 8: YouTube Attribution + Independent Sources (Jan 4, 2026)
+
+- [x] **YouTube channel attribution** - 50+ news channels mapped to parent domains
+- [x] **Channel name extraction** - Strips " - YouTube" suffix from titles
+- [x] **Expanded BALANCED_DOMAINS** - From 14 to 32 domains for better coverage
+- [x] **Brave response caching** - 15min TTL with globalThis persistence (55x faster cached searches)
+
+### Sprint 10: SR&ED Compliance Review (Jan 4, 2026)
+
+#### T661 Narrative Review
+- [x] Reviewed form_data.json for problematic language
+- [x] Fixed "paywall-blocked content" claim → "cases where direct title extraction fails"
+- [x] Verified route.ts does NOT circumvent paywalls (only detects them)
+
+#### Evidence Search
+- [x] Searched git history for experimentation evidence
+- [x] Reviewed .history folder for iteration documentation
+- [x] Identified `/api/debug-extract` as key SR&ED evidence (diagnostic endpoint)
+- [x] Documented threshold values in authenticitySignals.ts
+
+#### Consultant Email
+- [x] Drafted email to SR&ED consultant (Kent)
+- [x] Verified all technical claims against codebase
+- [x] Revised "each transformation stage" → "intermediate states" (more defensible)
+- [x] Removed unverifiable "HTTP 200 with empty results" claim
+- [x] Email sent with accurate, conservative claims
+
+**Key SR&ED Artifacts:**
+- `/api/debug-extract/route.ts` - Diagnostic endpoint for URL extraction pipeline
+- `authenticitySignals.ts` - Suspicion scoring with threshold values (30/60/50)
+- `.history/` folder - Sprint planning iterations
+
 ---
 
 ## Section 3: Current Architecture
@@ -102,19 +134,16 @@
 
 ## Section 5: Pending Sprints
 
-### Sprint 8: YouTube Attribution + Independent Sources
-- Extract YouTube channel names
-- Match to sourceData for real bias
-- Fix indie sources not appearing in results
+*No pending sprints. Ready for next task.*
 
 ---
 
 ## Section 6: Future Work
 
-- [ ] Add Brave response caching
 - [ ] Author intelligence improvements
 - [ ] Source Transparency Cards (ownership, funding info)
 - [ ] Add "Platform" political lean type for Rumble/Substack (deferred - requires UI changes)
+- [ ] SR&ED claim filing (pending consultant feedback from Kent)
 
 ---
 
