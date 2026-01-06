@@ -147,6 +147,27 @@
 - `authenticitySignals.ts` - Suspicion scoring with threshold values (30/60/50)
 - `.history/` folder - Sprint planning iterations
 
+### Sprint 13: Chrome Web Store Screenshots (Jan 6, 2026)
+
+#### Screenshots Created
+- [x] **General screenshots (7)** - Homepage, results, coverage distribution, source cards, card flipped, mobile
+- [x] **Hero shots (3)** - Maduro capture story demonstrating framing contrast:
+  - Fox News (Right): "Operation Absolute Resolve" - Tone: Informative
+  - Al Jazeera (Center-Left): "US attack and abduction" - Tone: Critical
+
+#### Political Lean Investigation
+- [x] Confirmed BALANCED_DOMAINS includes 11 right-leaning sources:
+  - Center-Right (5): washingtonexaminer, nypost, thefp, reason, wsj
+  - Right (6): foxnews, dailywire, rebelnews, breitbart, thefederalist, nationalreview
+- [x] Tested Maduro story - Fox News (Right) returned correctly
+- [x] Gap in Center-Right coverage is Brave index limitation, not code issue
+
+#### Documentation
+- [x] Added Section 8 to CLAUDE.md: "Testing MirrorSource - CRITICAL RULES"
+- [x] Documented that MirrorSource requires URLs, not text queries
+
+**Assets ready:** `mirrorsource-extension/store-screenshots/` (10 images)
+
 ---
 
 ## Section 3: Current Architecture
