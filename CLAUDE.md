@@ -120,4 +120,15 @@ Before committing any UI change, verify:
 23. Report any errors before committing
 
 **Only commit if all checks pass.**
- 
+
+## 8. Testing MirrorSource - CRITICAL RULES
+
+1. MirrorSource ONLY accepts full URLs (must start with https://)
+2. NEVER paste keywords, headlines, or article titles into the URL field
+3. To test a news topic:
+   - First use web_search to find an actual article URL
+   - Then paste that URL into MirrorSource
+4. Valid: `https://www.foxnews.com/world/maduro-captured-raid`
+5. Invalid: `"Operation Freedom Maduro Captured"` (this is NOT a URL)
+
+The URL field validates input - keywords will be rejected or cause errors.
