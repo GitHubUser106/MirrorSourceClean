@@ -173,6 +173,16 @@
 - [x] Updated store description (187+ sources, 25 daily searches)
 - [x] Uploaded 10 screenshots including Maduro framing contrast hero shots
 
+#### UI Polish
+- [x] Changed Coverage Distribution label from "📍 You" to "📍 Your article"
+- [x] Deployed to production
+
+#### Center-Right Coverage Verification
+- [x] Searched WSJ for Maduro coverage - **no articles found**
+- [x] Searched NY Post for Maduro coverage - **no articles found**
+- [x] **Conclusion:** 0 Center-Right sources is correct (not a bug)
+- [x] Gap is due to Brave search index, not MirrorSource code
+
 ---
 
 ## Section 3: Current Architecture
