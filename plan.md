@@ -119,6 +119,11 @@
 - [x] Added notification hook to `~/.claude/settings.json`
 - [x] `afplay /System/Library/Sounds/Glass.aiff` on Claude Code notifications
 
+### Sprint 11: UI Polish (Jan 5, 2026)
+
+- [x] **Extension CTA icon** - Replaced generic puzzle SVG with MirrorSource logo (`/icon.png`)
+- [x] Deployed to production
+
 **Key SR&ED Artifacts:**
 - `/api/debug-extract/route.ts` - Diagnostic endpoint for URL extraction pipeline
 - `authenticitySignals.ts` - Suspicion scoring with threshold values (30/60/50)
