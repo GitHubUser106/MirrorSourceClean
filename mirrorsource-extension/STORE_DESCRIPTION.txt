@@ -1,0 +1,56 @@
+MirrorSource bypasses the noise to triangulate the truth across 187+ global sources in a single click to reveal the whole story.
+
+SEE THE WHOLE STORY WITH MIRRORSOURCE
+
+MirrorSource is an AI-powered news intelligence tool that instantly cross-references global news coverage to reveal the consensus facts and key differences behind every headline.
+
+HOW IT WORKS
+
+1. Click & Search: Click the floating "Look for Other Sources" button on any news page, or paste a URL manually.
+2. Triangulate: We instantly scan the open web for coverage from major wires (AP, Reuters), public broadcasters (BBC, NPR, CBC), and international outlets (Al Jazeera, DW, France24).
+3. Analyze: Our AI generates an Intel Brief showing you the consensus facts and where narratives diverge.
+4. Explore: Browse alternative sources with full transparency on ownership and political lean.
+
+KEY FEATURES
+
+📊 Coverage Distribution
+See at a glance how your story is covered across the political spectrum - from Left to Right - with our visual 5-bar chart showing source diversity.
+
+🏷️ Source Transparency Cards
+Every source shows:
+• Political lean (Left, Center-Left, Center, Center-Right, Right)
+• Ownership type (Corporate, Nonprofit, State-Funded, Public Media, Wire Service)
+• Country of origin with flag icons
+• Funding and parent company information
+
+📋 The Intel Brief
+A 3-second executive summary that identifies:
+• Common Ground (facts everyone agrees on)
+• Key Differences (where the narratives diverge)
+
+🔘 Floating Button
+On any news article, a floating "Look for Other Sources" button appears in the corner - one click to see alternative coverage instantly.
+
+🌍 Global Radar
+Instantly see how the same event is covered in the US, UK, Canada, Middle East, Europe, and Asia-Pacific.
+
+⚡ Zero Friction
+No accounts to create. No logins to remember. Just reliable information.
+
+🛡️ Privacy-First
+We do not track your browsing history or collect personal data.
+
+WHO IT'S FOR
+
+Investors, researchers, journalists, and information-focused professionals who need to verify facts, identify media bias, and bypass the noise of the 24-hour news cycle.
+
+FREE TO USE
+
+25 searches per day. No account required.
+
+SUPPORT
+
+Questions? Visit mirrorsource.app/contact
+Privacy policy: mirrorsource.app/legal
+
+MirrorSource searches publicly available content only. It does not access, bypass, or circumvent any website's access controls.

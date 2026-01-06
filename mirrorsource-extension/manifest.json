@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "MirrorSource",
-  "version": "1.2.2",
-  "description": "MirrorSource bypasses the noise to triangulate the truth across 200+ global sources in a single click to reveal the whole story.",
+  "version": "1.2.3",
+  "description": "MirrorSource bypasses the noise to triangulate the truth across 187+ global sources in a single click to reveal the whole story.",
   "permissions": [
     "activeTab",
     "storage"
