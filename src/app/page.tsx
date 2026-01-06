@@ -184,7 +184,7 @@ function VerticalBar({ count, maxCount, label, colorKey, isHighlighted }: { coun
     <div className={`text-center flex-shrink-0 ${isHighlighted ? 'relative' : ''}`}>
       {isHighlighted && (
         <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs text-blue-600 font-medium whitespace-nowrap">
-          📍 You
+          📍 Your article
         </div>
       )}
       <div className="h-32 sm:h-28 flex items-end justify-center mb-2">
