@@ -93,12 +93,31 @@
 - [x] Identified `/api/debug-extract` as key SR&ED evidence (diagnostic endpoint)
 - [x] Documented threshold values in authenticitySignals.ts
 
-#### Consultant Email
+#### Consultant Email (Jan 5, 2026)
 - [x] Drafted email to SR&ED consultant (Kent)
 - [x] Verified all technical claims against codebase
 - [x] Revised "each transformation stage" → "intermediate states" (more defensible)
 - [x] Removed unverifiable "HTTP 200 with empty results" claim
-- [x] Email sent with accurate, conservative claims
+- [x] Removed "undergoing isolated testing" (no test files exist)
+- [x] Replaced "instruction decay" with actual CLAUDE.md description
+- [x] Final email sent to Kent, Jared (Account Exec), and Mat (Technical)
+
+**Technical Claims Sent (All Verified Against Code):**
+1. URL-to-Keyword Extraction - Fully integrated, debug endpoint exists
+2. AI Content Detection - Module stage, pending integration (authenticitySignals.ts)
+3. LLM Orchestration - Conductor/Builder protocol via CLAUDE.md/plan.md
+
+**Business Context Disclosed:**
+- 2025 sole prop expenditure ~$1,100 (below Boast minimums)
+- Open to Boast handling 2025 as foundation for 2026 engagement
+- Incorporating for 2026, projected R&D salary $30K-50K
+- Full-time employment income >$100K (affects salary strategy)
+
+**Awaiting:** Technical scoping call with Mat
+
+#### Dev Environment (Jan 5, 2026)
+- [x] Added notification hook to `~/.claude/settings.json`
+- [x] `afplay /System/Library/Sounds/Glass.aiff` on Claude Code notifications
 
 **Key SR&ED Artifacts:**
 - `/api/debug-extract/route.ts` - Diagnostic endpoint for URL extraction pipeline
@@ -143,7 +162,7 @@
 - [ ] Author intelligence improvements
 - [ ] Source Transparency Cards (ownership, funding info)
 - [ ] Add "Platform" political lean type for Rumble/Substack (deferred - requires UI changes)
-- [ ] SR&ED claim filing (pending consultant feedback from Kent)
+- [ ] SR&ED claim filing (awaiting technical scoping call with Mat)
 
 ---
 
