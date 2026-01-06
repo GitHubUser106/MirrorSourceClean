@@ -168,6 +168,11 @@
 
 **Assets ready:** `mirrorsource-extension/store-screenshots/` (10 images)
 
+#### Published to Chrome Web Store
+- [x] **Version 1.2.3 published** (Jan 6, 2026)
+- [x] Updated store description (187+ sources, 25 daily searches)
+- [x] Uploaded 10 screenshots including Maduro framing contrast hero shots
+
 ---
 
 ## Section 3: Current Architecture
