@@ -124,6 +124,24 @@
 - [x] **Extension CTA icon** - Replaced generic puzzle SVG with MirrorSource logo (`/icon.png`)
 - [x] Deployed to production
 
+### Sprint 12: Chrome Extension Store Update (Jan 5, 2026)
+
+#### Store Listing Audit
+- [x] Fetched current Chrome Web Store listing
+- [x] Identified outdated claims: 130+ sources (now 187+), 50 searches (now 25)
+- [x] Identified missing features: Coverage Distribution, Source Transparency Cards, Floating Button
+
+#### Updates Made
+- [x] **Version bump** - 1.2.2 → 1.2.3
+- [x] **manifest.json** - Updated short description (187+ sources)
+- [x] **STORE_DESCRIPTION.txt** - Complete rewrite with current features:
+  - Coverage Distribution (5-bar political spectrum)
+  - Source Transparency Cards (ownership, lean, country flags)
+  - Floating "Look for Other Sources" button
+  - Corrected daily limit (25 searches)
+
+**Ready to publish:** `mirrorsource-extension.zip` + new description
+
 **Key SR&ED Artifacts:**
 - `/api/debug-extract/route.ts` - Diagnostic endpoint for URL extraction pipeline
 - `authenticitySignals.ts` - Suspicion scoring with threshold values (30/60/50)
