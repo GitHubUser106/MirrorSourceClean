@@ -166,7 +166,16 @@
 - [x] Added Section 8 to CLAUDE.md: "Testing MirrorSource - CRITICAL RULES"
 - [x] Documented that MirrorSource requires URLs, not text queries
 
-**Assets ready:** `mirrorsource-extension/store-screenshots/` (10 images)
+#### Final Screenshot Set (Jan 6, 2026)
+- [x] **screenshot-1-summary.png** - Summary & Intel Brief sections
+- [x] **screenshot-2-coverage.png** - Coverage Distribution 5-bar chart
+- [x] **screenshot-3-sources.png** - Source Analysis cards (AP, Reuters, CNBC)
+- [x] **screenshot-4-mobile.png** - Mobile view (390x844)
+- [x] **screenshot-5-card-flipped.png** - Reuters card flipped showing ownership transparency
+- [x] **screenshot-6-about.png** - About page with "How It Works"
+- [x] **screenshot-7-sources.png** - Sources database (5 political lean columns)
+
+**Assets location:** `store-screenshots/` (7 production-ready images)
 
 #### Published to Chrome Web Store
 - [x] **Version 1.2.3 published** (Jan 6, 2026)
