@@ -1,0 +1,16 @@
+#!/bin/bash
+# post-commit hook for SR&ED auto-logging
+# Copy to .git/hooks/post-commit and chmod +x
+
+# Get the commit message
+COMMIT_MSG=$(git log -1 --pretty=%B)
+
+# Check if it's an SR&ED tagged commit
+if echo "$COMMIT_MSG" | grep -qiE "^(exp|fail|pivot|succeed|hyp|conclude):"; then
+    echo "🔬 SR&ED commit detected, updating logs..."
+    
+    # Find sred_logger.py
+    if [ -f ".sred/sred_logger.py" ]; then
+        python .sred/sred_logger.py scan 1 2>/dev/null
+    fi
+fi

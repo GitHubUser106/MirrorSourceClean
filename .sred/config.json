@@ -1,0 +1,80 @@
+{
+  "project": {
+    "name": "MirrorSource",
+    "description": "News intelligence web application for political spectrum coverage analysis",
+    "company": "MirrorSource Inc.",
+    "fiscal_year_end": "2025-12-31",
+    "field_of_science": "2.2",
+    "field_of_science_name": "Computer and Information Sciences"
+  },
+  "funding_programs": {
+    "sred": {
+      "enabled": true,
+      "claim_type": "investment_tax_credit",
+      "notes": "Federal SR&ED via Boast.ai"
+    },
+    "irap": {
+      "enabled": false,
+      "project_number": "",
+      "notes": "NRC Industrial Research Assistance Program"
+    },
+    "innovate_bc": {
+      "enabled": false,
+      "program": "",
+      "notes": "BC Innovation Council programs"
+    },
+    "bcip": {
+      "enabled": false,
+      "notes": "BC Innovative Clean Energy Fund"
+    },
+    "rap_alberta": {
+      "enabled": false,
+      "notes": "Alberta Research and Innovation programs"
+    }
+  },
+  "sred_config": {
+    "experiment_prefix": "EXP",
+    "commit_tags": {
+      "experiment_start": "exp:",
+      "failure": "fail:",
+      "pivot": "pivot:",
+      "success": "succeed:",
+      "hypothesis": "hyp:",
+      "conclusion": "conclude:"
+    },
+    "auto_log_on_commit": true,
+    "evidence_retention_years": 7
+  },
+  "technological_domains": [
+    {
+      "id": "TD-001",
+      "name": "Cross-Domain Content Extraction",
+      "description": "Extracting structured data from 170+ heterogeneous news site DOM structures"
+    },
+    {
+      "id": "TD-002", 
+      "name": "Dual-LLM Orchestration",
+      "description": "Managing context windows and preventing drift in multi-model architectures"
+    },
+    {
+      "id": "TD-003",
+      "name": "AI Content Detection",
+      "description": "Detecting AI-generated content through metadata patterns without text analysis"
+    }
+  ],
+  "ai_workflow": {
+    "orchestrator": "claude_chat",
+    "challenger": "gemini",
+    "builder": "claude_code",
+    "refiner": "chatgpt",
+    "archive_chats": true,
+    "notes": "Three-AI consensus model with ChatGPT for audit-ready phrasing"
+  },
+  "paths": {
+    "active_experiments": ".sred/active_experiments",
+    "completed_experiments": ".sred/completed_experiments",
+    "evidence": ".sred/evidence",
+    "templates": ".sred/templates",
+    "chat_logs": ".sred/evidence/chat_logs"
+  }
+}
