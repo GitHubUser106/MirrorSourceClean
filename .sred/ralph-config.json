@@ -1,0 +1,29 @@
+{
+  "experiment_id": "EXP-XXX",
+  "hypothesis": "Update this with your hypothesis before running /ralph",
+  "test_command": "npm run test:run",
+  "target_files": [
+    "src/lib/sourceData.ts"
+  ],
+  "limits": {
+    "max_iterations": 10,
+    "timeout_minutes": 30,
+    "stuck_threshold": 3,
+    "checkpoint_at": 5
+  },
+  "safety": {
+    "allowed_file_patterns": [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "src/app/**/*",
+      "src/lib/**/*",
+      "tests/**/*.ts"
+    ],
+    "require_test_output_change": true,
+    "double_check_failures": true
+  },
+  "evidence": {
+    "capture_full_output": true,
+    "commit_on_every_iteration": true
+  }
+}
