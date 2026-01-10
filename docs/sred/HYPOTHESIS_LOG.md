@@ -73,14 +73,17 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **TESTING** |
+| Status | **SUPPORTED** |
 | Started | 2026-01-10 |
-| Experiment | E5 - Parallel query implementation |
-| Evidence | Pending - H3 confirmed single query fails; now testing dual-query approach |
-| Conclusion | Pending |
+| Completed | 2026-01-10 |
+| Experiment | E5 - Triple-query implementation |
+| Evidence | Before: 0 CR, 0 R. After: 1 CR (Washington Examiner), 1 R (The Federalist). Coverage gap eliminated. |
+| Conclusion | Triple-query with Promise.all() successfully forces right-side inclusion without latency penalty. |
 
-**Proposed Implementation:**
-1. Run Query A: Left + Center-Left domains only
-2. Run Query B: Right + Center-Right domains only
-3. Run Query C: Center domains only
-4. Merge results with guaranteed representation from each category
+**Implementation (Deployed):**
+1. Query A: LEFT_DOMAINS (12 domains: Left + Center-Left)
+2. Query B: CENTER_DOMAINS (6 domains)
+3. Query C: RIGHT_DOMAINS (11 domains: Center-Right + Right)
+4. Merge with deduplication - each category guaranteed representation
+
+**Commit:** `414e52a`

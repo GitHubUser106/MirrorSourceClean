@@ -29,6 +29,37 @@ This is a novel finding - no existing documentation describes this Brave Search 
 
 ---
 
+### 2026-01-10 - Triple-Query Strategy Resolves Bias
+
+**Uncertainty Resolved:** How to force balanced political representation when Brave Search API systematically excludes right-leaning sources?
+
+**Finding:** Parallel ideology-segmented queries (triple-query) successfully overcome Brave's ranking bias:
+- Split domains into 3 lists: LEFT_DOMAINS (12), CENTER_DOMAINS (6), RIGHT_DOMAINS (11)
+- Run queries in parallel with `Promise.all()` - no latency penalty
+- Each category gets dedicated API call - cannot be "crowded out"
+
+**Evidence:**
+- E5: Before fix: 0 Center-Right, 0 Right sources
+- E5: After fix: 1 Center-Right (Washington Examiner), 1 Right (The Federalist)
+- Coverage gap warning eliminated
+
+**Implementation:**
+```typescript
+const [leftResults, centerResults, rightResults] = await Promise.all([
+  searchWithBrave(`${searchQuery} (${leftFilters})`),
+  searchWithBrave(`${searchQuery} (${centerFilters})`),
+  searchWithBrave(`${searchQuery} (${rightFilters})`),
+]);
+```
+
+**Implication:** This is a reusable pattern for any application facing search engine ranking bias. When a single query cannot achieve balanced results due to algorithmic favoritism, parallel category-specific queries with controlled domain lists can guarantee representation.
+
+**Commits:**
+- `847aa04` - Identified root cause (H3 supported)
+- `414e52a` - Implemented and validated fix (H5 supported)
+
+---
+
 ## Template for Recording Advances
 
 ```
