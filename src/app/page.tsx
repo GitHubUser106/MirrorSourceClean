@@ -466,13 +466,14 @@ function HomeContent() {
         'ground.news',       // Ground News shares
       ];
 
-      if (shortenerDomains.some(domain => hostname.includes(domain))) {
+      // Fix: Use exact match or subdomain match, not substring (prevents "nypost.com" matching "t.co")
+      if (shortenerDomains.some(domain => hostname === domain || hostname.endsWith('.' + domain))) {
         return 'share';
       }
 
       // Known sites that typically use UUID/opaque URLs (paywalled)
       const opaqueUrlDomains = ['ft.com', 'bloomberg.com', 'economist.com'];
-      const isKnownOpaqueSite = opaqueUrlDomains.some(domain => hostname.includes(domain));
+      const isKnownOpaqueSite = opaqueUrlDomains.some(domain => hostname === domain || hostname.endsWith('.' + domain));
 
       // For FT, Bloomberg, Economist: check if URL ends with UUID pattern
       if (isKnownOpaqueSite) {
