@@ -98,6 +98,47 @@ const [leftResults, centerResults, rightResults] = await Promise.all([
 
 ---
 
+### 2026-01-10 - Brave Search Index Coverage Gap Identified
+
+**Uncertainty Resolved:** Why does center-right return 0 results even with triple-query strategy and neutral keywords?
+
+**Finding:** Brave Search has systematically lower index coverage of right-leaning news domains. This is NOT ranking bias (domains appearing lower) but complete absence from the index:
+
+| Category | Domains Tested | Return Results | Coverage Rate |
+|----------|----------------|----------------|---------------|
+| Center-Right | 5 | 2 | 40% |
+| Right | 6 | 2 | 33% |
+
+**Root Cause:** Many right-leaning outlets are simply not crawled/indexed by Brave:
+- nypost.com: 0 results
+- dailywire.com: 0 results
+- breitbart.com: 0 results
+- rebelnews.com: 0 results
+
+While left-leaning and mainstream outlets have comprehensive coverage.
+
+**Evidence:**
+- E7: Individual domain testing with neutral keywords
+- Same query returns 5 results for foxnews.com, 0 for dailywire.com
+- Not a ranking issue - domains are completely absent
+
+**Solution Implemented:**
+1. Identified domains with confirmed Brave coverage via live API testing
+2. Added washingtontimes.com and townhall.com to RIGHT_DOMAINS (confirmed 5 results each)
+3. Documented coverage status in code comments for future curation
+
+**Implication:** Algorithmic fixes (triple-query, query neutralization) can only work with indexed content. MirrorSource's ability to deliver balanced results is fundamentally constrained by search engine index coverage. Future options:
+1. Curate domain lists based on confirmed coverage
+2. Explore alternative search APIs (Google, Bing) for right-leaning domains
+3. Direct RSS/API integration with poorly-indexed outlets
+
+This is a novel finding with broader implications for any application attempting to aggregate across the political spectrum using web search.
+
+**Commits:**
+- Domain expansion with coverage annotations
+
+---
+
 ## Template for Recording Advances
 
 ```

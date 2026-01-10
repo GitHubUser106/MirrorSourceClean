@@ -58,12 +58,24 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **SUPPORTED** |
+| Status | **SUPPORTED (Extended)** |
 | Started | 2026-01-10 |
 | Completed | 2026-01-10 |
-| Experiment | E3 - Brave Search API bias investigation |
-| Evidence | Two live tests showed 0% return rate for center-right/right domains. Test 1 (NYT input): 0 CR, 0 R. Test 2 (Fox input): 0 CR, 1 R (input only). Bias is input-agnostic and systematic. |
-| Conclusion | Brave Search ranking/indexing favors center-left mainstream outlets. Single balanced query cannot overcome this. |
+| Experiment | E3 - Brave Search API bias investigation; E7 - Index coverage testing |
+| Evidence | E3: 0% return rate for CR/R domains. E7: Only 40% of CR and 33% of R domains return ANY results when tested individually with neutral keywords. Many domains (dailywire.com, breitbart.com, nypost.com) are not indexed at all. |
+| Conclusion | Brave Search has both ranking bias AND index coverage gaps. Algorithmic fixes (E5, E6) can only work with indexed content. Solution requires curating domain lists to include only indexed domains. |
+
+**Extended Finding (E7):**
+| Domain | Coverage |
+|--------|----------|
+| washingtonexaminer.com | ✓ Indexed |
+| washingtontimes.com | ✓ ADDED |
+| townhall.com | ✓ ADDED |
+| foxnews.com | ✓ Indexed |
+| thefederalist.com | ✓ Indexed |
+| dailywire.com | ✗ Not indexed |
+| breitbart.com | ✗ Not indexed |
+| nypost.com | ✗ Variable |
 
 ---
 

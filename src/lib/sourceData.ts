@@ -2537,20 +2537,23 @@ export const CENTER_DOMAINS = [
 ];
 
 // RIGHT + CENTER-RIGHT combined (for right-side query)
+// SR&ED E7: Tested for Brave Search index coverage - many CR/R domains have poor indexing
 export const RIGHT_DOMAINS = [
-  // CENTER-RIGHT
-  'washingtonexaminer.com',
-  'nypost.com',
-  'thefp.com',
-  'reason.com',
-  'wsj.com',
+  // CENTER-RIGHT (expanded based on Brave coverage testing)
+  'washingtonexaminer.com',  // ✓ Consistent coverage
+  'nypost.com',              // Variable - sometimes indexed
+  'thefp.com',               // ✓ Consistent coverage
+  'reason.com',              // Variable coverage
+  'wsj.com',                 // Paywalled, variable
+  'washingtontimes.com',     // ✓ ADDED - good Brave coverage
+  'townhall.com',            // ✓ ADDED - good Brave coverage
+  'nationalreview.com',      // Center-right per AllSides
   // RIGHT
-  'foxnews.com',
-  'dailywire.com',
-  'rebelnews.com',
-  'breitbart.com',
-  'thefederalist.com',
-  'nationalreview.com',
+  'foxnews.com',             // ✓ Consistent coverage
+  'dailywire.com',           // Variable coverage
+  'rebelnews.com',           // Low coverage
+  'breitbart.com',           // Variable coverage
+  'thefederalist.com',       // ✓ Consistent coverage
 ];
 
 // Legacy compatibility exports (dynamically generated from full database)
