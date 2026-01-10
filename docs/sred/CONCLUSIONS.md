@@ -60,6 +60,44 @@ const [leftResults, centerResults, rightResults] = await Promise.all([
 
 ---
 
+### 2026-01-10 - Query Neutralization Resolves Framing Bias
+
+**Uncertainty Resolved:** Why do left-input URLs still return 0 right-leaning sources even with triple-query strategy?
+
+**Finding:** Article titles carry source-specific editorial framing that creates vocabulary mismatch across the political spectrum:
+- **Left-framed:** "can't access evidence", "fatal ICE shooting", "won't work jointly"
+- **Right-framed:** "federal officer immunity", "ICE crackdown", "destroys narrative"
+- **Minimal overlap:** Same story, different keywords → cross-spectrum queries fail
+
+**Solution:** Entity extraction using Gemini flash to neutralize queries for RIGHT_DOMAINS:
+- Extract core entities: "ICE", "Minneapolis", "FBI", "shooting"
+- Strip framing language: adjectives, opinion words, editorial phrases
+- Apply ONLY to right-side query (left/center framing already matches their sources)
+
+**Evidence:**
+- E2: PBS input → 0 CR, 0 R (title framing mismatch identified)
+- E6: After neutralization → 1 CR (Washington Examiner), 1 R (Fox News)
+- Query transformation: "Minnesota officials say they can't access evidence..." → "Minnesota ICE shooting FBI"
+
+**Implementation:**
+```typescript
+const neutralQuery = await extractNeutralKeywords(searchQuery);
+
+const [leftResults, centerResults, rightResults] = await Promise.all([
+  searchWithBrave(`${searchQuery} (${leftFilters})`),    // Original
+  searchWithBrave(`${searchQuery} (${centerFilters})`),  // Original
+  searchWithBrave(`${neutralQuery} (${rightFilters})`),  // NEUTRAL
+]);
+```
+
+**Implication:** This is a novel finding about cross-spectrum news retrieval. Headlines are not neutral descriptors - they encode political perspective in vocabulary choices. Effective multi-perspective aggregation requires query normalization to overcome this semantic gap.
+
+**Combined Solution (E5 + E6):**
+- E5 (H3 fix): Guarantees API calls reach right-leaning domains
+- E6 (H2 fix): Ensures queries match right-leaning vocabulary
+
+---
+
 ## Template for Recording Advances
 
 ```

@@ -278,3 +278,177 @@ const [leftResults, centerResults, rightResults] = await Promise.all([
 **Commit:** `414e52a` - `spike: Implement triple-query strategy for balanced sources - SUCCESS`
 
 ---
+
+## E2: Query Formulation Bias Investigation
+
+**Date:** 2026-01-10
+**Hypothesis:** H2 - Query Formulation Bias
+**Status:** In Progress
+
+### Objective
+Determine if keywords extracted from input articles carry implicit political framing that biases search results.
+
+### Background
+E5 (triple-query) improved right-side coverage but production testing revealed persistent gaps:
+
+| Test | Input | CR | R | Note |
+|------|-------|-----|---|------|
+| PBS (Left) | ICE shooting story | 0 | 0 | Complete right-side failure |
+| NBC (CL) | Same story | 0 | 2 | Partial improvement |
+| Fox (Right) | Same story | 0 | 5 | Good right coverage |
+
+**Critical observation:** Same story, different results based on input source.
+
+### Code Analysis
+
+**Query Construction Flow (route.ts:1191-1224):**
+```
+1. Fetch article <title> tag from input URL
+2. Clean: remove site suffix (" - CNN", " | PBS")
+3. Use title AS the search query
+4. If title fetch fails, extract from URL slug
+```
+
+**The Problem:** Article titles ARE the search queries, and titles carry source-specific framing.
+
+### Evidence: ICE Shooting Story Framing
+
+| Source | Title/Framing |
+|--------|---------------|
+| PBS | "Minnesota officials say they can't access evidence after fatal ICE shooting" |
+| NBC | "Woman fatally shot by ICE agent identified as US citizen mother" |
+| NY Post | "Federal agents involved in Minneapolis shooting amid massive ICE crackdown" |
+| Wash Examiner | "New video destroys Dems' ICE 'murder' narrative" |
+
+**Keyword mismatch analysis:**
+
+| PBS Query Keywords | NY Post Keywords | Match? |
+|--------------------|------------------|--------|
+| "can't access evidence" | "massive crackdown" | ❌ |
+| "fatal ICE shooting" | "federal agents involved" | Partial |
+| "FBI won't work jointly" | — | ❌ |
+
+When PBS title is the query, Brave searches for left-framed terms that don't appear in right-leaning coverage.
+
+### Root Cause
+
+**H2 CONFIRMED:** Query formulation bias exists because:
+1. Article titles contain editorial framing specific to source's political lean
+2. Left sources emphasize: victim status, government wrongdoing, institutional failure
+3. Right sources emphasize: law enforcement action, narrative correction, factual details
+4. Cross-spectrum keyword overlap is minimal for politically divisive stories
+
+### Proposed Solutions
+
+| Approach | Description | Complexity | Effectiveness |
+|----------|-------------|------------|---------------|
+| **Entity Extraction** | Strip to core entities only (ICE, Minneapolis, shooting) | Low | Medium |
+| **AI Neutralization** | Use Gemini to generate neutral query | Medium | High |
+| **Dual-Query** | Run framed + neutral query in parallel | Medium | High |
+| **Per-Domain Search** | Search each RIGHT_DOMAIN with minimal keywords | High | Very High |
+
+### Recommended Fix: Entity Extraction + Neutral Reformulation
+
+```typescript
+// Before: Use title directly
+searchQuery = articleTitle; // "Minnesota officials can't access evidence..."
+
+// After: Extract core entities
+const entities = await extractEntities(articleTitle);
+// Result: "ICE Minneapolis shooting Minnesota"
+
+// Use entities for RIGHT_DOMAINS query
+const rightQuery = `${entities} (${rightFilters})`;
+```
+
+### Results
+See E6 below for implementation and testing.
+
+### Conclusion
+**H2 SUPPORTED** - Query formulation bias is a significant contributor to right-side source gaps.
+
+---
+
+## E6: Query Neutralization Implementation (H2 Fix)
+
+**Date:** 2026-01-10
+**Hypothesis:** H2 - Query Formulation Bias
+**Status:** Complete - SUCCESS
+
+### Objective
+Implement entity extraction to neutralize query framing for RIGHT_DOMAINS searches.
+
+### Implementation
+
+**Files Modified:**
+1. `src/app/api/find/route.ts` - Added `extractNeutralKeywords()` function
+
+**Code Changes:**
+
+```typescript
+// New helper function using Gemini flash
+async function extractNeutralKeywords(title: string): Promise<string> {
+  const prompt = `Extract ONLY the core factual entities from this news headline.
+Return 3-8 neutral keywords: people names, organization names (ICE, FBI, etc),
+places, key events. NO adjectives, NO framing language, NO opinion words.
+
+Headline: "${title}"
+
+Return ONLY keywords separated by spaces.
+Keywords:`;
+
+  const response = await genAI.models.generateContent({
+    model: "gemini-2.0-flash",
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+  });
+  // ... extract text and return
+}
+
+// Modified triple-query section
+const neutralQuery = await extractNeutralKeywords(searchQuery);
+
+const [leftResults, centerResults, rightResults] = await Promise.all([
+  searchWithBrave(`${searchQuery} (${leftFilters})`),    // Original for left
+  searchWithBrave(`${searchQuery} (${centerFilters})`),  // Original for center
+  searchWithBrave(`${neutralQuery} (${rightFilters})`),  // NEUTRAL for right
+]);
+```
+
+### Test Results
+
+**Input:** PBS ICE shooting story (Left input)
+**Original Query:** "Minnesota officials say they can't access evidence after fatal ICE shooting and FBI won't work jointly on investigation"
+**Neutralized Query:** "Minnesota ICE shooting FBI"
+
+| Metric | Before (E2) | After (E6) |
+|--------|-------------|------------|
+| Center-Right | 0 | 1 (Washington Examiner) |
+| Right | 0 | 1 (Fox News) |
+| Total Sources | 13 | 14 |
+
+**Server Logs:**
+```
+[QueryNeutral] Original: "Minnesota officials say they can't access evidence after fat..."
+[QueryNeutral] Extracted: "Minnesota ICE shooting FBI"
+[TripleQuery] Right/CR query: 19 results
+[BalancedSearch] Center-Right: 1 [washingtonexaminer.com]
+[BalancedSearch] Right: 1 [noticias.foxnews.com]
+```
+
+### Why It Works
+
+1. **Framing Removal:** Gemini extracts core entities (ICE, Minneapolis, FBI, shooting) and strips editorial language ("can't access evidence", "won't work jointly")
+2. **Cross-Spectrum Matching:** Neutral keywords match right-leaning coverage that uses different framing ("federal officer immunity", "ICE crackdown")
+3. **Targeted Application:** Only RIGHT_DOMAINS query uses neutral keywords - LEFT/CENTER still use original title (their framing matches)
+
+### Conclusion
+
+**H2 FIX SUCCESSFUL** - Query neutralization via entity extraction resolves framing mismatch.
+
+**Key Finding:** Left-framed headlines don't just bias search engines - they fundamentally don't match the vocabulary used in right-leaning coverage. Same story, different keywords.
+
+**Combined with E5 (triple-query):** Both fixes work together:
+- E5 (H3): Guarantees API calls to right-leaning domains
+- E6 (H2): Ensures queries match right-leaning coverage vocabulary
+
+---

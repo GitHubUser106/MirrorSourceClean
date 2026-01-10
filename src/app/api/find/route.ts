@@ -305,6 +305,46 @@ async function fetchArticleTitle(url: string): Promise<string | null> {
   }
 }
 
+// =============================================================================
+// QUERY NEUTRALIZATION (H2 Fix) - Extract entities to overcome framing bias
+// SR&ED E6: Article titles carry source-specific framing that biases right-side results
+// =============================================================================
+async function extractNeutralKeywords(title: string): Promise<string> {
+  const prompt = `Extract ONLY the core factual entities from this news headline. Return 3-8 neutral keywords: people names, organization names (ICE, FBI, etc), places, key events. NO adjectives, NO framing language, NO opinion words.
+
+Headline: "${title}"
+
+Return ONLY keywords separated by spaces. Example format: ICE Minneapolis shooting Minnesota federal agents
+
+Keywords:`;
+
+  try {
+    const response: any = await genAI.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+
+    let text: string | undefined;
+    if (response?.response && typeof response.response.text === 'function') {
+      text = response.response.text();
+    } else if (Array.isArray(response?.candidates)) {
+      text = response.candidates[0]?.content?.parts?.[0]?.text;
+    }
+
+    if (text && text.trim().length > 5) {
+      const neutralized = text.trim().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+      console.log(`[QueryNeutral] Original: "${title.substring(0, 60)}..."`);
+      console.log(`[QueryNeutral] Extracted: "${neutralized}"`);
+      return neutralized;
+    }
+  } catch (error) {
+    console.log(`[QueryNeutral] Extraction failed, using original:`, error);
+  }
+
+  // Fallback: return original title
+  return title;
+}
+
 // --- URL to Keywords Extraction ---
 function extractKeywordsFromUrl(url: string): string | null {
   try {
@@ -1256,20 +1296,29 @@ export async function POST(req: NextRequest) {
     // TRIPLE-QUERY BALANCED SEARCH: Parallel queries by political lean
     // Forces inclusion of right-leaning sources that single query misses
     // SR&ED E5: Addresses Brave Search API systematic bias (H3 confirmed)
+    // SR&ED E6 (H2 Fix): Use neutral query for RIGHT_DOMAINS to overcome framing bias
     // ==========================================================================
 
     const leftFilters = LEFT_DOMAINS.map(d => `site:${d}`).join(' OR ');
     const centerFilters = CENTER_DOMAINS.map(d => `site:${d}`).join(' OR ');
     const rightFilters = RIGHT_DOMAINS.map(d => `site:${d}`).join(' OR ');
 
+    // H2 FIX: Extract neutral keywords for right-side query to overcome framing mismatch
+    // Left-framed titles ("fatal ICE shooting") don't match right-framed coverage ("ICE crackdown")
+    const neutralQuery = await extractNeutralKeywords(searchQuery);
+
     console.log(`[TripleQuery] Running 3 parallel queries by political lean...`);
     console.log(`[TripleQuery] Left/CL: ${LEFT_DOMAINS.length} domains, Center: ${CENTER_DOMAINS.length} domains, Right/CR: ${RIGHT_DOMAINS.length} domains`);
+    console.log(`[TripleQuery] Original query: "${searchQuery.substring(0, 60)}..."`);
+    console.log(`[TripleQuery] Neutral query (for right): "${neutralQuery.substring(0, 60)}..."`);
 
     // Run all 3 queries in parallel for same latency as single query
+    // LEFT/CENTER use original title (their framing matches)
+    // RIGHT uses neutralized query (overcomes framing mismatch - H2)
     const [leftResults, centerResults, rightResults] = await Promise.all([
       searchWithBrave(`${searchQuery} (${leftFilters})`),
       searchWithBrave(`${searchQuery} (${centerFilters})`),
-      searchWithBrave(`${searchQuery} (${rightFilters})`),
+      searchWithBrave(`${neutralQuery} (${rightFilters})`),
     ]);
 
     console.log(`[TripleQuery] Results - Left/CL: ${leftResults.length}, Center: ${centerResults.length}, Right/CR: ${rightResults.length}`);

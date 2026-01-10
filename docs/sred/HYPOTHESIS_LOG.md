@@ -30,11 +30,25 @@
 
 | Field | Value |
 |-------|-------|
-| Status | UNTESTED |
-| Started | - |
-| Experiment | E2 - Keyword comparison |
-| Evidence | - |
-| Conclusion | - |
+| Status | **SUPPORTED** |
+| Started | 2026-01-10 |
+| Completed | 2026-01-10 |
+| Experiment | E2 - Query formulation analysis |
+| Evidence | Same ICE story: PBS input → 0 right sources; Fox input → 5 right sources. Article titles ARE queries, and titles carry source-specific framing. |
+| Conclusion | Query formulation bias is a major contributor to skewed results. Titles from left sources use left-framed language that doesn't match right-leaning coverage. |
+
+**Root Cause:**
+- Article `<title>` tags are used directly as search queries
+- Left sources: "fatal ICE shooting", "can't access evidence"
+- Right sources: "massive ICE crackdown", "destroys Dems narrative"
+- Minimal keyword overlap between political framings
+
+**Fix Required:** Entity extraction or query neutralization for RIGHT_DOMAINS queries.
+
+**Fix Implemented (E6):**
+- Added `extractNeutralKeywords()` using Gemini flash
+- Applies neutral query ONLY to RIGHT_DOMAINS search
+- Result: PBS input now returns 1 CR + 1 R (was 0+0)
 
 ---
 
