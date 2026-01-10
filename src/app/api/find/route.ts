@@ -5,6 +5,9 @@ import {
   getPoliticalLean,
   getFullSourceInfo,
   BALANCED_DOMAINS,
+  LEFT_DOMAINS,
+  CENTER_DOMAINS,
+  RIGHT_DOMAINS,
   type SourceType,
   type OwnershipInfo,
   type FundingInfo,
@@ -1250,40 +1253,49 @@ export async function POST(req: NextRequest) {
     const { info: usageInfo, cookieValue } = await incrementUsage(req);
 
     // ==========================================================================
-    // BALANCED SEARCH: Single query targeting all 5 political leans
-    // Replaces the old multi-call "Gap Fill" system to avoid 429 rate limits
+    // TRIPLE-QUERY BALANCED SEARCH: Parallel queries by political lean
+    // Forces inclusion of right-leaning sources that single query misses
+    // SR&ED E5: Addresses Brave Search API systematic bias (H3 confirmed)
     // ==========================================================================
 
-    // Build balanced query with site: operators for all political leans
-    const siteFilters = BALANCED_DOMAINS.map(d => `site:${d}`).join(' OR ');
-    const balancedQuery = `${searchQuery} (${siteFilters})`;
+    const leftFilters = LEFT_DOMAINS.map(d => `site:${d}`).join(' OR ');
+    const centerFilters = CENTER_DOMAINS.map(d => `site:${d}`).join(' OR ');
+    const rightFilters = RIGHT_DOMAINS.map(d => `site:${d}`).join(' OR ');
 
-    console.log(`[BalancedSearch] Primary query: "${balancedQuery.substring(0, 100)}..."`);
-    console.log(`[BalancedSearch] Targeting ${BALANCED_DOMAINS.length} domains across political spectrum`);
+    console.log(`[TripleQuery] Running 3 parallel queries by political lean...`);
+    console.log(`[TripleQuery] Left/CL: ${LEFT_DOMAINS.length} domains, Center: ${CENTER_DOMAINS.length} domains, Right/CR: ${RIGHT_DOMAINS.length} domains`);
 
-    // Primary search: Balanced query targeting all political leans
-    const primaryResults = await searchWithBrave(balancedQuery);
-    console.log(`[BalancedSearch] Primary search returned ${primaryResults.length} results`);
+    // Run all 3 queries in parallel for same latency as single query
+    const [leftResults, centerResults, rightResults] = await Promise.all([
+      searchWithBrave(`${searchQuery} (${leftFilters})`),
+      searchWithBrave(`${searchQuery} (${centerFilters})`),
+      searchWithBrave(`${searchQuery} (${rightFilters})`),
+    ]);
+
+    console.log(`[TripleQuery] Results - Left/CL: ${leftResults.length}, Center: ${centerResults.length}, Right/CR: ${rightResults.length}`);
+
+    // Merge all results
+    const allResults = [...leftResults, ...centerResults, ...rightResults];
 
     // Deduplicate by domain
     const seenDomains = new Set<string>();
-    let qualityFiltered = primaryResults.filter(result => {
+    let qualityFiltered = allResults.filter(result => {
       if (!result.domain || seenDomains.has(result.domain)) return false;
       seenDomains.add(result.domain);
       return true;
     });
-    console.log(`[BalancedSearch] After deduplication: ${qualityFiltered.length}`);
+    console.log(`[TripleQuery] After deduplication: ${qualityFiltered.length}`);
 
     // Apply quality filter
     qualityFiltered = filterQualityResults(qualityFiltered, searchQuery);
-    console.log(`[BalancedSearch] After quality filter: ${qualityFiltered.length}`);
+    console.log(`[TripleQuery] After quality filter: ${qualityFiltered.length}`);
 
-    // FALLBACK: If primary returns <10 results, run a broad search without site: filters
+    // FALLBACK: If combined returns <10 results, run a broad search without site: filters
     if (qualityFiltered.length < 10) {
-      console.log(`[BalancedSearch] Primary returned <10 results. Running fallback broad search...`);
+      console.log(`[TripleQuery] Combined returned <10 results. Running fallback broad search...`);
 
       const broadResults = await searchWithBrave(searchQuery);
-      console.log(`[BalancedSearch] Fallback returned ${broadResults.length} results`);
+      console.log(`[TripleQuery] Fallback returned ${broadResults.length} results`);
 
       // Merge results, deduplicating by URL
       const existingUrls = new Set(qualityFiltered.map(r => r.url));
@@ -1291,7 +1303,7 @@ export async function POST(req: NextRequest) {
 
       // Apply quality filter to new results
       const newFiltered = filterQualityResults(newResults, searchQuery);
-      console.log(`[BalancedSearch] Fallback added ${newFiltered.length} new results after quality filter`);
+      console.log(`[TripleQuery] Fallback added ${newFiltered.length} new results after quality filter`);
 
       qualityFiltered = [...qualityFiltered, ...newFiltered];
 
@@ -1302,7 +1314,7 @@ export async function POST(req: NextRequest) {
         finalDomains.add(result.domain);
         return true;
       });
-      console.log(`[BalancedSearch] After merge and dedup: ${qualityFiltered.length}`);
+      console.log(`[TripleQuery] After merge and dedup: ${qualityFiltered.length}`);
     }
 
     // 5-category political lean counter (for logging)

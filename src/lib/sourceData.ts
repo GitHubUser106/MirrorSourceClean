@@ -2503,31 +2503,65 @@ export function getSourcesByLean(): Record<PoliticalLean, Array<{ name: string; 
 }
 
 // =============================================================================
-// DOMAIN LISTS - For Gap Fill targeting (5-category system)
+// SEGMENTED DOMAIN LISTS - For triple-query balanced search
+// Curated lists guarantee right-leaning sources by running separate queries
+// SR&ED E5: Addresses Brave Search API systematic bias (H3 confirmed)
 // =============================================================================
 
-// Individual category lists (for precise gap fill targeting)
-export const LEFT_DOMAINS = SOURCES
-  .filter(s => s.lean === 'left')
-  .map(s => s.domain);
+// LEFT + CENTER-LEFT combined (for left-side query)
+export const LEFT_DOMAINS = [
+  // LEFT
+  'huffpost.com',
+  'pressprogress.ca',
+  'jacobin.com',
+  'theintercept.com',
+  'commondreams.org',
+  'democracynow.org',
+  // CENTER-LEFT
+  'nytimes.com',
+  'cnn.com',
+  'canadaland.com',
+  'washingtonpost.com',
+  'msnbc.com',
+  'propublica.org',
+];
 
+// CENTER only (for center query)
+export const CENTER_DOMAINS = [
+  'reuters.com',
+  'bbc.com',
+  'breakingpoints.com',
+  'apnews.com',
+  'thehill.com',
+  'npr.org',
+];
+
+// RIGHT + CENTER-RIGHT combined (for right-side query)
+export const RIGHT_DOMAINS = [
+  // CENTER-RIGHT
+  'washingtonexaminer.com',
+  'nypost.com',
+  'thefp.com',
+  'reason.com',
+  'wsj.com',
+  // RIGHT
+  'foxnews.com',
+  'dailywire.com',
+  'rebelnews.com',
+  'breitbart.com',
+  'thefederalist.com',
+  'nationalreview.com',
+];
+
+// Legacy compatibility exports (dynamically generated from full database)
 export const CENTER_LEFT_DOMAINS = SOURCES
   .filter(s => s.lean === 'center-left')
-  .map(s => s.domain);
-
-export const CENTER_DOMAINS = SOURCES
-  .filter(s => s.lean === 'center')
   .map(s => s.domain);
 
 export const CENTER_RIGHT_DOMAINS = SOURCES
   .filter(s => s.lean === 'center-right')
   .map(s => s.domain);
 
-export const RIGHT_DOMAINS = SOURCES
-  .filter(s => s.lean === 'right')
-  .map(s => s.domain);
-
-// Combined lists (for broader searches - legacy compatibility)
 export const RIGHT_LEANING_DOMAINS = SOURCES
   .filter(s => s.lean === 'right' || s.lean === 'center-right')
   .map(s => s.domain);
