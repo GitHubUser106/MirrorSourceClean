@@ -5,20 +5,24 @@ SR&ED Evidence Logger
 Automates capture of R&D tax credit evidence during development.
 
 Usage:
+    python sred_logger.py scan                    # Scan git for tagged commits
+    python sred_logger.py status                  # Show SR&ED status
+    python sred_logger.py report                  # Generate monthly evidence report
+    python sred_logger.py export --year 2026      # Export Boast.ai package
+
+Legacy (formal experiments):
     python sred_logger.py new "Description of uncertainty"
     python sred_logger.py log EXP-001 "What we tried" "What happened"
-    python sred_logger.py scan                    # Scan git for tagged commits
     python sred_logger.py close EXP-001           # Close experiment
-    python sred_logger.py report                  # Generate monthly evidence report
-    python sred_logger.py status                  # Show active experiments
 
-Commit Tag Convention:
+Commit Tag Convention (Lightweight):
+    spike: R&D work (uncertainty, investigation, might fail)
+
+Legacy Tags:
     exp: Start new experiment investigation
     fail: Document a failure (BILLABLE - this is investigation)
     pivot: Change approach based on learning
     succeed: Approach worked
-    hyp: Document hypothesis
-    conclude: Document conclusion
 """
 
 import json
@@ -517,16 +521,126 @@ def archive_chat_log(exp_id: str, ai_source: str, content: str):
     
     print(f"✅ Archived {ai_source} chat to: {archive_dir / filename}")
 
+def export_boast_package(year: str):
+    """Generate Boast.ai-ready export package for SR&ED filing"""
+    config = load_config()
+
+    export_dir = SRED_DIR / "exports" / f"SRED-{year}-package"
+    export_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"\n📦 Generating Boast.ai package for {year}...")
+
+    # 1. Extract spike commits
+    spike_commits = []
+    sred_tags = ["spike:", "exp:", "fail:", "pivot:", "succeed:"]
+
+    try:
+        result = subprocess.run(
+            ["git", "log", f"--since={year}-01-01", f"--until={year}-12-31",
+             "--pretty=format:%H|%ad|%an|%s", "--date=short"],
+            capture_output=True, text=True, cwd=ROOT
+        )
+
+        for line in result.stdout.strip().split("\n"):
+            if not line:
+                continue
+            parts = line.split("|", 3)
+            if len(parts) < 4:
+                continue
+
+            commit_hash, date, author, message = parts
+            msg_lower = message.lower()
+
+            for tag in sred_tags:
+                if msg_lower.startswith(tag):
+                    spike_commits.append({
+                        "hash": commit_hash[:8],
+                        "date": date,
+                        "author": author,
+                        "message": message,
+                        "tag": tag.rstrip(":")
+                    })
+                    break
+    except Exception as e:
+        print(f"   ⚠️ Git scan error: {e}")
+
+    # Write spike commits
+    with open(export_dir / "spike_commits.md", "w") as f:
+        f.write(f"# SR&ED Tagged Commits - {year}\n\n")
+        f.write(f"**Project:** {config['project']['name']}\n")
+        f.write(f"**Company:** {config['project']['company']}\n")
+        f.write(f"**Generated:** {datetime.now().isoformat()}\n\n")
+        f.write("---\n\n")
+        f.write("| Date | Tag | Commit | Message |\n")
+        f.write("|------|-----|--------|--------|\n")
+        for c in spike_commits:
+            f.write(f"| {c['date']} | {c['tag']} | {c['hash']} | {c['message'][:60]} |\n")
+        f.write(f"\n**Total SR&ED Commits:** {len(spike_commits)}\n")
+
+    print(f"   ✅ spike_commits.md ({len(spike_commits)} commits)")
+
+    # 2. Copy lab notebook
+    lab_notebook = SRED_DIR / "LAB_NOTEBOOK.md"
+    if lab_notebook.exists():
+        import shutil
+        shutil.copy(lab_notebook, export_dir / "lab_notebook.md")
+        print(f"   ✅ lab_notebook.md")
+    else:
+        print(f"   ⚠️ LAB_NOTEBOOK.md not found")
+
+    # 3. Generate time summary (estimate based on commits)
+    time_summary = {
+        "year": year,
+        "project": config["project"]["name"],
+        "company": config["project"]["company"],
+        "total_sred_commits": len(spike_commits),
+        "commits_by_tag": {},
+        "commits_by_month": {},
+        "technological_domains": config.get("technological_domains", [])
+    }
+
+    for c in spike_commits:
+        # By tag
+        tag = c["tag"]
+        time_summary["commits_by_tag"][tag] = time_summary["commits_by_tag"].get(tag, 0) + 1
+        # By month
+        month = c["date"][:7]
+        time_summary["commits_by_month"][month] = time_summary["commits_by_month"].get(month, 0) + 1
+
+    with open(export_dir / "time_summary.json", "w") as f:
+        json.dump(time_summary, f, indent=2)
+    print(f"   ✅ time_summary.json")
+
+    # 4. Technological domains
+    with open(export_dir / "technological_domains.md", "w") as f:
+        f.write(f"# Technological Domains - {config['project']['name']}\n\n")
+        f.write(f"**Field of Science:** {config['project'].get('field_of_science', 'N/A')} ")
+        f.write(f"({config['project'].get('field_of_science_name', 'N/A')})\n\n")
+        f.write("---\n\n")
+        for td in config.get("technological_domains", []):
+            f.write(f"## {td['id']}: {td['name']}\n\n")
+            f.write(f"{td['description']}\n\n")
+    print(f"   ✅ technological_domains.md")
+
+    # 5. Full commit log (CSV)
+    try:
+        result = subprocess.run(
+            ["git", "log", f"--since={year}-01-01", f"--until={year}-12-31",
+             "--pretty=format:%H,%ad,%an,%s", "--date=short"],
+            capture_output=True, text=True, cwd=ROOT
+        )
+        with open(export_dir / "commit_log.csv", "w") as f:
+            f.write("hash,date,author,message\n")
+            f.write(result.stdout)
+        print(f"   ✅ commit_log.csv")
+    except:
+        pass
+
+    print(f"\n📁 Package location: {export_dir}")
+    print(f"\n💡 Send this folder to Boast.ai for SR&ED filing.")
+
 def print_usage():
     print(__doc__)
-    print("""
-Additional Commands:
-    python sred_logger.py refine uncertainty "your draft"
-    python sred_logger.py refine failure "what happened"
-    python sred_logger.py refine conclusion "your findings"
-    python sred_logger.py refine commit "draft commit message"
-    python sred_logger.py archive EXP-001 claude "paste chat content"
-    """)
 
 def main():
     if len(sys.argv) < 2:
@@ -575,7 +689,19 @@ def main():
     
     elif command == "status":
         show_status()
-    
+
+    elif command == "export":
+        # Parse --year argument
+        year = None
+        for i, arg in enumerate(sys.argv):
+            if arg == "--year" and i + 1 < len(sys.argv):
+                year = sys.argv[i + 1]
+                break
+        if not year:
+            year = datetime.now().strftime("%Y")
+            print(f"No --year specified, using current year: {year}")
+        export_boast_package(year)
+
     else:
         print_usage()
 

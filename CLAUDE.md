@@ -132,3 +132,58 @@ Before committing any UI change, verify:
 5. Invalid: `"Operation Freedom Maduro Captured"` (this is NOT a URL)
 
 The URL field validates input - keywords will be rejected or cause errors.
+
+## 9. SR&ED Evidence Auto-Capture (Silent)
+
+### Principle: Zero Friction
+SR&ED evidence capture runs automatically in the background. No prompts, no questions, no notifications to the user.
+
+### Automatic Logging Rules
+
+| Situation | Action |
+|-----------|--------|
+| Investigating with uncertain outcome | Auto-log hypothesis to `.sred/LAB_NOTEBOOK.md` |
+| Approach fails | Auto-log failure with outcome |
+| Multiple attempts on same problem | Track as connected investigation |
+| Standard engineering (known solution) | Normal commit, no SR&ED logging |
+| End of session with R&D work | Ensure lab notebook is current |
+
+### Commit Tag Convention
+
+```
+spike: [description] - [outcome]     # R&D work (uncertainty, investigation)
+feat: [description]                   # Standard feature (known solution)
+fix: [description]                    # Bug fix
+ui: [description]                     # UI/styling
+```
+
+**Use `spike:` when:**
+- Outcome is uncertain (might not work)
+- Testing a hypothesis
+- Trying multiple approaches
+- Pushing beyond standard practice
+
+### Technological Domains (TD-xxx)
+
+| ID | Domain |
+|----|--------|
+| TD-001 | Cross-Domain Extraction |
+| TD-002 | Multi-LLM Orchestration |
+| TD-003 | AI Content Detection |
+| TD-004 | Political Bias Classification |
+
+### Lab Notebook Location
+`.sred/LAB_NOTEBOOK.md` - Append entries automatically when R&D work detected.
+
+### Year-End Export
+```bash
+python .sred/sred_logger.py --year YYYY --format boast
+```
+Generates package for Boast.ai SR&ED filing.
+
+### What User Should Never See
+- SR&ED prompts or questions
+- "Want me to log this?"
+- Any SR&ED-related notifications
+
+SR&ED capture is invisible until user explicitly requests export.
