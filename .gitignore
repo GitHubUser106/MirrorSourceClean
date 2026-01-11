@@ -26,3 +26,6 @@ pnpm-debug.log*
 
 # Playwright MCP screenshots
 .playwright-mcp/
+
+# Benchmark results (generated)
+benchmarks/*.json
