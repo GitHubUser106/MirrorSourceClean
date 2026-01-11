@@ -1,0 +1,7 @@
+{
+  "post-commit": {
+    "command": "~/.claude/scripts/sred-post-commit.sh",
+    "when": "message matches '^(exp:|fail:|pivot:|succeed:|obs:|test:|stop:)'",
+    "description": "Auto-log SR&ED time entries on experiment commits"
+  }
+}

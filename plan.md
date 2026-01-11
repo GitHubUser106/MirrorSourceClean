@@ -192,6 +192,36 @@
 - [x] **Conclusion:** 0 Center-Right sources is correct (not a bug)
 - [x] Gap is due to Brave search index, not MirrorSource code
 
+### Sprint 14: SR&ED Pipeline Setup (Jan 6, 2026)
+
+#### Pipeline Installation
+- [x] Installed `.sred/` pipeline in MirrorSource project
+- [x] Git post-commit hook for automatic experiment tracking
+- [x] Python-based logging system (`sred_logger.py`)
+
+#### Global Configuration
+- [x] Added shell aliases to `~/.zshrc`:
+  - `sred` - Main logger
+  - `sred-new` - Start new experiment
+  - `sred-scan` - Scan commits for evidence
+  - `sred-status` - View active experiments
+- [x] Created global template: `~/.claude/templates/sred-pipeline/`
+- [x] Updated `~/.claude/CLAUDE.md` with SR&ED Evidence Protocol
+
+#### SR&ED Evidence Protocol Features
+- [x] **INITIALIZATION** - "Initialize SR&ED" bootstraps new projects from template
+- [x] **TRIGGER** - Auto-detect after 3+ failures on same problem
+- [x] **HYPOTHESIS FORMAT** - "We believe that [approach] will [outcome] because [reasoning]"
+- [x] **COMMIT TAGS** - `exp:`, `fail:`, `pivot:`, `succeed:`
+- [x] **PLANNING** - Auto-add "## Technological Uncertainties & Hypotheses" section
+
+#### Configured Technological Domains
+- TD-001: Cross-Domain Content Extraction (170+ news sites)
+- TD-002: Dual-LLM Orchestration (context/drift management)
+- TD-003: AI Content Detection (metadata patterns)
+
+**Ready for:** First experiment initialization
+
 ---
 
 ## Section 3: Current Architecture
@@ -230,7 +260,7 @@
 - [ ] Author intelligence improvements
 - [ ] Source Transparency Cards (ownership, funding info)
 - [ ] Add "Platform" political lean type for Rumble/Substack (deferred - requires UI changes)
-- [ ] SR&ED claim filing (awaiting technical scoping call with Mat)
+- [ ] SR&ED claim filing (pipeline ready, awaiting technical scoping call with Mat)
 
 ---
 

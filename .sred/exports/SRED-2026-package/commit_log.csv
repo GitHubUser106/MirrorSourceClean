@@ -1,0 +1,34 @@
+hash,date,author,message
+55bbc4ebcc5b14efcaae27abcf9b0831038dac75,2026-01-09,John Tomchick,feat: Add SR&ED tracking infrastructure
+dcfa0623f330c2f3dda4a44a459d3fe6e8b89281,2026-01-09,John Tomchick,docs: Add technical handover appendix
+bb81275d157077f83a89c011e74a55310b9745e0,2026-01-09,John Tomchick,feat: Add Chrome Web Store demo page and marketing screenshots
+57a1f9d27ae7e7e1c474454503819061e1cdb268,2026-01-09,John Tomchick,feat: Add Vitest testing framework and Ralph Wiggum config
+f8e57b9007a377940c90c44773209089aca9abf9,2026-01-06,John Tomchick,docs: Add Chrome Web Store screenshots
+c6bfbd2495278fbbe5acbeba20ffbd28da062c08,2026-01-06,John Tomchick,docs: Update plan.md with UI polish and coverage verification
+8ac0fa10c0f4982c57690ed1613eca36e77f6391,2026-01-06,John Tomchick,ui: Change coverage chart label from "You" to "Your article"
+3b23dba22e61f9069fb4ce2ed595d298889b467d,2026-01-06,John Tomchick,docs: Mark Chrome extension v1.2.3 as published
+e716ffde594bfce044f228abeb1c9ab1bdd7cba7,2026-01-06,John Tomchick,docs: Update plan.md with Sprint 13
+dad6d826181d276a1efe0c884b70de1ea05b1111,2026-01-06,John Tomchick,docs: Add testing rules to CLAUDE.md
+1cf13c00e07928d99d7c0c22aaf0d009240541e2,2026-01-06,John Tomchick,assets: Add Chrome Web Store screenshots
+8ccb0c34824cdf6f15a34347c63d7ef78fdee1e3,2026-01-05,John Tomchick,docs: Add Sprint 12 (Chrome Extension Store Update) to plan.md
+035d8eff2934197698d8fc700ea9bc60a0e9d004,2026-01-05,John Tomchick,chore: Bump extension to v1.2.3, update store description
+7a7893b2a469e8f3d00b83af30188908291ff20b,2026-01-05,John Tomchick,docs: Add Sprint 11 (UI Polish) to plan.md
+5f979b59e911511813590ba8809d3eafa850186a,2026-01-05,John Tomchick,ui: Replace generic icon with MirrorSource logo in extension CTA
+b3425049a8a803222bec9af8dd9c6f6fd8ad78d3,2026-01-05,John Tomchick,docs: Update plan.md with SR&ED consultant email details
+de455d0bafde49e373025a9dce649e341ffa3d70,2026-01-04,John Tomchick,docs: Update plan.md with Sprint 8 and SR&ED review completion
+0c5990a72a3b0be7d126acb83b1f66b13429b96a,2026-01-04,John Tomchick,docs: Add Sprint 7 to completed work
+a76b207180cdbba5320f733c4f918ad6ea8e6645,2026-01-04,John Tomchick,docs: Update plan.md with Sprint 9 completion
+fd43f6dff58a3c48ec3edcc914a4429f6aee4d97,2026-01-04,John Tomchick,data: Sprint 9 - Data quality audit & fixes
+323a9f725d71bf579ecdf425c818a55cfc6a1b32,2026-01-04,John Tomchick,feat: Add Independent badge to Sources page
+61925d96ad9142e34d3f5902c8a669a960cc4447,2026-01-04,John Tomchick,feat: Add Independent badge for creator-driven media sources
+a689cca61cb4eff37504e9f3055c2acae3903456,2026-01-04,John Tomchick,docs: Add completion signal protocol to CLAUDE.md
+80d07065b405b9df4a1fd76452a16915d19d0aa4,2026-01-04,John Tomchick,feat: Add Brave response caching with globalThis persistence
+831285ff1143dfcf20b8b91e00c1a8ef99ca7eef,2026-01-04,John Tomchick,feat: Sprint 8 - YouTube attribution + expanded indie sources
+56df037c418d7a45acdd0e426069ece15e3c3a12,2026-01-04,John Tomchick,ui: A+ polish - accessibility, micro-interactions, coverage chart improvements
+267577bdd2ab5d48b0de424ea933dd01b5303af0,2026-01-04,John Tomchick,ui: Source card layout improvements - 3 columns, flag in badges, relaxed truncation
+cec8583eee82f7adb00db2769eb6cc283c43ea04,2026-01-04,John Tomchick,feat: Add Chrome extension download CTA to homepage
+9425e6cf1511d1d9eb63ddde90a6ef0f415f5688,2026-01-01,John Tomchick,ui: Center Shared/Premium Link Detected fallback box
+0bb8af038bcca9c3e21f7f79bb65046314822ee7,2026-01-01,John Tomchick,docs: Update plan.md with Sprint 5 completion
+44deec3378af75d2f0c938b82938e309daf129aa,2026-01-01,John Tomchick,ui: Sprint 5 - Source card UX fixes
+ce50ae049df2e15a678abe93c1b65fec6697b253,2026-01-01,John Tomchick,feat: Consolidate indie media sources and article fetcher into main codebase
+75ea0019042e34136b1857e9e5b1869ca2fe2463,2026-01-01,John Tomchick,Initial commit: Consolidated MirrorSource with indie media and article fetcher

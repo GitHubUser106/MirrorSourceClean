@@ -110,14 +110,16 @@ function setBraveCached(query: string, results: any[]): void {
 const RSS_GAP_FEEDS = [
   { domain: 'dailywire.com', url: 'https://www.dailywire.com/feeds/rss.xml', lean: 'right' as const },
   { domain: 'breitbart.com', url: 'http://feeds.feedburner.com/breitbart', lean: 'right' as const },
-  { domain: 'nypost.com', url: 'https://nypost.com/feed/', lean: 'center-right' as const },
+  // E9b: Use politics-specific feeds to eliminate sports/entertainment noise
+  { domain: 'nypost.com', url: 'https://nypost.com/news/feed/', lean: 'center-right' as const },
+  { domain: 'washingtonexaminer.com', url: 'https://www.washingtonexaminer.com/feed', lean: 'center-right' as const },
 ];
 
 // Domains with confirmed Brave Search coverage (from E7 testing)
+// Note: washingtonexaminer.com moved to RSS_GAP_FEEDS for more reliable coverage
 const INDEXED_RIGHT_DOMAINS = [
   'foxnews.com',
   'thefederalist.com',
-  'washingtonexaminer.com',
   'washingtontimes.com',
   'townhall.com',
   'thefp.com',
@@ -792,7 +794,7 @@ function filterQualityResults(results: CSEResult[], searchQuery: string): CSERes
     } catch { return { result, score: 0, passed: false }; }
 
     // RSS results from gap feeds already passed keyword matching - be lenient
-    const rssGapDomains = ['dailywire.com', 'breitbart.com', 'nypost.com'];
+    const rssGapDomains = ['dailywire.com', 'breitbart.com', 'nypost.com', 'washingtonexaminer.com'];
     const isRSSResult = rssGapDomains.some(d => (result.domain || '').includes(d));
     if (isRSSResult) {
       // RSS results just need any keyword match to pass
