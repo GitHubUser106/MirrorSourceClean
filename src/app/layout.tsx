@@ -1,7 +1,15 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import InstallPromptWrapper from "@/components/InstallPromptWrapper";
 import { Analytics } from '@vercel/analytics/react';
+
+// Optimize font loading - prevents FOUT
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
   title: "MirrorSource | See the Whole Story",
@@ -67,7 +75,7 @@ export default function RootLayout({
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
-      <body className="antialiased">
+      <body className={`${inter.variable} font-sans antialiased`}>
         {children}
         <InstallPromptWrapper />
         <Analytics />

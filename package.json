@@ -15,11 +15,13 @@
     "@google/genai": "latest",
     "@vercel/analytics": "^1.6.1",
     "autoprefixer": "^10.4.22",
+    "clsx": "^2.1.1",
     "lucide-react": "^0.554.0",
     "next": "14.2.5",
     "node-html-parser": "^7.0.1",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
