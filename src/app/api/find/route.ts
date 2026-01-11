@@ -1682,6 +1682,24 @@ export async function POST(req: NextRequest) {
     // 5. Increment Usage (only for non-cached requests)
     const { info: usageInfo, cookieValue } = await incrementUsage(req);
 
+    // Gap-fill status tracking for API response observability
+    const gapFillStatus = {
+      left: {
+        triggered: false,
+        reason: 'adequate' as string,
+        sourceCount: 0,
+        resultsFound: 0,
+        domains: [] as string[],
+      },
+      right: {
+        triggered: false,
+        reason: 'adequate' as string,
+        sourceCount: 0,
+        resultsFound: 0,
+        domains: [] as string[],
+      },
+    };
+
     // ==========================================================================
     // QUAD-QUERY HYBRID SEARCH: Brave + RSS for complete spectrum coverage
     // SR&ED E5: Triple-query addresses Brave API systematic bias (H3)
@@ -1842,11 +1860,19 @@ export async function POST(req: NextRequest) {
     const rightSideCount = finalCounts.right + finalCounts.centerRight;
     const leftSideCount = finalCounts.left + finalCounts.centerLeft;
 
+    // Track initial counts for status
+    gapFillStatus.right.sourceCount = rightSideCount;
+    gapFillStatus.left.sourceCount = leftSideCount;
+
     // RIGHT-SIDE GAP DETECTION
     if (rightSideCount < 2) {
       console.log(`[GeminiGrounded] RIGHT-SIDE GAP DETECTED: Only ${rightSideCount} right/center-right sources. Triggering gap-fill search...`);
+      gapFillStatus.right.triggered = true;
+      gapFillStatus.right.reason = 'gap_detected';
 
       const groundedResults = await geminiGroundedSearch(neutralQuery, 'right');
+      gapFillStatus.right.resultsFound = groundedResults.length;
+      gapFillStatus.right.domains = groundedResults.map(r => r.domain);
 
       if (groundedResults.length > 0) {
         const existingDomains = new Set(qualityFiltered.map(r => r.domain));
@@ -1858,6 +1884,7 @@ export async function POST(req: NextRequest) {
 
         const updatedCounts = countPoliticalLean5(qualityFiltered);
         const newRightSideCount = updatedCounts.right + updatedCounts.centerRight;
+        gapFillStatus.right.sourceCount = newRightSideCount; // Update to final count
         console.log(`[GeminiGrounded] Updated right-side count: ${rightSideCount} -> ${newRightSideCount}`);
       }
     } else {
@@ -1867,8 +1894,12 @@ export async function POST(req: NextRequest) {
     // LEFT-SIDE GAP DETECTION (symmetric)
     if (leftSideCount < 2) {
       console.log(`[GeminiGrounded] LEFT-SIDE GAP DETECTED: Only ${leftSideCount} left/center-left sources. Triggering gap-fill search...`);
+      gapFillStatus.left.triggered = true;
+      gapFillStatus.left.reason = 'gap_detected';
 
       const groundedResults = await geminiGroundedSearch(neutralQuery, 'left');
+      gapFillStatus.left.resultsFound = groundedResults.length;
+      gapFillStatus.left.domains = groundedResults.map(r => r.domain);
 
       if (groundedResults.length > 0) {
         const existingDomains = new Set(qualityFiltered.map(r => r.domain));
@@ -1880,6 +1911,7 @@ export async function POST(req: NextRequest) {
 
         const updatedCounts = countPoliticalLean5(qualityFiltered);
         const newLeftSideCount = updatedCounts.left + updatedCounts.centerLeft;
+        gapFillStatus.left.sourceCount = newLeftSideCount; // Update to final count
         console.log(`[GeminiGrounded] Updated left-side count: ${leftSideCount} -> ${newLeftSideCount}`);
       }
     } else {
@@ -1979,6 +2011,7 @@ export async function POST(req: NextRequest) {
         warning: diversityAnalysis.warning,
       },
       queryBiasWarning,
+      gapFillStatus,  // Gap-fill observability for QA/benchmarking
     };
 
     // 12. Cache the result for future identical queries
