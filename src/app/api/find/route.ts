@@ -328,8 +328,10 @@ async function geminiGroundedSearch(keywords: string, side: GapSide): Promise<CS
 Return a brief summary of what you found. The grounding metadata will contain the actual URLs.`
         }]
       }],
-      // Enable Google Search grounding
-      tools: [{ googleSearch: {} }],
+      // Enable Google Search grounding via config
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
     });
 
     // Extract grounding metadata from response
