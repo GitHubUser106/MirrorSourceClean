@@ -139,6 +139,65 @@ This is a novel finding with broader implications for any application attempting
 
 ---
 
+### 2026-01-10 - RSS Hybrid Architecture Bypasses Search Engine Limitations
+
+**Uncertainty Resolved:** How to retrieve content from domains that Brave Search doesn't index?
+
+**Finding:** Direct RSS feed aggregation can bypass search engine limitations entirely:
+- Fetch RSS feeds in parallel with search queries (~350ms)
+- Filter by keyword matching to find relevant articles
+- Merge with search results for unified output
+
+**Evidence:**
+- E8: RSS implementation added dailywire.com, breitbart.com, nypost.com
+- 121 items fetched per request, 5 matched by keywords
+- Zero latency penalty (parallel execution)
+
+**Implication:** When search engines fail to index certain sources, direct content feeds provide a reliable alternative. This is a reusable pattern for any aggregation application facing search engine gaps.
+
+**Commits:**
+- `cb6fb2b` - E8: RSS hybrid search implementation
+
+---
+
+### 2026-01-10 - Forced Fallback Guarantees Political Balance
+
+**Uncertainty Resolved:** Why do left-leaning input URLs produce weak right-side results even with RSS feeds available?
+
+**Finding:** Keyword matching fails across political framing boundaries:
+- Left-framed headlines use different vocabulary than right-framed coverage
+- Same story, different keywords → cross-spectrum matching fails
+- Solution: When keyword matching is weak (< 2 domains), add "fallback" articles (most recent from each feed)
+
+**Evidence:**
+- E9: PBS ICE story results before/after
+- Before: CR=0, R=1 (total right-side: 1)
+- After: CR=1 (nypost), R=3 (dailywire, breitbart) (total: 4)
+- +300% improvement in right-side coverage for left-input URLs
+
+**Key Insight:** For breaking news, the most recent RSS item is almost always relevant regardless of keyword match. This "recency heuristic" enables guaranteed representation without requiring vocabulary overlap.
+
+**Implementation:**
+```typescript
+if (matchedDomains.size < 2) {
+  // Add most recent item from each unrepresented feed
+  rssResults = [...rssResults, ...fallbacksToAdd];
+}
+```
+
+**Implication:** Balanced aggregation across the political spectrum requires multiple strategies working together:
+1. Triple-query (E5) - Guarantees API calls reach right domains
+2. Query neutralization (E6) - Overcomes framing bias in search
+3. RSS bypass (E8) - Retrieves content search engines miss
+4. Forced fallback (E9) - Guarantees representation when matching fails
+
+This layered approach is novel and addresses a previously undocumented challenge in cross-spectrum news aggregation.
+
+**Commits:**
+- `9872617` - E9: Forced RSS fallback for political balance
+
+---
+
 ## Template for Recording Advances
 
 ```
