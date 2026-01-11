@@ -64,7 +64,7 @@ export default function LegalPage() {
 
             <h3 className="text-lg font-semibold text-slate-900">Service Availability</h3>
             <p className="text-slate-700">
-              The service is provided on an 'as is' and 'as available' basis.
+              The service is provided on an &apos;as is&apos; and &apos;as available&apos; basis.
             </p>
 
             <h3 className="text-lg font-semibold text-slate-900">Limitation of Liability</h3>
@@ -219,7 +219,7 @@ export default function LegalPage() {
             <p className="text-slate-900 font-medium">For all legal, privacy, and support inquiries:</p>
             <Link 
               href="/contact"
-              className="text-[#2563eb] font-semibold text-lg hover:underline mt-2 block"
+              className="text-blue-600 font-semibold text-lg hover:underline mt-2 block"
             >
               Contact Us →
             </Link>
@@ -233,10 +233,10 @@ export default function LegalPage() {
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
           <p>&copy; {new Date().getFullYear()} MirrorSource</p>
           <div className="flex items-center gap-6">
-            <Link href="/about" className="hover:text-[#2563eb] transition-colors">About</Link>
-            <Link href="/sources" className="hover:text-[#2563eb] transition-colors">Sources</Link>
-            <Link href="/legal" className="hover:text-[#2563eb] transition-colors">Legal</Link>
-            <Link href="/contact" className="hover:text-[#2563eb] transition-colors">Contact</Link>
+            <Link href="/about" className="hover:text-blue-600 transition-colors">About</Link>
+            <Link href="/sources" className="hover:text-blue-600 transition-colors">Sources</Link>
+            <Link href="/legal" className="hover:text-blue-600 transition-colors">Legal</Link>
+            <Link href="/contact" className="hover:text-blue-600 transition-colors">Contact</Link>
           </div>
         </div>
       </footer>

@@ -189,7 +189,7 @@ function CompareContent() {
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
         <h1 className="text-2xl font-bold text-slate-900 mb-4">No sources to compare</h1>
         <p className="text-slate-600 mb-6">Search for a story first, then select sources to compare.</p>
-        <Link href="/" className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white px-6 py-3 rounded-full font-medium">
+        <Link href="/" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full font-medium">
           Go to MirrorSource
         </Link>
       </div>
@@ -301,7 +301,7 @@ function CompareContent() {
                     href={source.url} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-[#2563eb] hover:underline text-sm flex items-center gap-1"
+                    className="text-blue-600 hover:underline text-sm flex items-center gap-1"
                   >
                     Read full article <ExternalLink size={12} />
                   </a>
@@ -327,7 +327,7 @@ function CompareContent() {
                       {/* Headline */}
                       <div>
                         <p className="font-semibold text-slate-900 leading-snug">
-                          "{analyses[source.id].headline}"
+                          &ldquo;{analyses[source.id].headline}&rdquo;
                         </p>
                       </div>
 
@@ -417,10 +417,10 @@ function CompareContent() {
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
           <p>© {new Date().getFullYear()} MirrorSource</p>
           <div className="flex items-center gap-6">
-            <Link href="/about" className="hover:text-[#2563eb] transition-colors">About</Link>
-            <Link href="/sources" className="hover:text-[#2563eb] transition-colors">Sources</Link>
-            <Link href="/legal" className="hover:text-[#2563eb] transition-colors">Legal</Link>
-            <Link href="/contact" className="hover:text-[#2563eb] transition-colors">Contact</Link>
+            <Link href="/about" className="hover:text-blue-600 transition-colors">About</Link>
+            <Link href="/sources" className="hover:text-blue-600 transition-colors">Sources</Link>
+            <Link href="/legal" className="hover:text-blue-600 transition-colors">Legal</Link>
+            <Link href="/contact" className="hover:text-blue-600 transition-colors">Contact</Link>
           </div>
         </div>
       </footer>

@@ -158,7 +158,7 @@ export default function SourcesPage() {
             {" "}
             <button
               onClick={() => setIsReviewModalOpen(true)}
-              className="text-[#2563eb] hover:underline font-medium"
+              className="text-blue-600 hover:underline font-medium"
             >
               News outlets may request a review
             </button>.

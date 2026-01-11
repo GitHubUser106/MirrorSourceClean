@@ -36,12 +36,12 @@ export default function ContactPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-slate-900">Contact Us</h1>
-                <p className="text-slate-500 text-sm">We'd love to hear from you</p>
+                <p className="text-slate-500 text-sm">We&apos;d love to hear from you</p>
               </div>
             </div>
 
             <p className="text-slate-600 mb-6">
-              Have feedback, questions, or suggestions? Send us an email and we'll get back to you as soon as possible.
+              Have feedback, questions, or suggestions? Send us an email and we&apos;ll get back to you as soon as possible.
             </p>
 
             {/* Email display with copy */}
@@ -49,7 +49,7 @@ export default function ContactPage() {
               <span className="text-slate-800 font-medium">{email}</span>
               <button
                 onClick={handleCopy}
-                className="flex items-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
               >
                 {copied ? (
                   <>

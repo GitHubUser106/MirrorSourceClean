@@ -177,7 +177,7 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
             <>
               {/* Headline from AI */}
               <p className="font-medium text-slate-900 leading-snug text-sm mb-3 line-clamp-3">
-                "{cleanSnippet(analysis.headline)}"
+                &ldquo;{cleanSnippet(analysis.headline)}&rdquo;
               </p>
 
               {/* Tone Badge */}

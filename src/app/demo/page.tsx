@@ -200,7 +200,7 @@ export default function DemoPage() {
                 readOnly
                 className="flex-1 px-4 py-3 rounded-full border border-slate-200 bg-slate-50 text-slate-700 text-sm"
               />
-              <button className="bg-[#2563eb] text-white font-medium py-3 px-6 rounded-full text-sm">
+              <button className="bg-blue-600 text-white font-medium py-3 px-6 rounded-full text-sm">
                 Analyze
               </button>
             </div>

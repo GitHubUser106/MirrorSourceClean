@@ -94,6 +94,57 @@ body {
   position: relative;
   background-color: var(--background);
   color: var(--foreground);
+  line-height: 1.6; /* Consistent line-height for readability */
+}
+
+/* ============================================
+   Typography Refinements (A+ Polish)
+   ============================================ */
+
+/* Tighter tracking on large headers for premium feel */
+h1, .text-4xl, .text-5xl, .text-6xl {
+  letter-spacing: -0.02em;
+}
+
+h2, .text-2xl, .text-3xl {
+  letter-spacing: -0.01em;
+}
+
+/* Tabular figures for data alignment */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Apply tabular nums to common data elements */
+[class*="coverage"], [class*="count"], [class*="stat"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================
+   Micro-Interactions (A+ Polish)
+   ============================================ */
+
+/* Smooth transitions on all interactive elements */
+button, a, [role="button"] {
+  transition: all 0.2s ease;
+}
+
+/* Subtle lift effect on primary buttons */
+button[class*="bg-blue"]:hover:not(:disabled),
+a[class*="bg-blue"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+/* Card hover lift effect */
+[class*="rounded-xl"][class*="border"]:not([role="button"]):hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Smooth focus states for accessibility */
+:focus-visible {
+  outline: 2px solid rgb(37, 99, 235);
+  outline-offset: 2px;
 }
 
 main {

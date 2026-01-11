@@ -70,7 +70,7 @@ export default function ReviewRequestModal({ isOpen, onClose }: ReviewRequestMod
             </p>
             <button
               onClick={onClose}
-              className="px-6 py-2 bg-[#2563eb] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors"
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Close
             </button>
@@ -170,7 +170,7 @@ export default function ReviewRequestModal({ isOpen, onClose }: ReviewRequestMod
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3 bg-[#2563eb] text-white font-semibold rounded-lg hover:bg-[#1d4ed8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isSubmitting ? "Submitting..." : (
                 <>

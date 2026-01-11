@@ -117,11 +117,11 @@ export default function InstallPrompt() {
             </div>
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">2</div>
-              <p className="text-sm text-slate-700">Scroll down and tap <span className="font-medium">"Add to Home Screen"</span></p>
+              <p className="text-sm text-slate-700">Scroll down and tap <span className="font-medium">&ldquo;Add to Home Screen&rdquo;</span></p>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">3</div>
-              <p className="text-sm text-slate-700">Tap <span className="font-medium">"Add"</span> to confirm</p>
+              <p className="text-sm text-slate-700">Tap <span className="font-medium">&ldquo;Add&rdquo;</span> to confirm</p>
             </div>
           </div>
 
@@ -191,8 +191,8 @@ export default function InstallPrompt() {
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-3xl">🎉</span>
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">You're all set!</h3>
-            <p className="text-slate-600 text-sm">Here's how to analyze any article</p>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">You&apos;re all set!</h3>
+            <p className="text-slate-600 text-sm">Here&apos;s how to analyze any article</p>
           </div>
 
           <div className="bg-slate-50 rounded-xl p-4 space-y-4">
@@ -214,7 +214,7 @@ export default function InstallPrompt() {
               <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">3</div>
               <div>
                 <p className="text-sm font-medium text-slate-800">Select MirrorSource</p>
-                <p className="text-xs text-slate-500">We'll find alternative sources instantly</p>
+                <p className="text-xs text-slate-500">We&apos;ll find alternative sources instantly</p>
               </div>
             </div>
           </div>

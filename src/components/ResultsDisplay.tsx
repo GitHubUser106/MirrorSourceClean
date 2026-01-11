@@ -316,8 +316,8 @@ export default function ResultsDisplay({ results, selectedIds = [], onToggleSele
                 >
                   <div className={`w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer transition-all ${
                     selectedIds.includes(item.uri)
-                      ? 'bg-[#2563eb] border-[#2563eb]'
-                      : 'bg-white border-slate-300 hover:border-[#2563eb]'
+                      ? 'bg-blue-600 border-blue-600'
+                      : 'bg-white border-slate-300 hover:border-blue-600'
                   }`}>
                     {selectedIds.includes(item.uri) && (
                       <Check size={14} className="text-white" />

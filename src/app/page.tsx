@@ -10,7 +10,7 @@ import { ProvenanceCard } from "@/components/ProvenanceCard";
 import { NarrativeCard } from "@/components/NarrativeCard";
 import { AuthorModal } from "@/components/AuthorModal";
 import type { GroundingSource } from "@/types";
-import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, BarChart3 } from "lucide-react";
+import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, BarChart3, ExternalLink } from "lucide-react";
 import { getPoliticalLean, getSourceInfo, LEAN_COLORS, LEAN_LABELS, type PoliticalLean } from "@/lib/sourceData";
 
 // Political lean spectrum order for sorting (Left → Right)
@@ -1121,6 +1121,22 @@ function HomeContent() {
                 </svg>
               </a>
             </div>
+
+            {/* Trust Signals */}
+            <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-6 text-sm text-slate-500">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                <span>Analyzing <strong className="text-slate-700">190+ news sources</strong></span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Scale className="w-4 h-4" />
+                <span>Bias ratings from <a href="https://www.allsides.com/media-bias/ratings" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">AllSides</a> & <a href="https://adfontesmedia.com/interactive-media-bias-chart/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Ad Fontes</a></span>
+              </div>
+              <Link href="/sources" className="flex items-center gap-1 text-blue-600 hover:underline">
+                View our methodology
+                <ExternalLink className="w-3 h-3" />
+              </Link>
+            </div>
           </div>
         </section>
       )}
@@ -1177,7 +1193,7 @@ function HomeContent() {
               <button
                 onClick={() => handleKeywordSearch()}
                 disabled={loading || !keywords.trim()}
-                className="inline-flex items-center justify-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-slate-300 text-white font-medium py-3 px-6 rounded-full transition-colors text-sm whitespace-nowrap"
+                className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-medium py-3 px-6 rounded-full transition-colors text-sm whitespace-nowrap"
               >
                 Find coverage
               </button>
@@ -1207,7 +1223,7 @@ function HomeContent() {
                   <button
                     onClick={() => handleKeywordSearch()}
                     disabled={loading || !keywords.trim()}
-                    className="inline-flex items-center justify-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-slate-300 text-white font-medium py-3 px-6 rounded-full transition-colors text-sm whitespace-nowrap"
+                    className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-medium py-3 px-6 rounded-full transition-colors text-sm whitespace-nowrap"
                   >
                     Lock on
                   </button>
@@ -1491,14 +1507,14 @@ function HomeContent() {
                     <AlertCircle className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0" />
                     <div>
                       <p className="text-slate-600 font-medium">Limited coverage found</p>
-                      <p className="text-sm text-slate-500 mt-1">We searched but couldn't find free alternative sources for this specific article. This can happen with breaking news or niche topics.</p>
+                      <p className="text-sm text-slate-500 mt-1">We searched but couldn&apos;t find free alternative sources for this specific article. This can happen with breaking news or niche topics.</p>
                     </div>
                   </div>
 
                   <button
                     onClick={() => handleSearchWithUrl(lastSubmittedUrl)}
                     disabled={loading}
-                    className="w-full flex items-center justify-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-[#6b9aef] text-white font-medium py-3 px-6 rounded-full transition-colors"
+                    className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-3 px-6 rounded-full transition-colors"
                   >
                     <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
                     Try searching again
