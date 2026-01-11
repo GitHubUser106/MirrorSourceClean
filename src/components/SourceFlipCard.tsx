@@ -216,8 +216,22 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
                     👆 Tap to see source transparency
                   </p>
                 </>
+              ) : source.title ? (
+                <>
+                  {/* Title from search results - displayed like AI headline */}
+                  <p className="font-medium text-slate-900 leading-snug text-sm mb-3 line-clamp-3">
+                    &ldquo;{cleanSnippet(source.title)}&rdquo;
+                  </p>
+                  {/* Snippet as supporting context */}
+                  {source.snippet && (
+                    <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
+                      {cleanSnippet(source.snippet)}
+                    </p>
+                  )}
+                </>
               ) : (
                 <>
+                  {/* No title - show snippet only */}
                   <p className="text-sm text-slate-600 leading-relaxed line-clamp-4">
                     {cleanSnippet(source.snippet) || `Click to read full coverage from ${sourceName}.`}
                   </p>
