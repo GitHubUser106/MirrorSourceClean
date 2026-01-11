@@ -263,6 +263,110 @@ interface RSSFetchResult {
   fallback: CSEResult[];  // Top item from each feed, even if no keyword match
 }
 
+// =============================================================================
+// GEMINI GROUNDED SEARCH - Supplementary source discovery via Google Search
+// SR&ED E10: Gap-targeted search for right-leaning outlets poorly indexed by Brave
+// Only triggered when Right + Center-Right < 2 sources after primary search
+// =============================================================================
+
+// Right-leaning outlets to target with site: operators
+const GROUNDED_SEARCH_SITES = [
+  'dailywire.com',
+  'washingtonexaminer.com',
+  'freebeacon.com',
+  'nationalreview.com',
+  'thefederalist.com',
+  'townhall.com',
+  'redstate.com',
+  'pjmedia.com',
+];
+
+interface GroundingChunk {
+  web?: {
+    uri: string;
+    title?: string;
+  };
+}
+
+interface GroundingMetadata {
+  groundingChunks?: GroundingChunk[];
+  webSearchQueries?: string[];
+}
+
+async function geminiGroundedSearch(keywords: string): Promise<CSEResult[]> {
+  console.log(`[GeminiGrounded] Starting gap-fill search for: "${keywords.substring(0, 60)}..."`);
+
+  // Build site-specific query to target right-leaning outlets
+  const siteOperators = GROUNDED_SEARCH_SITES.slice(0, 5).map(d => `site:${d}`).join(' OR ');
+  const searchQuery = `${keywords} (${siteOperators})`;
+
+  try {
+    const response: any = await genAI.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [{
+        role: "user",
+        parts: [{
+          text: `Find recent news articles about this topic from conservative/right-leaning news outlets: ${searchQuery}
+
+Return a brief summary of what you found. The grounding metadata will contain the actual URLs.`
+        }]
+      }],
+      // Enable Google Search grounding
+      tools: [{ googleSearch: {} }],
+    });
+
+    // Extract grounding metadata from response
+    const candidate = response?.candidates?.[0];
+    const groundingMetadata: GroundingMetadata = candidate?.groundingMetadata || {};
+    const chunks = groundingMetadata.groundingChunks || [];
+
+    console.log(`[GeminiGrounded] Received ${chunks.length} grounding chunks`);
+    if (groundingMetadata.webSearchQueries?.length) {
+      console.log(`[GeminiGrounded] Search queries used: ${groundingMetadata.webSearchQueries.join(', ')}`);
+    }
+
+    const results: CSEResult[] = [];
+    const seenDomains = new Set<string>();
+
+    for (const chunk of chunks) {
+      if (!chunk.web?.uri) continue;
+
+      let domain = '';
+      try {
+        domain = new URL(chunk.web.uri).hostname.replace(/^www\./, '');
+      } catch {
+        continue;
+      }
+
+      // Skip duplicates
+      if (seenDomains.has(domain)) continue;
+      seenDomains.add(domain);
+
+      // Check if this is a known source or unknown (for logging)
+      const sourceInfo = getSourceInfo(domain);
+      if (!sourceInfo.displayName || sourceInfo.displayName === domain.toUpperCase()) {
+        // Unknown source - log for database expansion
+        console.log(`[GeminiGrounded] UNKNOWN SOURCE FOUND: ${domain} - ${chunk.web.title || 'No title'}`);
+      }
+
+      results.push({
+        url: chunk.web.uri,
+        title: chunk.web.title || '',
+        snippet: '', // Grounding chunks don't include snippets
+        domain,
+        source: 'google' as const,
+      });
+    }
+
+    console.log(`[GeminiGrounded] Returning ${results.length} unique results from domains: ${Array.from(seenDomains).join(', ')}`);
+    return results;
+
+  } catch (error: any) {
+    console.error('[GeminiGrounded] Search failed:', error?.message);
+    return [];
+  }
+}
+
 async function fetchAndFilterRSS(keywords: string[]): Promise<RSSFetchResult> {
   const startTime = Date.now();
   console.log(`[RSS] Fetching ${RSS_GAP_FEEDS.length} gap feeds with keywords: ${keywords.slice(0, 5).join(', ')}...`);
@@ -1703,6 +1807,35 @@ export async function POST(req: NextRequest) {
     console.log(`  Center-Right: ${finalCounts.centerRight} [${finalCounts.sources.centerRight.join(', ') || 'none'}]`);
     console.log(`  Right: ${finalCounts.right} [${finalCounts.sources.right.join(', ') || 'none'}]`);
     console.log(`[BalancedSearch] Total results: ${qualityFiltered.length}`);
+
+    // ==========================================================================
+    // GAP-TARGETED GEMINI GROUNDED SEARCH (SR&ED E10)
+    // If Right + Center-Right < 2 sources, use Gemini's Google Search grounding
+    // to find coverage from right-leaning outlets that Brave/RSS missed
+    // ==========================================================================
+    const rightSideCount = finalCounts.right + finalCounts.centerRight;
+    if (rightSideCount < 2) {
+      console.log(`[GeminiGrounded] RIGHT-SIDE GAP DETECTED: Only ${rightSideCount} right/center-right sources. Triggering gap-fill search...`);
+
+      const groundedResults = await geminiGroundedSearch(neutralQuery);
+
+      if (groundedResults.length > 0) {
+        // Merge with deduplication by domain
+        const existingDomains = new Set(qualityFiltered.map(r => r.domain));
+        const newGroundedResults = groundedResults.filter(r => !existingDomains.has(r.domain));
+
+        console.log(`[GeminiGrounded] Adding ${newGroundedResults.length} new sources (${groundedResults.length} total, ${groundedResults.length - newGroundedResults.length} duplicates)`);
+
+        qualityFiltered = [...qualityFiltered, ...newGroundedResults];
+
+        // Re-count to verify improvement
+        const updatedCounts = countPoliticalLean5(qualityFiltered);
+        const newRightSideCount = updatedCounts.right + updatedCounts.centerRight;
+        console.log(`[GeminiGrounded] Updated right-side count: ${rightSideCount} -> ${newRightSideCount}`);
+      }
+    } else {
+      console.log(`[GeminiGrounded] Right-side coverage adequate (${rightSideCount} sources). Skipping gap-fill.`);
+    }
 
     // Diversify by source type using round-robin
     const diverseResults = diversifyResults(qualityFiltered, 15);
