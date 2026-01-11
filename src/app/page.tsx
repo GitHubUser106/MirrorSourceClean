@@ -76,13 +76,55 @@ const getDailyStory = () => {
   return FEATURED_STORIES[dayIndex % FEATURED_STORIES.length];
 };
 
-function parseMarkdownBold(text: string, variant: 'summary' | 'intel' = 'summary'): React.ReactNode[] {
+// Parse markdown bold and optionally convert source names to clickable links
+function parseMarkdownBold(
+  text: string,
+  variant: 'summary' | 'intel' = 'summary',
+  sources?: GroundingSource[]
+): React.ReactNode[] {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return parts.map((part, index) => {
     if (part.startsWith('**') && part.endsWith('**')) {
+      const boldText = part.slice(2, -2);
+
+      // If sources provided, try to match and create a link
+      if (sources && sources.length > 0) {
+        const matchedSource = sources.find(s => {
+          const displayName = s.displayName.toLowerCase();
+          const boldLower = boldText.toLowerCase();
+          // Match exact name, or common variations
+          return displayName === boldLower ||
+                 displayName.includes(boldLower) ||
+                 boldLower.includes(displayName) ||
+                 // Handle abbreviations like "NYT" for "New York Times"
+                 s.sourceDomain.toLowerCase().replace(/\.(com|org|net|co\.uk)$/, '').includes(boldLower.replace(/\s+/g, ''));
+        });
+
+        if (matchedSource) {
+          return (
+            <a
+              key={index}
+              href={matchedSource.uri}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`font-semibold underline hover:no-underline transition-colors inline-flex items-center gap-0.5 ${
+                variant === 'intel'
+                  ? 'text-orange-800 hover:text-orange-900'
+                  : 'text-slate-900 hover:text-blue-700'
+              }`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {boldText}
+              <ExternalLink className="w-3 h-3 inline" />
+            </a>
+          );
+        }
+      }
+
+      // Default: render as bold text
       return (
         <strong key={index} className={variant === 'summary' ? "font-semibold text-slate-900" : "font-semibold"}>
-          {part.slice(2, -2)}
+          {boldText}
         </strong>
       );
     }
@@ -1405,7 +1447,7 @@ function HomeContent() {
                           {keyDifferences.map((diff, idx) => (
                             <li key={idx} className="flex items-start gap-2 text-sm md:text-base text-orange-700">
                               <AlertTriangle className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
-                              <span><span className="font-medium text-orange-800">{diff.label}:</span> {parseMarkdownBold(diff.value, 'intel')}</span>
+                              <span><span className="font-medium text-orange-800">{diff.label}:</span> {parseMarkdownBold(diff.value, 'intel', results)}</span>
                             </li>
                           ))}
                         </ul>
