@@ -946,3 +946,88 @@ if (!sourceInfo.displayName || sourceInfo.displayName === domain.toUpperCase()) 
 **Commit:** `a3e141c`
 
 ---
+
+## E10b: Symmetric Left-Side Gap-Fill
+
+**Date:** 2026-01-11
+**Hypothesis:** H3 - CSE Index Bias (symmetric extension)
+**Status:** Complete - SUCCESS
+
+### Objective
+
+Extend gap-targeted Gemini grounded search to work symmetrically for left-side gaps, not just right-side.
+
+### Background
+
+Production data revealed center-heavy distribution on non-political stories:
+
+| Story | L+CL | Center | CR+R |
+|-------|------|--------|------|
+| WSJ Housing | 1 | 11 | 4 |
+| DW Berlin | 1 | 11 | 3 |
+
+Right-side gap-fill (E10) wasn't triggering because CR+R >= 2. But left-side (L+CL = 1) was thin.
+
+### Implementation
+
+**Added left-side sites:**
+```typescript
+const LEFT_GROUNDED_SITES = [
+  'theintercept.com',
+  'jacobin.com',
+  'commondreams.org',
+  'truthout.org',
+  'currentaffairs.org',
+  'prospect.org',      // The American Prospect
+  'thenation.com',
+  'motherjones.com',
+];
+```
+
+**Made geminiGroundedSearch() symmetric:**
+```typescript
+type GapSide = 'right' | 'left';
+
+async function geminiGroundedSearch(keywords: string, side: GapSide) {
+  const sites = side === 'right' ? RIGHT_GROUNDED_SITES : LEFT_GROUNDED_SITES;
+  // ... rest of function
+}
+```
+
+**Added left-side gap detection:**
+```typescript
+if (leftSideCount < 2) {
+  console.log(`[GeminiGrounded] LEFT-SIDE GAP DETECTED...`);
+  const groundedResults = await geminiGroundedSearch(neutralQuery, 'left');
+  // ... merge with deduplication
+}
+```
+
+### Test Results
+
+| Query | L+CL Before | Gap-Fill | L+CL After |
+|-------|-------------|----------|------------|
+| Berlin power grid | 4 | Skipped ✓ | 4 |
+| Housing derivatives | 0 | Triggered ✓ | 0 (no results) |
+
+Gap-fill correctly triggers when L+CL < 2. The housing query returned 0 results because progressive outlets don't cover niche finance - expected behavior.
+
+### Why Symmetric Gap-Fill Matters
+
+1. **Berlin story context:** Far-left group claimed responsibility for infrastructure attack. Left-leaning outlets might have interesting framing on domestic extremism.
+
+2. **Housing affordability:** WSJ covered market mechanics, but outlets like The American Prospect might cover inequality angles.
+
+3. **Trust building:** If MirrorSource only gap-fills right-side, it could appear biased. Symmetric gap-filling demonstrates commitment to balanced discovery.
+
+### Conclusion
+
+**E10b SUCCESSFUL** - Symmetric left-side gap-fill implemented.
+
+**Combined with E10:** Gap-fill now works in both directions:
+- Right: CR+R < 2 → search dailywire, freebeacon, etc.
+- Left: L+CL < 2 → search theintercept, jacobin, etc.
+
+**Commit:** `40f88a9`
+
+---

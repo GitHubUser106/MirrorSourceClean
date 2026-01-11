@@ -70,3 +70,22 @@ Entry Format:
 **Time:** ~2 hours
 
 ---
+
+## 2026-01-11 | TD-004 | Symmetric Left-Side Gap-Fill (E10b)
+
+**Uncertainty:** Does the gap-fill mechanism need to work in both directions to maintain credibility and catch all coverage gaps?
+
+**Hypothesis:** Production data showed center-heavy distributions with L+CL=1 on business/international stories. Symmetric left-side gap-fill using progressive outlets (theintercept, jacobin, commondreams, etc.) would complete the balanced discovery system.
+
+**Approach:**
+1. Added LEFT_GROUNDED_SITES array with 8 progressive outlets
+2. Made geminiGroundedSearch() accept 'left' | 'right' parameter
+3. Added parallel gap detection: if L+CL < 2, trigger left gap-fill
+
+**Outcome:** SUCCESS - Left gap-fill correctly triggers on center-heavy stories. Housing derivatives query triggered gap-fill (L+CL=0) but returned 0 results - expected since progressive outlets don't cover niche finance. Berlin story had adequate left coverage (L+CL=4), so correctly skipped.
+
+**Commits:** 40f88a9
+
+**Time:** ~30 minutes
+
+---
