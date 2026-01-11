@@ -334,7 +334,7 @@ function CoverageDistributionChart({
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg inline-flex items-center gap-2 flex-wrap">
           <span className="text-blue-600 font-medium text-sm">📍 Your article:</span>
           <span className="font-semibold text-slate-800">{inputSourceName}</span>
-          <span className={`text-xs px-2 py-0.5 rounded font-medium ${LEAN_COLORS[dist.inputLean].bg} ${LEAN_COLORS[dist.inputLean].text}`}>
+          <span className={`text-xs px-2 py-0.5 rounded font-medium ${LEAN_COLORS[dist.inputLean].headerBg} ${LEAN_COLORS[dist.inputLean].headerText}`}>
             {LEAN_LABELS[dist.inputLean]}
           </span>
         </div>
@@ -1502,7 +1502,7 @@ function HomeContent() {
                     <h2 className="text-xl md:text-2xl font-bold text-slate-900">Source Analysis</h2>
                     <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">{results.length} sources</span>
                     {selectedBias && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${LEAN_COLORS[selectedBias].bg} ${LEAN_COLORS[selectedBias].text}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${LEAN_COLORS[selectedBias].headerBg} ${LEAN_COLORS[selectedBias].headerText}`}>
                         Showing: {LEAN_LABELS[selectedBias]}
                       </span>
                     )}

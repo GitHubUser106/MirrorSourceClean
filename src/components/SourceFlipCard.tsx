@@ -136,7 +136,7 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
                 {source.countryCode === 'US' ? '🇺🇸' : source.countryCode === 'GB' ? '🇬🇧' : source.countryCode === 'CA' ? '🇨🇦' : '🌍'}
               </span>
             )}
-            <span className={`text-xs px-2 py-0.5 rounded font-medium ${leanColors.bg} ${leanColors.text}`}>
+            <span className={`text-xs px-2 py-0.5 rounded font-medium ${leanColors.headerBg} ${leanColors.headerText}`}>
               {leanLabel}
             </span>
             <span className={`text-xs px-2 py-0.5 rounded font-medium ${ownershipColors.bg} ${ownershipColors.text}`}>
