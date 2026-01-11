@@ -216,7 +216,12 @@ function matchRSSByKeywords(items: RSSItem[], keywords: string[]): RSSItem[] {
     .map(m => m.item);
 }
 
-async function fetchAndFilterRSS(keywords: string[]): Promise<CSEResult[]> {
+interface RSSFetchResult {
+  matched: CSEResult[];
+  fallback: CSEResult[];  // Top item from each feed, even if no keyword match
+}
+
+async function fetchAndFilterRSS(keywords: string[]): Promise<RSSFetchResult> {
   const startTime = Date.now();
   console.log(`[RSS] Fetching ${RSS_GAP_FEEDS.length} gap feeds with keywords: ${keywords.slice(0, 5).join(', ')}...`);
 
@@ -226,24 +231,40 @@ async function fetchAndFilterRSS(keywords: string[]): Promise<CSEResult[]> {
   );
   const feedResults = await Promise.all(feedPromises);
 
-  // Flatten and match
+  // Collect fallbacks (most recent item from each feed) BEFORE flattening
+  const fallbackItems: CSEResult[] = [];
+  for (let i = 0; i < feedResults.length; i++) {
+    const items = feedResults[i];
+    if (items.length > 0) {
+      fallbackItems.push({
+        url: items[0].link,
+        title: items[0].title,
+        snippet: items[0].description,
+        domain: items[0].domain,
+        source: 'brave' as const,
+      });
+    }
+  }
+
+  // Flatten and match by keywords
   const allItems = feedResults.flat();
   const matched = matchRSSByKeywords(allItems, keywords);
 
-  // Convert to CSEResult format
-  const results: CSEResult[] = matched.map(item => ({
+  // Convert matched to CSEResult format
+  const matchedResults: CSEResult[] = matched.map(item => ({
     url: item.link,
     title: item.title,
     snippet: item.description,
     domain: item.domain,
-    source: 'brave' as const, // Mark as brave for compatibility
+    source: 'brave' as const,
   }));
 
-  console.log(`[RSS] Fetched ${allItems.length} items, matched ${results.length} in ${Date.now() - startTime}ms`);
-  if (results.length > 0) {
-    console.log(`[RSS] Matched domains: ${results.map(r => r.domain).join(', ')}`);
+  console.log(`[RSS] Fetched ${allItems.length} items, matched ${matchedResults.length}, fallbacks ${fallbackItems.length} in ${Date.now() - startTime}ms`);
+  if (matchedResults.length > 0) {
+    console.log(`[RSS] Matched domains: ${matchedResults.map(r => r.domain).join(', ')}`);
   }
-  return results;
+
+  return { matched: matchedResults, fallback: fallbackItems };
 }
 
 export async function OPTIONS() {
@@ -1517,14 +1538,29 @@ export async function POST(req: NextRequest) {
     // - LEFT/CENTER: Brave with original query (their framing matches)
     // - INDEXED_RIGHT: Brave with neutral query (for fox, federalist, etc.)
     // - RSS_GAP: Direct RSS fetch for dailywire, breitbart, nypost (not in Brave index)
-    const [leftResults, centerResults, rightResults, rssResults] = await Promise.all([
+    const [leftResults, centerResults, rightResults, rssData] = await Promise.all([
       searchWithBrave(`${searchQuery} (${leftFilters})`),
       searchWithBrave(`${searchQuery} (${centerFilters})`),
       searchWithBrave(`${neutralQuery} (${indexedRightFilters})`),
       fetchAndFilterRSS(neutralKeywords),
     ]);
 
-    console.log(`[QuadQuery] Results - Left/CL: ${leftResults.length}, Center: ${centerResults.length}, Indexed Right: ${rightResults.length}, RSS Gap: ${rssResults.length}`);
+    // E9: Force RSS fallback when RSS keyword matching is weak
+    // Even if Brave returns results, they often get filtered out
+    // So we trigger fallback based on RSS match count, not Brave count
+    let rssResults = rssData.matched;
+
+    // If RSS matched < 2 unique domains, add fallback articles
+    const matchedDomains = new Set(rssResults.map(r => r.domain));
+    if (matchedDomains.size < 2) {
+      console.log(`[RSS] Only ${matchedDomains.size} unique domains matched, adding fallbacks`);
+      // Add fallbacks that aren't already in matched (by domain)
+      const fallbacksToAdd = rssData.fallback.filter(f => !matchedDomains.has(f.domain));
+      rssResults = [...rssResults, ...fallbacksToAdd];
+      console.log(`[RSS] Added ${fallbacksToAdd.length} fallback articles: ${fallbacksToAdd.map(f => f.domain).join(', ')}`);
+    }
+
+    console.log(`[QuadQuery] Results - Left/CL: ${leftResults.length}, Center: ${centerResults.length}, Indexed Right: ${rightResults.length}, RSS: ${rssResults.length}`);
 
     // Merge all results (Brave + RSS)
     const allResults = [...leftResults, ...centerResults, ...rightResults, ...rssResults];
