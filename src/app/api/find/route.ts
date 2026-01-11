@@ -135,7 +135,7 @@ interface RSSItem {
 
 async function fetchRSSFeed(feedUrl: string, domain: string): Promise<RSSItem[]> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
+  const timeout = setTimeout(() => controller.abort(), 10000); // E9b: Increased from 5s to 10s for slow feeds
 
   try {
     const response = await fetch(feedUrl, {
@@ -181,7 +181,7 @@ async function fetchRSSFeed(feedUrl: string, domain: string): Promise<RSSItem[]>
   }
 }
 
-function matchRSSByKeywords(items: RSSItem[], keywords: string[]): RSSItem[] {
+function matchRSSByKeywords(items: RSSItem[], keywords: string[], debug = false): RSSItem[] {
   const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'dare', 'ought', 'used', 'this', 'that', 'these', 'those', 'what', 'which', 'who', 'whom', 'whose', 'where', 'when', 'why', 'how', 'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'also', 'now', 'here', 'there', 'then', 'once', 'its', 'about', 'after', 'says', 'new', 'into', 'over']);
 
   // Filter to meaningful keywords
@@ -189,33 +189,73 @@ function matchRSSByKeywords(items: RSSItem[], keywords: string[]): RSSItem[] {
     .map(k => k.toLowerCase().trim())
     .filter(k => k.length > 2 && !stopWords.has(k));
 
+  console.log(`[RSS-DEBUG] Meaningful keywords (${meaningfulKeywords.length}): ${meaningfulKeywords.join(', ')}`);
+
   if (meaningfulKeywords.length === 0) return [];
 
-  const matches: { item: RSSItem; score: number }[] = [];
+  const matches: { item: RSSItem; score: number; matchedKws: string[] }[] = [];
+
+  // Group items by domain for logging
+  const itemsByDomain: Record<string, RSSItem[]> = {};
+  for (const item of items) {
+    if (!itemsByDomain[item.domain]) itemsByDomain[item.domain] = [];
+    itemsByDomain[item.domain].push(item);
+  }
+
+  // Log first 3 items from each feed
+  for (const [domain, domainItems] of Object.entries(itemsByDomain)) {
+    console.log(`[RSS-DEBUG] ${domain} feed (${domainItems.length} items):`);
+    domainItems.slice(0, 3).forEach((item, i) => {
+      console.log(`[RSS-DEBUG]   ${i + 1}. "${item.title.substring(0, 60)}..."`);
+    });
+  }
 
   for (const item of items) {
     const searchText = (item.title + ' ' + item.description).toLowerCase();
     let score = 0;
+    const matchedKws: string[] = [];
 
     for (const kw of meaningfulKeywords) {
       if (searchText.includes(kw)) {
         score++;
+        matchedKws.push(kw);
       }
     }
 
-    // Require at least 2 keyword matches or 30% of keywords (more lenient for RSS)
-    // For short keyword lists (3-4), require just 2 matches
-    const threshold = meaningfulKeywords.length <= 4 ? 2 : Math.max(2, Math.floor(meaningfulKeywords.length * 0.3));
+    // E9b FIX: Require just 1 keyword match for RSS (we're already searching specific political feeds)
+    // Previous threshold of 2+ was too strict - "Minnesota" vs "Minneapolis" caused failures
+    const threshold = 1;
+
+    // Log items that have at least 1 match (potential near-misses)
+    if (score > 0) {
+      const passedStr = score >= threshold ? '✓ PASS' : '✗ FAIL';
+      console.log(`[RSS-DEBUG] ${item.domain}: score=${score}/${threshold} ${passedStr} matched=[${matchedKws.join(',')}] "${item.title.substring(0, 40)}..."`);
+    }
+
     if (score >= threshold) {
-      matches.push({ item, score });
+      matches.push({ item, score, matchedKws });
     }
   }
 
-  // Sort by score descending, return top 5 per feed
-  return matches
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5)
-    .map(m => m.item);
+  console.log(`[RSS-DEBUG] Total matches: ${matches.length}`);
+
+  // E9b FIX: Return top 2 per DOMAIN to ensure diversity, not just top 5 overall
+  // Previous bug: all top 5 were from one domain (dailywire), missing nypost/washingtonexaminer
+  const matchesByDomain: Record<string, typeof matches> = {};
+  for (const m of matches) {
+    if (!matchesByDomain[m.item.domain]) matchesByDomain[m.item.domain] = [];
+    matchesByDomain[m.item.domain].push(m);
+  }
+
+  const result: RSSItem[] = [];
+  for (const [domain, domainMatches] of Object.entries(matchesByDomain)) {
+    // Sort by score desc, take top 2 per domain
+    const topTwo = domainMatches.sort((a, b) => b.score - a.score).slice(0, 2);
+    console.log(`[RSS-DEBUG] ${domain}: returning ${topTwo.length} best matches`);
+    result.push(...topTwo.map(m => m.item));
+  }
+
+  return result;
 }
 
 interface RSSFetchResult {
@@ -515,7 +555,7 @@ Keywords:`;
       // If extraction is too short, supplement with key terms from original title
       if (wordCount < 4) {
         // Extract key entities: known acronyms and longer nouns
-        const knownEntities = new Set(['ice', 'fbi', 'dhs', 'cdc', 'doj', 'epa', 'cia', 'nsa', 'atf', 'dea', 'hhs', 'usda', 'trump', 'biden', 'shooting', 'raid', 'arrest', 'immigration', 'border', 'tariffs', 'iran', 'protest', 'minnesota', 'minneapolis']);
+        const knownEntities = new Set(['ice', 'fbi', 'dhs', 'cdc', 'doj', 'epa', 'cia', 'nsa', 'atf', 'dea', 'hhs', 'usda', 'trump', 'biden', 'shooting', 'raid', 'arrest', 'immigration', 'border', 'tariffs', 'iran', 'protest', 'minnesota', 'minneapolis', 'renee', 'good', 'portland', 'protests']);
         const stopWords = new Set(['says', 'say', 'cant', 'wont', 'after', 'they', 'that', 'this', 'with', 'from', 'have', 'will', 'would', 'could', 'their', 'about', 'been', 'being', 'were', 'fatal', 'jointly', 'work', 'access', 'evidence', 'officials']);
         const words = title.toLowerCase().split(/[\s\-]+/).filter(w => w.length > 0);
         console.log(`[QueryNeutral] Title words: ${words.slice(0, 15).join(', ')}`);
