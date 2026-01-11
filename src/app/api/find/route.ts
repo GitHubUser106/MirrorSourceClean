@@ -103,6 +103,149 @@ function setBraveCached(query: string, results: any[]): void {
   console.log('[BraveCache] SET:', query.substring(0, 50), `(${results.length} results)`);
 }
 
+// =============================================================================
+// RSS FEED AGGREGATION - For domains poorly indexed by Brave (SR&ED E7/E8)
+// Fetches RSS feeds in parallel, filters by keyword matching
+// =============================================================================
+const RSS_GAP_FEEDS = [
+  { domain: 'dailywire.com', url: 'https://www.dailywire.com/feeds/rss.xml', lean: 'right' as const },
+  { domain: 'breitbart.com', url: 'http://feeds.feedburner.com/breitbart', lean: 'right' as const },
+  { domain: 'nypost.com', url: 'https://nypost.com/feed/', lean: 'center-right' as const },
+];
+
+// Domains with confirmed Brave Search coverage (from E7 testing)
+const INDEXED_RIGHT_DOMAINS = [
+  'foxnews.com',
+  'thefederalist.com',
+  'washingtonexaminer.com',
+  'washingtontimes.com',
+  'townhall.com',
+  'thefp.com',
+  'nationalreview.com',
+];
+
+interface RSSItem {
+  title: string;
+  link: string;
+  description: string;
+  domain: string;
+}
+
+async function fetchRSSFeed(feedUrl: string, domain: string): Promise<RSSItem[]> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const response = await fetch(feedUrl, {
+      headers: { 'User-Agent': 'MirrorSource/1.0' },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      console.log(`[RSS] ${domain} returned ${response.status}`);
+      return [];
+    }
+
+    const xml = await response.text();
+    const items: RSSItem[] = [];
+    const itemMatches = xml.match(/<item>[\s\S]*?<\/item>/gi) || [];
+
+    for (const itemXml of itemMatches) {
+      const title = (itemXml.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i) || [])[1] || '';
+      const link = (itemXml.match(/<link>([\s\S]*?)<\/link>/i) || [])[1] || '';
+      const desc = (itemXml.match(/<description>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/i) || [])[1] || '';
+      const content = (itemXml.match(/<content:encoded>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/content:encoded>/i) || [])[1] || '';
+
+      // Clean HTML entities and tags
+      const cleanTitle = title.replace(/<!\[CDATA\[|\]\]>/g, '').replace(/&#\d+;/g, ' ').replace(/<[^>]*>/g, '').trim();
+      const cleanDesc = (desc + ' ' + content).replace(/<[^>]*>/g, ' ').replace(/&#\d+;/g, ' ').replace(/\s+/g, ' ').trim();
+
+      if (cleanTitle && link) {
+        items.push({
+          title: cleanTitle,
+          link: link.trim(),
+          description: cleanDesc.substring(0, 500),
+          domain,
+        });
+      }
+    }
+
+    return items;
+  } catch (error: any) {
+    clearTimeout(timeout);
+    console.log(`[RSS] ${domain} fetch failed:`, error.message);
+    return [];
+  }
+}
+
+function matchRSSByKeywords(items: RSSItem[], keywords: string[]): RSSItem[] {
+  const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'dare', 'ought', 'used', 'this', 'that', 'these', 'those', 'what', 'which', 'who', 'whom', 'whose', 'where', 'when', 'why', 'how', 'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'also', 'now', 'here', 'there', 'then', 'once', 'its', 'about', 'after', 'says', 'new', 'into', 'over']);
+
+  // Filter to meaningful keywords
+  const meaningfulKeywords = keywords
+    .map(k => k.toLowerCase().trim())
+    .filter(k => k.length > 2 && !stopWords.has(k));
+
+  if (meaningfulKeywords.length === 0) return [];
+
+  const matches: { item: RSSItem; score: number }[] = [];
+
+  for (const item of items) {
+    const searchText = (item.title + ' ' + item.description).toLowerCase();
+    let score = 0;
+
+    for (const kw of meaningfulKeywords) {
+      if (searchText.includes(kw)) {
+        score++;
+      }
+    }
+
+    // Require at least 2 keyword matches or 30% of keywords (more lenient for RSS)
+    // For short keyword lists (3-4), require just 2 matches
+    const threshold = meaningfulKeywords.length <= 4 ? 2 : Math.max(2, Math.floor(meaningfulKeywords.length * 0.3));
+    if (score >= threshold) {
+      matches.push({ item, score });
+    }
+  }
+
+  // Sort by score descending, return top 5 per feed
+  return matches
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map(m => m.item);
+}
+
+async function fetchAndFilterRSS(keywords: string[]): Promise<CSEResult[]> {
+  const startTime = Date.now();
+  console.log(`[RSS] Fetching ${RSS_GAP_FEEDS.length} gap feeds with keywords: ${keywords.slice(0, 5).join(', ')}...`);
+
+  // Fetch all feeds in parallel
+  const feedPromises = RSS_GAP_FEEDS.map(feed =>
+    fetchRSSFeed(feed.url, feed.domain)
+  );
+  const feedResults = await Promise.all(feedPromises);
+
+  // Flatten and match
+  const allItems = feedResults.flat();
+  const matched = matchRSSByKeywords(allItems, keywords);
+
+  // Convert to CSEResult format
+  const results: CSEResult[] = matched.map(item => ({
+    url: item.link,
+    title: item.title,
+    snippet: item.description,
+    domain: item.domain,
+    source: 'brave' as const, // Mark as brave for compatibility
+  }));
+
+  console.log(`[RSS] Fetched ${allItems.length} items, matched ${results.length} in ${Date.now() - startTime}ms`);
+  if (results.length > 0) {
+    console.log(`[RSS] Matched domains: ${results.map(r => r.domain).join(', ')}`);
+  }
+  return results;
+}
+
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
@@ -310,11 +453,22 @@ async function fetchArticleTitle(url: string): Promise<string | null> {
 // SR&ED E6: Article titles carry source-specific framing that biases right-side results
 // =============================================================================
 async function extractNeutralKeywords(title: string): Promise<string> {
-  const prompt = `Extract ONLY the core factual entities from this news headline. Return 3-8 neutral keywords: people names, organization names (ICE, FBI, etc), places, key events. NO adjectives, NO framing language, NO opinion words.
+  const prompt = `Extract the key factual entities from this news headline for a search query.
+
+MUST INCLUDE:
+- All organization acronyms (ICE, FBI, DHS, CDC, etc.)
+- All location names (cities, states, countries)
+- All person names
+- Key event nouns (shooting, arrest, raid, etc.)
+
+DO NOT INCLUDE:
+- Adjectives (fatal, massive, controversial)
+- Framing words (slams, destroys, admits)
+- Common verbs (says, reports, claims)
 
 Headline: "${title}"
 
-Return ONLY keywords separated by spaces. Example format: ICE Minneapolis shooting Minnesota federal agents
+Return 4-10 keywords separated by spaces. Be thorough - include ALL entities.
 
 Keywords:`;
 
@@ -333,15 +487,49 @@ Keywords:`;
 
     if (text && text.trim().length > 5) {
       const neutralized = text.trim().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+      const wordCount = neutralized.split(/\s+/).length;
+
+      // If extraction is too short, supplement with key terms from original title
+      if (wordCount < 4) {
+        // Extract key entities: known acronyms and longer nouns
+        const knownEntities = new Set(['ice', 'fbi', 'dhs', 'cdc', 'doj', 'epa', 'cia', 'nsa', 'atf', 'dea', 'hhs', 'usda', 'trump', 'biden', 'shooting', 'raid', 'arrest', 'immigration', 'border', 'tariffs', 'iran', 'protest', 'minnesota', 'minneapolis']);
+        const stopWords = new Set(['says', 'say', 'cant', 'wont', 'after', 'they', 'that', 'this', 'with', 'from', 'have', 'will', 'would', 'could', 'their', 'about', 'been', 'being', 'were', 'fatal', 'jointly', 'work', 'access', 'evidence', 'officials']);
+        const words = title.toLowerCase().split(/[\s\-]+/).filter(w => w.length > 0);
+        console.log(`[QueryNeutral] Title words: ${words.slice(0, 15).join(', ')}`);
+        const keyTerms = words.filter(w =>
+          knownEntities.has(w) ||
+          (w.length > 5 && !stopWords.has(w) && /^[a-z]+$/.test(w))
+        );
+        console.log(`[QueryNeutral] Key terms found: ${keyTerms.join(', ')}`);
+        const supplemented = neutralized + ' ' + keyTerms.slice(0, 6).join(' ');
+        console.log(`[QueryNeutral] Supplemented query: "${supplemented}"`);
+        return supplemented.trim();
+      }
+
       console.log(`[QueryNeutral] Original: "${title.substring(0, 60)}..."`);
-      console.log(`[QueryNeutral] Extracted: "${neutralized}"`);
+      console.log(`[QueryNeutral] Extracted (${wordCount} words): "${neutralized}"`);
       return neutralized;
     }
   } catch (error) {
     console.log(`[QueryNeutral] Extraction failed, using original:`, error);
   }
 
-  // Fallback: return original title
+  // Fallback: extract key terms from title (works with lowercase)
+  const knownAcronyms = ['ice', 'fbi', 'dhs', 'cdc', 'doj', 'epa', 'cia', 'nsa', 'atf', 'dea', 'hhs', 'usda', 'trump', 'biden'];
+  const stopWords = new Set(['says', 'say', 'cant', 'wont', 'after', 'they', 'that', 'this', 'with', 'from', 'have', 'will', 'would', 'could', 'their', 'about', 'been', 'being', 'were', 'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'has', 'his', 'how', 'its', 'may', 'new', 'now', 'old', 'see', 'way', 'who', 'did', 'get', 'got', 'him', 'let', 'put', 'too', 'use']);
+
+  const words = title.toLowerCase().split(/\s+/);
+  const keyTerms = words.filter(w =>
+    (knownAcronyms.includes(w)) ||
+    (w.length > 4 && !stopWords.has(w) && /^[a-z]+$/.test(w))
+  );
+
+  if (keyTerms.length >= 3) {
+    const fallback = Array.from(new Set(keyTerms)).slice(0, 8).join(' ');
+    console.log(`[QueryNeutral] Using fallback extraction: "${fallback}"`);
+    return fallback;
+  }
+
   return title;
 }
 
@@ -381,7 +569,7 @@ function extractKeywordsFromUrl(url: string): string | null {
       .split(/[-_]/)
       .filter(w => w.length > 2)
       .filter(w => !noiseWords.has(w))
-      .slice(0, 6);
+      .slice(0, 12);  // Increased from 6 to capture more keywords like ICE, FBI
 
     return words.length >= 2 ? words.join(' ') : null;
   } catch {
@@ -581,6 +769,16 @@ function filterQualityResults(results: CSEResult[], searchQuery: string): CSERes
       const path = new URL(result.url).pathname;
       if (path === '/' || path === '') return { result, score: 0, passed: false };
     } catch { return { result, score: 0, passed: false }; }
+
+    // RSS results from gap feeds already passed keyword matching - be lenient
+    const rssGapDomains = ['dailywire.com', 'breitbart.com', 'nypost.com'];
+    const isRSSResult = rssGapDomains.some(d => (result.domain || '').includes(d));
+    if (isRSSResult) {
+      // RSS results just need any keyword match to pass
+      const text = ((result.title || '') + ' ' + (result.snippet || '')).toLowerCase();
+      const hasAnyMatch = queryWords.some(w => text.includes(w));
+      return { result, score: hasAnyMatch ? 10 : 0, passed: hasAnyMatch };
+    }
 
     const text = ((result.title || '') + ' ' + (result.snippet || '')).toLowerCase();
 
@@ -1293,58 +1491,63 @@ export async function POST(req: NextRequest) {
     const { info: usageInfo, cookieValue } = await incrementUsage(req);
 
     // ==========================================================================
-    // TRIPLE-QUERY BALANCED SEARCH: Parallel queries by political lean
-    // Forces inclusion of right-leaning sources that single query misses
-    // SR&ED E5: Addresses Brave Search API systematic bias (H3 confirmed)
-    // SR&ED E6 (H2 Fix): Use neutral query for RIGHT_DOMAINS to overcome framing bias
+    // QUAD-QUERY HYBRID SEARCH: Brave + RSS for complete spectrum coverage
+    // SR&ED E5: Triple-query addresses Brave API systematic bias (H3)
+    // SR&ED E6: Neutral query for right-side overcomes framing bias (H2)
+    // SR&ED E8: RSS feeds for gap domains (dailywire, breitbart, nypost) not indexed by Brave
     // ==========================================================================
 
     const leftFilters = LEFT_DOMAINS.map(d => `site:${d}`).join(' OR ');
     const centerFilters = CENTER_DOMAINS.map(d => `site:${d}`).join(' OR ');
-    const rightFilters = RIGHT_DOMAINS.map(d => `site:${d}`).join(' OR ');
+    // Use only confirmed-indexed domains for Brave right-side query (E7 finding)
+    const indexedRightFilters = INDEXED_RIGHT_DOMAINS.map(d => `site:${d}`).join(' OR ');
 
     // H2 FIX: Extract neutral keywords for right-side query to overcome framing mismatch
     // Left-framed titles ("fatal ICE shooting") don't match right-framed coverage ("ICE crackdown")
     const neutralQuery = await extractNeutralKeywords(searchQuery);
+    const neutralKeywords = neutralQuery.split(/\s+/).filter(k => k.length > 2);
 
-    console.log(`[TripleQuery] Running 3 parallel queries by political lean...`);
-    console.log(`[TripleQuery] Left/CL: ${LEFT_DOMAINS.length} domains, Center: ${CENTER_DOMAINS.length} domains, Right/CR: ${RIGHT_DOMAINS.length} domains`);
-    console.log(`[TripleQuery] Original query: "${searchQuery.substring(0, 60)}..."`);
-    console.log(`[TripleQuery] Neutral query (for right): "${neutralQuery.substring(0, 60)}..."`);
+    console.log(`[QuadQuery] Running 4 parallel queries (3 Brave + 1 RSS)...`);
+    console.log(`[QuadQuery] Left/CL: ${LEFT_DOMAINS.length} domains, Center: ${CENTER_DOMAINS.length} domains`);
+    console.log(`[QuadQuery] Indexed Right: ${INDEXED_RIGHT_DOMAINS.length} domains, RSS Gap: ${RSS_GAP_FEEDS.length} feeds`);
+    console.log(`[QuadQuery] Original query: "${searchQuery.substring(0, 60)}..."`);
+    console.log(`[QuadQuery] Neutral query: "${neutralQuery.substring(0, 60)}..."`);
 
-    // Run all 3 queries in parallel for same latency as single query
-    // LEFT/CENTER use original title (their framing matches)
-    // RIGHT uses neutralized query (overcomes framing mismatch - H2)
-    const [leftResults, centerResults, rightResults] = await Promise.all([
+    // Run all 4 queries in parallel:
+    // - LEFT/CENTER: Brave with original query (their framing matches)
+    // - INDEXED_RIGHT: Brave with neutral query (for fox, federalist, etc.)
+    // - RSS_GAP: Direct RSS fetch for dailywire, breitbart, nypost (not in Brave index)
+    const [leftResults, centerResults, rightResults, rssResults] = await Promise.all([
       searchWithBrave(`${searchQuery} (${leftFilters})`),
       searchWithBrave(`${searchQuery} (${centerFilters})`),
-      searchWithBrave(`${neutralQuery} (${rightFilters})`),
+      searchWithBrave(`${neutralQuery} (${indexedRightFilters})`),
+      fetchAndFilterRSS(neutralKeywords),
     ]);
 
-    console.log(`[TripleQuery] Results - Left/CL: ${leftResults.length}, Center: ${centerResults.length}, Right/CR: ${rightResults.length}`);
+    console.log(`[QuadQuery] Results - Left/CL: ${leftResults.length}, Center: ${centerResults.length}, Indexed Right: ${rightResults.length}, RSS Gap: ${rssResults.length}`);
 
-    // Merge all results
-    const allResults = [...leftResults, ...centerResults, ...rightResults];
+    // Merge all results (Brave + RSS)
+    const allResults = [...leftResults, ...centerResults, ...rightResults, ...rssResults];
 
-    // Deduplicate by domain
+    // Deduplicate by domain (RSS results may overlap with Brave)
     const seenDomains = new Set<string>();
     let qualityFiltered = allResults.filter(result => {
       if (!result.domain || seenDomains.has(result.domain)) return false;
       seenDomains.add(result.domain);
       return true;
     });
-    console.log(`[TripleQuery] After deduplication: ${qualityFiltered.length}`);
+    console.log(`[QuadQuery] After deduplication: ${qualityFiltered.length}`);
 
     // Apply quality filter
     qualityFiltered = filterQualityResults(qualityFiltered, searchQuery);
-    console.log(`[TripleQuery] After quality filter: ${qualityFiltered.length}`);
+    console.log(`[QuadQuery] After quality filter: ${qualityFiltered.length}`);
 
     // FALLBACK: If combined returns <10 results, run a broad search without site: filters
     if (qualityFiltered.length < 10) {
-      console.log(`[TripleQuery] Combined returned <10 results. Running fallback broad search...`);
+      console.log(`[QuadQuery] Combined returned <10 results. Running fallback broad search...`);
 
       const broadResults = await searchWithBrave(searchQuery);
-      console.log(`[TripleQuery] Fallback returned ${broadResults.length} results`);
+      console.log(`[QuadQuery] Fallback returned ${broadResults.length} results`);
 
       // Merge results, deduplicating by URL
       const existingUrls = new Set(qualityFiltered.map(r => r.url));
@@ -1352,7 +1555,7 @@ export async function POST(req: NextRequest) {
 
       // Apply quality filter to new results
       const newFiltered = filterQualityResults(newResults, searchQuery);
-      console.log(`[TripleQuery] Fallback added ${newFiltered.length} new results after quality filter`);
+      console.log(`[QuadQuery] Fallback added ${newFiltered.length} new results after quality filter`);
 
       qualityFiltered = [...qualityFiltered, ...newFiltered];
 
@@ -1363,7 +1566,7 @@ export async function POST(req: NextRequest) {
         finalDomains.add(result.domain);
         return true;
       });
-      console.log(`[TripleQuery] After merge and dedup: ${qualityFiltered.length}`);
+      console.log(`[QuadQuery] After merge and dedup: ${qualityFiltered.length}`);
     }
 
     // 5-category political lean counter (for logging)
