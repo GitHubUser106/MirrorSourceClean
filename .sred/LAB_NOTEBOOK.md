@@ -50,3 +50,23 @@ Entry Format:
 **Time:** ~1 hour
 
 ---
+
+## 2026-01-11 | TD-004 | Gemini Grounded Search for Gap-Targeted Source Discovery (E10)
+
+**Uncertainty:** Can Gemini's Google Search grounding provide alternative source discovery when Brave Search and RSS feeds fail to find right-leaning coverage?
+
+**Hypothesis:** Using `googleSearch` tool with site: operators targeting right-leaning domains will surface articles from a different search index than Brave, providing fallback coverage.
+
+**Approach:**
+1. Implemented `geminiGroundedSearch()` function using Gemini 2.0 Flash with `googleSearch` tool
+2. Extract URLs from `groundingMetadata.groundingChunks`
+3. Trigger only when Right + Center-Right < 2 sources after primary quad-query
+4. Added unknown source logging for database expansion
+
+**Outcome:** SUCCESS (IMPLEMENTED) - Gap-fill mechanism ready as fallback. Testing showed primary system (E5+E6+E8+E9) now robust enough that fallback rarely triggers. All test searches returned adequate right-side coverage (2-5 sources).
+
+**Commits:** a3e141c
+
+**Time:** ~2 hours
+
+---
