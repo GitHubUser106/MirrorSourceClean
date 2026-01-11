@@ -715,3 +715,119 @@ if (matchedDomains.size < 2) {
 **Commit:** `9872617`
 
 ---
+
+## E9b: RSS Matching Bug Fix - Domain Diversity & Threshold
+
+**Date:** 2026-01-10
+**Hypothesis:** H3 - CSE Index Bias (extended)
+**Status:** Complete - SUCCESS
+
+### Objective
+
+Debug and fix why right-leaning RSS feeds (Daily Wire, Breitbart, NY Post) weren't surfacing relevant ICE shooting articles despite confirmed feed content.
+
+### Background
+
+User reported that Center-Right was persistently 0 despite CR outlets actively covering the ICE story. Manual verification confirmed:
+- Daily Wire RSS contained: "LIVE UPDATES: As Protests Rage, New Video Footage Proves Renee Good Was 'Stalking' ICE"
+- Breitbart RSS contained: "Ellison: Leaving Aside Particulars of MN Shooting..."
+- NY Post RSS contained: "Renee Nicole Good seen 'dancing' as she stalked ICE..."
+
+Yet production returned off-topic articles (Bowen Yang celebrity news, America 250 celebration).
+
+### Diagnostic Process
+
+Added comprehensive debug logging to trace RSS pipeline:
+
+```typescript
+console.log(`[RSS-DEBUG] Meaningful keywords: ${meaningfulKeywords.join(', ')}`);
+console.log(`[RSS-DEBUG] ${domain} feed (${items.length} items):`);
+console.log(`[RSS-DEBUG] ${item.domain}: score=${score}/${threshold} ${passedStr}`);
+```
+
+### Root Causes Identified
+
+**Bug 1: Top-5-Overall Selection**
+```
+[RSS] Matched domains: dailywire.com, dailywire.com, dailywire.com, dailywire.com, dailywire.com
+```
+The matching function sorted by score descending and took top 5 overall. Daily Wire articles scored higher (2-3 keywords) than NY Post/Washington Examiner (1-2 keywords), so all 5 slots went to Daily Wire.
+
+**Bug 2: Threshold Too Strict**
+Keywords extracted: `Minnesota ICE FBI shooting investigation`
+Daily Wire article: "LIVE UPDATES: As Protests Rage... Renee Good Was 'Stalking' ICE"
+- `minnesota` → NO (article says "Minneapolis")
+- `ice` → YES
+- Score: 1, Threshold: 2 → FAIL
+
+**Bug 3: RSS Timeout Too Short**
+```
+[RSS] dailywire.com fetch failed: This operation was aborted
+```
+Daily Wire feed was timing out at 5 seconds.
+
+### Fix Implementation
+
+**Fix 1: Top 2 Per Domain (not top 5 overall)**
+```typescript
+// E9b FIX: Return top 2 per DOMAIN to ensure diversity
+const matchesByDomain: Record<string, typeof matches> = {};
+for (const m of matches) {
+  if (!matchesByDomain[m.item.domain]) matchesByDomain[m.item.domain] = [];
+  matchesByDomain[m.item.domain].push(m);
+}
+
+const result: RSSItem[] = [];
+for (const [domain, domainMatches] of Object.entries(matchesByDomain)) {
+  const topTwo = domainMatches.sort((a, b) => b.score - a.score).slice(0, 2);
+  result.push(...topTwo.map(m => m.item));
+}
+```
+
+**Fix 2: Lower Threshold to 1**
+```typescript
+// E9b FIX: Require just 1 keyword match for RSS
+// Previous threshold of 2+ was too strict - "Minnesota" vs "Minneapolis"
+const threshold = 1;
+```
+
+**Fix 3: Increase RSS Timeout**
+```typescript
+const timeout = setTimeout(() => controller.abort(), 10000); // Increased from 5s to 10s
+```
+
+### Results
+
+**Before E9b Fix:**
+```
+Center-Right: 0 (off-topic fallbacks: Bowen Yang, America 250)
+Right: 1-3 (mostly off-topic)
+```
+
+**After E9b Fix:**
+```
+Center-Right: 2 (NY Post: Monarca training, Washington Examiner)
+Right: 3 (Breitbart: Ellison MN Shooting, Fox News: ICE investigation, Daily Wire)
+```
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Right-side total | 1-3 | 5 |
+| Relevant articles | ~20% | ~80% |
+| Breitbart ICE story | Missing | ✓ Present |
+| Fox News ICE story | Missing | ✓ Present |
+
+### Key Learnings
+
+1. **Domain diversity > score optimization**: When aggregating from multiple feeds, ensure representation from each source rather than letting one high-volume source dominate.
+
+2. **Keyword matching is brittle across geography**: "Minnesota" (state) vs "Minneapolis" (city) caused false negatives. Single-keyword threshold is appropriate for pre-filtered political RSS feeds.
+
+3. **Timeout tuning matters**: 5 seconds is too aggressive for some RSS endpoints; 10 seconds provides reliability without significant latency impact (parallel execution).
+
+### Commits
+
+- `a036afc` - E9b: Politics-specific RSS feeds (nypost/news, add washingtonexaminer)
+- `5771435` - E9b fix: RSS matching bug - top 2 per domain, threshold=1, timeout=10s
+
+---

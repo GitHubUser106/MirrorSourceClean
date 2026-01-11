@@ -142,7 +142,7 @@ export const SOURCES: Source[] = [
     domain: 'reuters.com',
     name: 'Reuters',
     lean: 'center',
-    legacyType: 'public',
+    legacyType: 'family',  // Thomson family holds ~65% voting control
     displayName: 'REUTERS',
     sourceType: 'wire',
     countryCode: 'UK',
@@ -179,7 +179,7 @@ export const SOURCES: Source[] = [
     domain: 'pbs.org',
     name: 'PBS',
     lean: 'center-left',
-    legacyType: 'nonprofit',
+    legacyType: 'government',  // Public broadcaster with government funding via CPB
     displayName: 'PBS',
     sourceType: 'public-trust',
     countryCode: 'US',
@@ -517,7 +517,7 @@ export const SOURCES: Source[] = [
     domain: 'cnn.com',
     name: 'CNN',
     lean: 'center-left',  // AllSides
-    legacyType: 'public',
+    legacyType: 'corporate',  // Subsidiary of Warner Bros. Discovery
     displayName: 'CNN',
     sourceType: 'corporate',
     countryCode: 'US',
@@ -528,7 +528,7 @@ export const SOURCES: Source[] = [
     domain: 'foxnews.com',
     name: 'Fox News',
     lean: 'right',  // AllSides
-    legacyType: 'family',
+    legacyType: 'corporate',  // Subsidiary of Fox Corporation (Murdoch family controls parent)
     displayName: 'Fox News',
     sourceType: 'corporate',
     countryCode: 'US',
@@ -539,7 +539,7 @@ export const SOURCES: Source[] = [
     domain: 'nbcnews.com',
     name: 'NBC News',
     lean: 'center-left',  // AllSides
-    legacyType: 'public',
+    legacyType: 'corporate',  // Subsidiary of NBCUniversal/Comcast
     displayName: 'NBC NEWS',
     sourceType: 'corporate',
     countryCode: 'US',
@@ -550,7 +550,7 @@ export const SOURCES: Source[] = [
     domain: 'cbsnews.com',
     name: 'CBS News',
     lean: 'center-left',  // AllSides
-    legacyType: 'public',
+    legacyType: 'corporate',  // Subsidiary of Paramount Global
     displayName: 'CBS NEWS',
     sourceType: 'corporate',
     countryCode: 'US',
@@ -561,7 +561,7 @@ export const SOURCES: Source[] = [
     domain: 'abcnews.go.com',
     name: 'ABC News',
     lean: 'center-left',  // AllSides
-    legacyType: 'public',
+    legacyType: 'corporate',  // Subsidiary of The Walt Disney Company
     displayName: 'ABC NEWS',
     sourceType: 'corporate',
     countryCode: 'US',
@@ -572,7 +572,7 @@ export const SOURCES: Source[] = [
     domain: 'msnbc.com',
     name: 'MSNBC',
     lean: 'left',  // AllSides
-    legacyType: 'public',
+    legacyType: 'corporate',  // Subsidiary of NBCUniversal/Comcast
     displayName: 'MSNBC',
     sourceType: 'corporate',
     countryCode: 'US',
@@ -1330,7 +1330,7 @@ export const SOURCES: Source[] = [
     domain: 'wsj.com',
     name: 'Wall Street Journal',
     lean: 'center',  // AllSides (news section)
-    legacyType: 'family',
+    legacyType: 'corporate',  // Subsidiary of News Corp (Murdoch family controls parent)
     displayName: 'WALL STREET JOURNAL',
     sourceType: 'specialized',
     countryCode: 'US',
@@ -1341,7 +1341,7 @@ export const SOURCES: Source[] = [
     domain: 'cnbc.com',
     name: 'CNBC',
     lean: 'center',  // AllSides
-    legacyType: 'public',
+    legacyType: 'corporate',  // Subsidiary of NBCUniversal/Comcast
     displayName: 'CNBC',
     sourceType: 'specialized',
     countryCode: 'US',

@@ -9,36 +9,42 @@ import { getSourcesByLean, LEAN_COLORS, LEAN_LABELS, type PoliticalLean } from "
 // Get sources grouped by lean from single source of truth
 const sourcesByLean = getSourcesByLean();
 
-// Badge colors matching the app's taxonomy
+// Badge colors matching legacyType from sourceData.ts
 const badgeColors: Record<string, string> = {
-  Wire: "bg-blue-100 text-blue-700",
-  "Public-Trust": "bg-green-100 text-green-700",
-  "State-Funded": "bg-red-100 text-red-700",
-  Nonprofit: "bg-teal-100 text-teal-700",
-  Corporate: "bg-purple-100 text-purple-700",
-  National: "bg-yellow-100 text-yellow-700",
-  International: "bg-cyan-100 text-cyan-700",
-  Magazine: "bg-pink-100 text-pink-700",
-  Analysis: "bg-indigo-100 text-indigo-700",
-  Specialized: "bg-orange-100 text-orange-700",
-  Local: "bg-stone-100 text-stone-700",
+  // Ownership types (legacyType values)
+  nonprofit: "bg-teal-100 text-teal-700",
+  public: "bg-blue-100 text-blue-700",
+  family: "bg-amber-100 text-amber-700",
+  billionaire: "bg-orange-100 text-orange-700",
+  corporate: "bg-purple-100 text-purple-700",
+  government: "bg-red-100 text-red-700",
+  cooperative: "bg-green-100 text-green-700",
+  // Independent badge (separate from ownership)
   Independent: "bg-emerald-100 text-emerald-700",
 };
 
-// Badge descriptions
-const badgeDescriptions: Record<string, string> = {
-  Wire: "News agencies providing factual reporting to other outlets",
-  "Public-Trust": "Publicly funded with editorial independence charter",
-  "State-Funded": "Government funded with potential state interests",
-  Nonprofit: "Donor or foundation funded, not profit-driven",
-  Corporate: "Privately-owned media companies, often ad-supported",
-  National: "Major national newspapers and outlets",
-  International: "Non-US outlets offering global perspective",
-  Magazine: "Long-form journalism and in-depth analysis",
-  Analysis: "Think tanks, policy experts, and investigative outlets",
-  Specialized: "Industry-focused or financial news outlets",
-  Independent: "Creator-driven media, often crowdfunded or subscription-based",
+// Badge labels for display (transform legacyType to user-friendly labels)
+const badgeLabels: Record<string, string> = {
+  nonprofit: "Nonprofit",
+  public: "Public Co.",
+  family: "Family",
+  billionaire: "Billionaire-Owned",
+  corporate: "Corporate",
+  government: "State",
+  cooperative: "Co-op",
 };
+
+// Legend items with label, color key, and description
+const legendItems: Array<{ label: string; colorKey: string; description: string }> = [
+  { label: "Public Co.", colorKey: "public", description: "Publicly traded company listed on stock exchange" },
+  { label: "Family", colorKey: "family", description: "Family-owned or family-controlled, even if publicly traded" },
+  { label: "Corporate", colorKey: "corporate", description: "Subsidiary of a larger corporation" },
+  { label: "Co-op", colorKey: "cooperative", description: "Cooperative owned by member organizations" },
+  { label: "Nonprofit", colorKey: "nonprofit", description: "501(c)(3) or equivalent non-profit structure" },
+  { label: "State", colorKey: "government", description: "Government-funded or state-owned broadcaster" },
+  { label: "Billionaire-Owned", colorKey: "billionaire", description: "Privately owned by individual billionaire(s)" },
+  { label: "Independent", colorKey: "Independent", description: "Creator-driven media, not part of larger conglomerate" },
+];
 
 // Lean column styling - uses shared LEAN_COLORS from sourceData.ts
 
@@ -110,7 +116,7 @@ export default function SourcesPage() {
                       <span
                         className={`inline-block text-xs px-2 py-0.5 rounded-full ${badgeColors[source.type] || "bg-gray-100 text-gray-700"}`}
                       >
-                        {source.type}
+                        {badgeLabels[source.type] || source.type}
                       </span>
                       {source.isIndependent && (
                         <span className={`inline-block text-xs px-2 py-0.5 rounded-full ${badgeColors.Independent}`}>
@@ -128,16 +134,16 @@ export default function SourcesPage() {
 
         {/* Badge Legend */}
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <h3 className="font-bold text-slate-900 mb-4 text-lg">Understanding Source Types</h3>
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {Object.entries(badgeDescriptions).map(([type, desc]) => (
-              <div key={type} className="flex flex-col gap-1">
+          <h3 className="font-bold text-slate-900 mb-4 text-lg">Understanding Ownership Types</h3>
+          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
+            {legendItems.map((item) => (
+              <div key={item.label} className="flex flex-col gap-1">
                 <span
-                  className={`inline-block text-xs px-2 py-1 rounded-full w-fit ${badgeColors[type] || "bg-gray-100 text-gray-700"}`}
+                  className={`inline-block text-xs px-2 py-1 rounded-full w-fit font-medium ${badgeColors[item.colorKey] || "bg-gray-100 text-gray-700"}`}
                 >
-                  {type}
+                  {item.label}
                 </span>
-                <p className="text-xs text-slate-500">{desc}</p>
+                <p className="text-xs text-slate-500">{item.description}</p>
               </div>
             ))}
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, useRef } from "react";
+import { Suspense, useEffect, useState, useRef, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -11,7 +11,7 @@ import { NarrativeCard } from "@/components/NarrativeCard";
 import { AuthorModal } from "@/components/AuthorModal";
 import type { GroundingSource } from "@/types";
 import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, BarChart3 } from "lucide-react";
-import { getPoliticalLean, LEAN_COLORS, LEAN_LABELS, type PoliticalLean } from "@/lib/sourceData";
+import { getPoliticalLean, getSourceInfo, LEAN_COLORS, LEAN_LABELS, type PoliticalLean } from "@/lib/sourceData";
 
 // Political lean spectrum order for sorting (Left → Right)
 const LEAN_ORDER: Record<string, number> = {
@@ -176,20 +176,51 @@ const BAR_COLORS: Record<string, string> = {
   'right': '#dc2626',       // red-600
 };
 
-// Static vertical bar for Coverage Distribution
-function VerticalBar({ count, maxCount, label, colorKey, isHighlighted }: { count: number; maxCount: number; label: string; colorKey: string; isHighlighted?: boolean }) {
+// Interactive vertical bar for Coverage Distribution - click to filter sources
+function VerticalBar({
+  count,
+  maxCount,
+  label,
+  colorKey,
+  isHighlighted,
+  isSelected,
+  isAnySelected,
+  onClick
+}: {
+  count: number;
+  maxCount: number;
+  label: string;
+  colorKey: string;
+  isHighlighted?: boolean;
+  isSelected?: boolean;
+  isAnySelected?: boolean;
+  onClick?: () => void;
+}) {
   const heightPercent = maxCount > 0 ? Math.max((count / maxCount) * 100, count > 0 ? 25 : 8) : 8;
 
   return (
-    <div className={`text-center flex-shrink-0 ${isHighlighted ? 'relative' : ''}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`text-center flex-shrink-0 cursor-pointer transition-all duration-200 bg-transparent border-none p-0 min-w-[48px]
+        ${isHighlighted ? 'relative' : ''}
+        ${isSelected ? 'scale-105' : 'hover:scale-[1.02]'}
+        ${isAnySelected && !isSelected ? 'opacity-50' : 'opacity-100'}
+      `}
+      aria-pressed={isSelected}
+      aria-label={`${label}: ${count} sources. Click to filter.`}
+    >
       {isHighlighted && (
-        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs text-blue-600 font-medium whitespace-nowrap">
+        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs text-blue-600 font-medium whitespace-nowrap pointer-events-none">
           📍 Your article
         </div>
       )}
       <div className="h-32 sm:h-28 flex items-end justify-center mb-2">
         <div
-          className={`w-10 sm:w-12 md:w-14 rounded-t-lg flex items-end justify-center pb-2 transition-all duration-300 ${isHighlighted ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
+          className={`w-10 sm:w-12 md:w-14 rounded-t-lg flex items-end justify-center pb-2 transition-all duration-200
+            ${isHighlighted ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
+            ${isSelected ? 'ring-2 ring-slate-800 ring-offset-2' : ''}
+          `}
           style={{
             backgroundColor: count > 0 ? (BAR_COLORS[colorKey] || BAR_COLORS['center']) : '#e2e8f0',
             height: `${heightPercent}%`,
@@ -199,13 +230,23 @@ function VerticalBar({ count, maxCount, label, colorKey, isHighlighted }: { coun
           <span className={`font-bold text-xs sm:text-sm ${count > 0 ? 'text-white' : 'text-slate-400'}`}>{count}</span>
         </div>
       </div>
-      <span className={`text-[10px] sm:text-xs font-medium whitespace-nowrap ${isHighlighted ? 'text-blue-600' : 'text-slate-600'}`}>{label}</span>
-    </div>
+      <span className={`text-[10px] sm:text-xs font-medium whitespace-nowrap ${isHighlighted ? 'text-blue-600' : isSelected ? 'text-slate-900 font-semibold' : 'text-slate-600'}`}>{label}</span>
+    </button>
   );
 }
 
-// Coverage Distribution Chart with vertical bars (v0 style)
-function CoverageDistributionChart({ results, lastSubmittedUrl }: { results: GroundingSource[]; lastSubmittedUrl: string }) {
+// Coverage Distribution Chart with vertical bars (v0 style) - now interactive
+function CoverageDistributionChart({
+  results,
+  lastSubmittedUrl,
+  selectedBias,
+  onBarClick
+}: {
+  results: GroundingSource[];
+  lastSubmittedUrl: string;
+  selectedBias: PoliticalLean | null;
+  onBarClick: (bias: PoliticalLean) => void;
+}) {
   const dist = getCoverageDistribution(results, lastSubmittedUrl);
 
   const inputSourceName = (() => {
@@ -218,13 +259,27 @@ function CoverageDistributionChart({ results, lastSubmittedUrl }: { results: Gro
   })();
 
   const maxCount = Math.max(dist.left, dist.centerLeft, dist.center, dist.centerRight, dist.right, 1);
+  const isAnySelected = selectedBias !== null;
 
   return (
     <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-      <div className="flex items-center gap-2 mb-4">
-        <BarChart3 className="w-4 h-4 text-slate-600" />
-        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Coverage Distribution</h3>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="w-4 h-4 text-slate-600" />
+          <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Coverage Distribution</h3>
+        </div>
+        {selectedBias && (
+          <button
+            onClick={() => onBarClick(selectedBias)}
+            className="text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+          >
+            Clear filter
+          </button>
+        )}
       </div>
+
+      {/* Hint text */}
+      <p className="text-xs text-slate-500 mb-3">Click a bar to filter sources by perspective</p>
 
       {/* Input source indicator */}
       {inputSourceName && dist.inputLean && (
@@ -237,13 +292,63 @@ function CoverageDistributionChart({ results, lastSubmittedUrl }: { results: Gro
         </div>
       )}
 
-      {/* Vertical bar chart */}
+      {/* Vertical bar chart - now clickable */}
       <div className="flex justify-center gap-2 sm:gap-4 md:gap-6 pt-6">
-        <VerticalBar key="left" count={dist.left} maxCount={maxCount} label="Left" colorKey="left" isHighlighted={dist.inputLean === 'left'} />
-        <VerticalBar key="center-left" count={dist.centerLeft} maxCount={maxCount} label="Center-Left" colorKey="center-left" isHighlighted={dist.inputLean === 'center-left'} />
-        <VerticalBar key="center" count={dist.center} maxCount={maxCount} label="Center" colorKey="center" isHighlighted={dist.inputLean === 'center'} />
-        <VerticalBar key="center-right" count={dist.centerRight} maxCount={maxCount} label="Center-Right" colorKey="center-right" isHighlighted={dist.inputLean === 'center-right'} />
-        <VerticalBar key="right" count={dist.right} maxCount={maxCount} label="Right" colorKey="right" isHighlighted={dist.inputLean === 'right'} />
+        <VerticalBar
+          key="left"
+          count={dist.left}
+          maxCount={maxCount}
+          label="Left"
+          colorKey="left"
+          isHighlighted={dist.inputLean === 'left'}
+          isSelected={selectedBias === 'left'}
+          isAnySelected={isAnySelected}
+          onClick={() => onBarClick('left')}
+        />
+        <VerticalBar
+          key="center-left"
+          count={dist.centerLeft}
+          maxCount={maxCount}
+          label="Center-Left"
+          colorKey="center-left"
+          isHighlighted={dist.inputLean === 'center-left'}
+          isSelected={selectedBias === 'center-left'}
+          isAnySelected={isAnySelected}
+          onClick={() => onBarClick('center-left')}
+        />
+        <VerticalBar
+          key="center"
+          count={dist.center}
+          maxCount={maxCount}
+          label="Center"
+          colorKey="center"
+          isHighlighted={dist.inputLean === 'center'}
+          isSelected={selectedBias === 'center'}
+          isAnySelected={isAnySelected}
+          onClick={() => onBarClick('center')}
+        />
+        <VerticalBar
+          key="center-right"
+          count={dist.centerRight}
+          maxCount={maxCount}
+          label="Center-Right"
+          colorKey="center-right"
+          isHighlighted={dist.inputLean === 'center-right'}
+          isSelected={selectedBias === 'center-right'}
+          isAnySelected={isAnySelected}
+          onClick={() => onBarClick('center-right')}
+        />
+        <VerticalBar
+          key="right"
+          count={dist.right}
+          maxCount={maxCount}
+          label="Right"
+          colorKey="right"
+          isHighlighted={dist.inputLean === 'right'}
+          isSelected={selectedBias === 'right'}
+          isAnySelected={isAnySelected}
+          onClick={() => onBarClick('right')}
+        />
       </div>
 
       {/* Gap warnings */}
@@ -353,6 +458,121 @@ function HomeContent() {
   const [inlineComparison, setInlineComparison] = useState<any>(null);
   const [loadingComparison, setLoadingComparison] = useState(false);
   const hasAutoSelected = useRef(false);
+  const [selectedBias, setSelectedBias] = useState<PoliticalLean | null>(null);
+
+  // Political lean order for sorting (Left → Right)
+  const BIAS_ORDER: PoliticalLean[] = ['left', 'center-left', 'center', 'center-right', 'right'];
+
+  // Create GroundingSource for the original article from the submitted URL
+  const createOriginalArticleSource = (url: string): GroundingSource & { isOriginal: true } | null => {
+    if (!url) return null;
+
+    try {
+      const urlObj = new URL(url);
+      const domain = urlObj.hostname.replace('www.', '');
+      const sourceInfo = getSourceInfo(url);
+
+      return {
+        uri: url,
+        title: '', // Will show "Your starting point" in the card
+        snippet: 'This is the article you submitted. Compare it with the alternative sources below.',
+        displayName: sourceInfo?.displayName || domain.split('.')[0].toUpperCase(),
+        sourceDomain: domain,
+        sourceType: (sourceInfo?.sourceType as any) || 'national',
+        countryCode: sourceInfo?.countryCode || 'US',
+        isSyndicated: false,
+        ownership: sourceInfo?.ownership,
+        funding: sourceInfo?.funding,
+        politicalLean: sourceInfo?.lean || getPoliticalLean(url),
+        isIndependent: sourceInfo?.isIndependent,
+        isOriginal: true, // Special marker for the original article
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  // Sort sources by political lean - original article first, then selected bias, then spectrum order
+  const sortSourcesByBias = (
+    sources: (GroundingSource & { isOriginal?: boolean })[],
+    selected: PoliticalLean | null,
+    inputBias: PoliticalLean | null
+  ): (GroundingSource & { isOriginal?: boolean })[] => {
+    const getBias = (s: GroundingSource): PoliticalLean =>
+      (s.politicalLean?.toLowerCase() || getPoliticalLean(s.sourceDomain || s.uri)) as PoliticalLean;
+
+    return [...sources].sort((a, b) => {
+      const aOriginal = (a as any).isOriginal === true;
+      const bOriginal = (b as any).isOriginal === true;
+      const aBias = getBias(a);
+      const bBias = getBias(b);
+
+      // Original article handling
+      if (selected) {
+        // When filter active: original comes first WITHIN its bias group
+        const aSelected = aBias === selected;
+        const bSelected = bBias === selected;
+
+        // Selected bias group comes first
+        if (aSelected && !bSelected) return -1;
+        if (bSelected && !aSelected) return 1;
+
+        // Within selected group, original comes first
+        if (aSelected && bSelected) {
+          if (aOriginal) return -1;
+          if (bOriginal) return 1;
+        }
+      } else {
+        // Default: original article always comes first
+        if (aOriginal) return -1;
+        if (bOriginal) return 1;
+      }
+
+      // Within same priority, sort by spectrum order
+      return BIAS_ORDER.indexOf(aBias) - BIAS_ORDER.indexOf(bBias);
+    });
+  };
+
+  // Get the input article's political lean for default sorting
+  const inputLean = useMemo(() => {
+    if (!lastSubmittedUrl) return null;
+    return getPoliticalLean(lastSubmittedUrl);
+  }, [lastSubmittedUrl]);
+
+  // Create the original article source object
+  const originalArticleSource = useMemo(() =>
+    createOriginalArticleSource(lastSubmittedUrl),
+    [lastSubmittedUrl]
+  );
+
+  // Combine original article with search results and sort
+  const sortedResults = useMemo(() => {
+    const allSources: (GroundingSource & { isOriginal?: boolean })[] = [];
+
+    // Add original article if it exists and we have results
+    if (originalArticleSource && results.length > 0) {
+      allSources.push(originalArticleSource);
+    }
+
+    // Add all search results
+    allSources.push(...results);
+
+    return sortSourcesByBias(allSources, selectedBias, inputLean);
+  }, [results, selectedBias, inputLean, originalArticleSource]);
+
+  // Handle bar click - toggle filter and scroll to Source Analysis
+  const handleBarClick = (bias: PoliticalLean) => {
+    // Toggle off if clicking same bar, otherwise select
+    setSelectedBias(prev => prev === bias ? null : bias);
+
+    // Smooth scroll to Source Analysis section after a short delay
+    setTimeout(() => {
+      document.getElementById('source-analysis')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }, 100);
+  };
 
   // Auto-select divergent trio (Left + Center + Right) when results load - only once per search
   useEffect(() => {
@@ -509,6 +729,7 @@ function HomeContent() {
     setKeywords("");
     setSelectedForCompare([]);
     hasAutoSelected.current = false;
+    setSelectedBias(null); // Reset filter on new search
 
     // Check for opaque URLs (share links, premium sites with UUIDs)
     const opaqueType = getOpaqueUrlType(url);
@@ -597,6 +818,7 @@ function HomeContent() {
     setShowKeywordFallback(false);
     setSelectedForCompare([]);
     hasAutoSelected.current = false;
+    setSelectedBias(null); // Reset filter on new search
 
     try {
       setIsLoading(true);
@@ -781,6 +1003,7 @@ function HomeContent() {
     setSelectedForCompare([]);
     setInlineComparison(null);
     hasAutoSelected.current = false;
+    setSelectedBias(null); // Reset filter
     window.history.pushState({}, '', '/');
   }
 
@@ -1197,24 +1420,38 @@ function HomeContent() {
             {/* Coverage Distribution */}
             {results.length > 0 && (
               <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8 lg:p-10">
-                <CoverageDistributionChart results={results} lastSubmittedUrl={lastSubmittedUrl} />
+                <CoverageDistributionChart
+                  results={results}
+                  lastSubmittedUrl={lastSubmittedUrl}
+                  selectedBias={selectedBias}
+                  onBarClick={handleBarClick}
+                />
               </div>
             )}
 
             {/* Source Analysis - Flip Cards */}
             {results.length > 0 && (
-              <div className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8 lg:p-10">
+              <div id="source-analysis" className="bg-white rounded-2xl shadow border border-slate-200 p-6 md:p-8 lg:p-10 scroll-mt-32">
                 <div className="mb-6">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <Scale size={22} className="text-blue-600" />
                     <h2 className="text-xl md:text-2xl font-bold text-slate-900">Source Analysis</h2>
                     <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">{results.length} sources</span>
+                    {selectedBias && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${LEAN_COLORS[selectedBias].bg} ${LEAN_COLORS[selectedBias].text}`}>
+                        Showing: {LEAN_LABELS[selectedBias]}
+                      </span>
+                    )}
                   </div>
-                  <p className="text-slate-500 text-sm">Tap any card to see ownership transparency</p>
+                  <p className="text-slate-500 text-sm">
+                    {selectedBias
+                      ? `Filtered by ${LEAN_LABELS[selectedBias]} sources first`
+                      : 'Tap any card to see ownership transparency'}
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {results.map((source, idx) => {
+                  {sortedResults.map((source, idx) => {
                     // Find analysis for this source if it exists (from inline comparison)
                     const analysisIdx = inlineComparison?.sortedSourceUrls?.findIndex((url: string) => url === source.uri);
                     const analysis = analysisIdx >= 0 ? inlineComparison?.analyses?.[analysisIdx] : undefined;

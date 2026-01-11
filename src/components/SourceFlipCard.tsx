@@ -53,7 +53,7 @@ const OWNERSHIP_COLORS: Record<string, { bg: string; text: string }> = {
 };
 
 interface SourceFlipCardProps {
-  source: GroundingSource;
+  source: GroundingSource & { isOriginal?: boolean };
   analysis?: {
     headline?: string;
     tone?: string;
@@ -63,9 +63,12 @@ interface SourceFlipCardProps {
   };
   getPoliticalLean: (domain: string) => PoliticalLean;
   onAuthorClick?: (authorName: string, outlet: string) => void;
+  isOriginal?: boolean;
 }
 
-export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorClick }: SourceFlipCardProps) {
+export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorClick, isOriginal }: SourceFlipCardProps) {
+  // Check for isOriginal from either prop or source object
+  const isOriginalArticle = isOriginal || (source as any).isOriginal === true;
   const [isFlipped, setIsFlipped] = useState(false);
 
   const lean = (source.politicalLean?.toLowerCase() || getPoliticalLean(source.sourceDomain || '')) as PoliticalLean;
@@ -80,14 +83,22 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
 
   return (
     <div
-      className="relative h-[380px] cursor-pointer perspective-1000 group"
+      className={`relative h-[380px] cursor-pointer perspective-1000 group ${isOriginalArticle ? 'ring-2 ring-blue-400 ring-offset-2 rounded-xl' : ''}`}
       onClick={() => setIsFlipped(!isFlipped)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsFlipped(!isFlipped); } }}
       tabIndex={0}
       role="button"
-      aria-label={`${sourceName} - ${leanLabel} - ${ownershipLabel}. ${isFlipped ? 'Showing source transparency. Press to see article details.' : 'Press to see source transparency details.'}`}
+      aria-label={`${isOriginalArticle ? 'Your article - ' : ''}${sourceName} - ${leanLabel} - ${ownershipLabel}. ${isFlipped ? 'Showing source transparency. Press to see article details.' : 'Press to see source transparency details.'}`}
       aria-pressed={isFlipped}
     >
+      {/* "Your article" badge for original article */}
+      {isOriginalArticle && (
+        <div className="absolute -top-3 left-4 z-20 bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-sm flex items-center gap-1.5">
+          <span>📍</span>
+          <span>Your article</span>
+        </div>
+      )}
+
       {/* Focus ring for keyboard navigation */}
       <div className="absolute inset-0 rounded-xl ring-0 group-focus-visible:ring-2 group-focus-visible:ring-blue-500 group-focus-visible:ring-offset-2 pointer-events-none z-10" />
 
@@ -97,7 +108,7 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
       >
         {/* FRONT */}
         <div
-          className="absolute inset-0 backface-hidden border border-slate-200 rounded-xl p-6 bg-white transition-shadow"
+          className={`absolute inset-0 backface-hidden border rounded-xl p-6 bg-white transition-shadow ${isOriginalArticle ? 'border-blue-300 bg-blue-50/30' : 'border-slate-200'}`}
           style={{ backfaceVisibility: 'hidden' }}
         >
           {/* Source Header */}
@@ -193,12 +204,28 @@ export function SourceFlipCard({ source, analysis, getPoliticalLean, onAuthorCli
           ) : (
             /* Fallback content when no AI analysis */
             <div className="mb-3">
-              <p className="text-sm text-slate-600 leading-relaxed line-clamp-4">
-                {cleanSnippet(source.snippet) || `Click to read full coverage from ${sourceName}.`}
-              </p>
-              <p className="text-xs text-slate-400 mt-2 italic">
-                Snippet from search results
-              </p>
+              {isOriginalArticle ? (
+                <>
+                  <p className="font-medium text-slate-800 text-sm mb-2">
+                    Your starting point
+                  </p>
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    This is the article you submitted. Compare it with the alternative sources below to see how different outlets cover this story.
+                  </p>
+                  <p className="text-xs text-blue-600 mt-2 font-medium">
+                    👆 Tap to see source transparency
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-slate-600 leading-relaxed line-clamp-4">
+                    {cleanSnippet(source.snippet) || `Click to read full coverage from ${sourceName}.`}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-2 italic">
+                    Snippet from search results
+                  </p>
+                </>
+              )}
             </div>
           )}
 

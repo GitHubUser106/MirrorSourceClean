@@ -198,6 +198,53 @@ This layered approach is novel and addresses a previously undocumented challenge
 
 ---
 
+### 2026-01-10 - RSS Domain Diversity Prevents Single-Source Domination
+
+**Uncertainty Resolved:** Why do RSS feeds return 0 center-right results even when those outlets are publishing relevant articles?
+
+**Finding:** Three compounding bugs in RSS matching caused complete center-right exclusion:
+
+1. **Top-N Selection Bug:** Returning "top 5 overall" allowed a single high-scoring domain (Daily Wire) to monopolize all slots, excluding NY Post and Washington Examiner despite having matching content.
+
+2. **Threshold Strictness Bug:** Requiring 2+ keyword matches failed when geographic synonyms differed ("Minnesota" in keywords vs "Minneapolis" in headlines). Articles about the same story scored only 1.
+
+3. **Timeout Bug:** 5-second timeout caused slow feeds (Daily Wire) to abort before returning results, silently dropping content.
+
+**Evidence:**
+- E9b: Daily Wire RSS confirmed ICE shooting article at top of feed
+- Debug logging showed 5/5 top matches were dailywire.com
+- Washington Examiner had score=1 (Minnesota/Minneapolis mismatch)
+- Daily Wire feed timing out: "This operation was aborted"
+
+**Solution Implemented:**
+```typescript
+// Fix 1: Per-domain selection (top 2 per domain, not top 5 overall)
+const matchesByDomain: Record<string, typeof matches> = {};
+for (const m of matches) {
+  if (!matchesByDomain[m.item.domain]) matchesByDomain[m.item.domain] = [];
+  matchesByDomain[m.item.domain].push(m);
+}
+
+// Fix 2: Lower threshold from 2 to 1
+const threshold = 1;
+
+// Fix 3: Increase timeout from 5s to 10s
+const timeout = setTimeout(() => controller.abort(), 10000);
+```
+
+**Results:**
+- Before: L8, C3, R1 (CR=0)
+- After: L8, C3, R5 (CR included)
+- diversityAnalysis.isBalanced: true
+
+**Implication:** When aggregating from multiple RSS sources, domain diversity must be enforced at the selection level—not just at the merge level. Score-based ranking will naturally favor sources with higher match rates, creating systematic exclusion of lower-scoring but still-relevant domains.
+
+**Commits:**
+- `a036afc` - E9b: Debug logging for RSS matching
+- `5771435` - E9b: Fix domain diversity, threshold, and timeout
+
+---
+
 ## Template for Recording Advances
 
 ```
