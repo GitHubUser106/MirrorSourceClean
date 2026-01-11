@@ -54,7 +54,7 @@ export default function ReviewRequestModal({ isOpen, onClose }: ReviewRequestMod
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-100">
           <h2 className="text-xl font-semibold text-slate-900">Request a Classification Review</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-slate-600 p-1">
             <X size={24} />
           </button>
         </div>

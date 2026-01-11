@@ -119,9 +119,10 @@ export default function InstallBanner() {
     return (
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl w-full max-w-md p-6 relative">
-          <button 
+          <button
             onClick={handleTutorialDismiss}
-            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
+            aria-label="Close"
+            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1"
           >
             <X size={24} />
           </button>
@@ -174,9 +175,10 @@ export default function InstallBanner() {
     return (
       <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center p-4">
         <div className="bg-white rounded-2xl w-full max-w-md p-6 relative">
-          <button 
+          <button
             onClick={handleDismiss}
-            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
+            aria-label="Close"
+            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1"
           >
             <X size={24} />
           </button>
@@ -260,6 +262,7 @@ export default function InstallBanner() {
           </button>
           <button
             onClick={handleDismiss}
+            aria-label="Dismiss"
             className="text-slate-400 hover:text-slate-600 p-1"
           >
             <X size={20} />

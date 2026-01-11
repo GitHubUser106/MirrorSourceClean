@@ -157,7 +157,7 @@ export default function TransparencyCard({ source, trigger, position = 'bottom' 
               </span>
             </div>
             {isMobile && (
-              <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setIsOpen(false)} aria-label="Close" className="text-slate-400 hover:text-slate-600 p-1">
                 <X size={18} />
               </button>
             )}
