@@ -265,12 +265,12 @@ interface RSSFetchResult {
 
 // =============================================================================
 // GEMINI GROUNDED SEARCH - Supplementary source discovery via Google Search
-// SR&ED E10: Gap-targeted search for right-leaning outlets poorly indexed by Brave
-// Only triggered when Right + Center-Right < 2 sources after primary search
+// SR&ED E10: Gap-targeted search for outlets poorly indexed by Brave
+// Symmetric gap-fill: triggers for BOTH right-side AND left-side gaps
 // =============================================================================
 
 // Right-leaning outlets to target with site: operators
-const GROUNDED_SEARCH_SITES = [
+const RIGHT_GROUNDED_SITES = [
   'dailywire.com',
   'washingtonexaminer.com',
   'freebeacon.com',
@@ -279,6 +279,18 @@ const GROUNDED_SEARCH_SITES = [
   'townhall.com',
   'redstate.com',
   'pjmedia.com',
+];
+
+// Left-leaning outlets to target with site: operators
+const LEFT_GROUNDED_SITES = [
+  'theintercept.com',
+  'jacobin.com',
+  'commondreams.org',
+  'truthout.org',
+  'currentaffairs.org',
+  'prospect.org',      // The American Prospect
+  'thenation.com',
+  'motherjones.com',
 ];
 
 interface GroundingChunk {
@@ -293,11 +305,16 @@ interface GroundingMetadata {
   webSearchQueries?: string[];
 }
 
-async function geminiGroundedSearch(keywords: string): Promise<CSEResult[]> {
-  console.log(`[GeminiGrounded] Starting gap-fill search for: "${keywords.substring(0, 60)}..."`);
+type GapSide = 'right' | 'left';
 
-  // Build site-specific query to target right-leaning outlets
-  const siteOperators = GROUNDED_SEARCH_SITES.slice(0, 5).map(d => `site:${d}`).join(' OR ');
+async function geminiGroundedSearch(keywords: string, side: GapSide): Promise<CSEResult[]> {
+  const sites = side === 'right' ? RIGHT_GROUNDED_SITES : LEFT_GROUNDED_SITES;
+  const sideLabel = side === 'right' ? 'conservative/right-leaning' : 'progressive/left-leaning';
+
+  console.log(`[GeminiGrounded] Starting ${side.toUpperCase()} gap-fill search for: "${keywords.substring(0, 60)}..."`);
+
+  // Build site-specific query to target outlets
+  const siteOperators = sites.slice(0, 5).map(d => `site:${d}`).join(' OR ');
   const searchQuery = `${keywords} (${siteOperators})`;
 
   try {
@@ -306,7 +323,7 @@ async function geminiGroundedSearch(keywords: string): Promise<CSEResult[]> {
       contents: [{
         role: "user",
         parts: [{
-          text: `Find recent news articles about this topic from conservative/right-leaning news outlets: ${searchQuery}
+          text: `Find recent news articles about this topic from ${sideLabel} news outlets: ${searchQuery}
 
 Return a brief summary of what you found. The grounding metadata will contain the actual URLs.`
         }]
@@ -1810,31 +1827,55 @@ export async function POST(req: NextRequest) {
 
     // ==========================================================================
     // GAP-TARGETED GEMINI GROUNDED SEARCH (SR&ED E10)
-    // If Right + Center-Right < 2 sources, use Gemini's Google Search grounding
-    // to find coverage from right-leaning outlets that Brave/RSS missed
+    // Symmetric gap-fill: triggers for BOTH right-side AND left-side gaps
+    // Right: If Right + Center-Right < 2 sources
+    // Left:  If Left + Center-Left < 2 sources
     // ==========================================================================
     const rightSideCount = finalCounts.right + finalCounts.centerRight;
+    const leftSideCount = finalCounts.left + finalCounts.centerLeft;
+
+    // RIGHT-SIDE GAP DETECTION
     if (rightSideCount < 2) {
       console.log(`[GeminiGrounded] RIGHT-SIDE GAP DETECTED: Only ${rightSideCount} right/center-right sources. Triggering gap-fill search...`);
 
-      const groundedResults = await geminiGroundedSearch(neutralQuery);
+      const groundedResults = await geminiGroundedSearch(neutralQuery, 'right');
 
       if (groundedResults.length > 0) {
-        // Merge with deduplication by domain
         const existingDomains = new Set(qualityFiltered.map(r => r.domain));
         const newGroundedResults = groundedResults.filter(r => !existingDomains.has(r.domain));
 
-        console.log(`[GeminiGrounded] Adding ${newGroundedResults.length} new sources (${groundedResults.length} total, ${groundedResults.length - newGroundedResults.length} duplicates)`);
+        console.log(`[GeminiGrounded] Adding ${newGroundedResults.length} new RIGHT sources (${groundedResults.length} total, ${groundedResults.length - newGroundedResults.length} duplicates)`);
 
         qualityFiltered = [...qualityFiltered, ...newGroundedResults];
 
-        // Re-count to verify improvement
         const updatedCounts = countPoliticalLean5(qualityFiltered);
         const newRightSideCount = updatedCounts.right + updatedCounts.centerRight;
         console.log(`[GeminiGrounded] Updated right-side count: ${rightSideCount} -> ${newRightSideCount}`);
       }
     } else {
-      console.log(`[GeminiGrounded] Right-side coverage adequate (${rightSideCount} sources). Skipping gap-fill.`);
+      console.log(`[GeminiGrounded] Right-side coverage adequate (${rightSideCount} sources). Skipping right gap-fill.`);
+    }
+
+    // LEFT-SIDE GAP DETECTION (symmetric)
+    if (leftSideCount < 2) {
+      console.log(`[GeminiGrounded] LEFT-SIDE GAP DETECTED: Only ${leftSideCount} left/center-left sources. Triggering gap-fill search...`);
+
+      const groundedResults = await geminiGroundedSearch(neutralQuery, 'left');
+
+      if (groundedResults.length > 0) {
+        const existingDomains = new Set(qualityFiltered.map(r => r.domain));
+        const newGroundedResults = groundedResults.filter(r => !existingDomains.has(r.domain));
+
+        console.log(`[GeminiGrounded] Adding ${newGroundedResults.length} new LEFT sources (${groundedResults.length} total, ${groundedResults.length - newGroundedResults.length} duplicates)`);
+
+        qualityFiltered = [...qualityFiltered, ...newGroundedResults];
+
+        const updatedCounts = countPoliticalLean5(qualityFiltered);
+        const newLeftSideCount = updatedCounts.left + updatedCounts.centerLeft;
+        console.log(`[GeminiGrounded] Updated left-side count: ${leftSideCount} -> ${newLeftSideCount}`);
+      }
+    } else {
+      console.log(`[GeminiGrounded] Left-side coverage adequate (${leftSideCount} sources). Skipping left gap-fill.`);
     }
 
     // Diversify by source type using round-robin
