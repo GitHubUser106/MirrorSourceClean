@@ -1665,10 +1665,18 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Check cache BEFORE incrementing usage (cache hits don't cost API calls)
-    const cachedResult = getCachedResult(searchQuery);
-    if (cachedResult) {
-      console.log('[Cache] Returning cached result for:', searchQuery);
-      return NextResponse.json({ ...cachedResult, cached: true }, { headers: corsHeaders });
+    // Support cache bypass for testing: { "nocache": true } in request body
+    const bypassCache = body.nocache === true;
+    if (bypassCache) {
+      console.log('[Cache] BYPASS requested - skipping cache lookup');
+    }
+
+    if (!bypassCache) {
+      const cachedResult = getCachedResult(searchQuery);
+      if (cachedResult) {
+        console.log('[Cache] Returning cached result for:', searchQuery);
+        return NextResponse.json({ ...cachedResult, cached: true }, { headers: corsHeaders });
+      }
     }
 
     // 5. Increment Usage (only for non-cached requests)
