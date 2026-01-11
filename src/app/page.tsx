@@ -1130,7 +1130,7 @@ function HomeContent() {
               </div>
               <div className="flex items-center gap-2">
                 <Scale className="w-4 h-4" />
-                <span>Bias ratings from <a href="https://www.allsides.com/media-bias/ratings" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">AllSides</a> & <a href="https://adfontesmedia.com/interactive-media-bias-chart/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Ad Fontes</a></span>
+                <span>Bias ratings from <a href="https://www.allsides.com/media-bias/ratings" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">AllSides</a> & <a href="https://adfontesmedia.com/interactive-media-bias-chart/" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">Ad Fontes</a></span>
               </div>
               <Link href="/sources" className="flex items-center gap-1 text-blue-600 hover:underline">
                 View our methodology
