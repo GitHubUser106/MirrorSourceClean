@@ -91,7 +91,7 @@ export default function SourcesPage() {
               key={lean}
               className={`rounded-xl border ${LEAN_COLORS[lean].border} ${LEAN_COLORS[lean].bg} overflow-hidden`}
             >
-              <h2 className={`text-lg font-bold text-white py-3 text-center ${LEAN_COLORS[lean].headerBg}`}>
+              <h2 className={`text-lg font-bold py-3 text-center ${LEAN_COLORS[lean].headerBg} ${LEAN_COLORS[lean].headerText}`}>
                 {LEAN_LABELS[lean]}
               </h2>
               <div className="p-4">

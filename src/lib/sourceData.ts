@@ -2455,12 +2455,13 @@ export function getFullSourceInfo(domain: string): FullSourceInfo {
 // UI CONSTANTS - Colors and labels for consistent rendering
 // =============================================================================
 
-export const LEAN_COLORS: Record<PoliticalLean, { bar: string; headerBg: string; bg: string; border: string; text: string }> = {
-  'left': { bar: 'bg-blue-600', headerBg: 'bg-blue-600', bg: 'bg-blue-100', border: 'border-blue-200', text: 'text-blue-800' },
-  'center-left': { bar: 'bg-cyan-600', headerBg: 'bg-cyan-600', bg: 'bg-cyan-100', border: 'border-cyan-200', text: 'text-cyan-800' },
-  'center': { bar: 'bg-purple-600', headerBg: 'bg-purple-600', bg: 'bg-purple-100', border: 'border-purple-200', text: 'text-purple-800' },
-  'center-right': { bar: 'bg-orange-600', headerBg: 'bg-orange-600', bg: 'bg-orange-100', border: 'border-orange-200', text: 'text-orange-800' },
-  'right': { bar: 'bg-red-600', headerBg: 'bg-red-600', bg: 'bg-red-100', border: 'border-red-200', text: 'text-red-800' },
+// ColorBrewer RdBu diverging palette - industry standard for political spectrum
+export const LEAN_COLORS: Record<PoliticalLean, { bar: string; headerBg: string; headerText: string; bg: string; border: string; text: string }> = {
+  'left': { bar: 'bg-political-left', headerBg: 'bg-political-left', headerText: 'text-white', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-political-left' },
+  'center-left': { bar: 'bg-political-left-center', headerBg: 'bg-political-left-center', headerText: 'text-political-left-center-text', bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-political-left-center-text' },
+  'center': { bar: 'bg-political-center border border-gray-300', headerBg: 'bg-political-center border border-gray-200', headerText: 'text-political-center-text', bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700' },
+  'center-right': { bar: 'bg-political-right-center', headerBg: 'bg-political-right-center', headerText: 'text-political-right-center-text', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-political-right-center-text' },
+  'right': { bar: 'bg-political-right', headerBg: 'bg-political-right', headerText: 'text-white', bg: 'bg-red-50', border: 'border-red-200', text: 'text-political-right' },
 };
 
 export const LEAN_LABELS: Record<PoliticalLean, string> = {

@@ -167,13 +167,13 @@ function getCoverageDistribution(results: GroundingSource[], inputUrl?: string):
   return { left, centerLeft, center, centerRight, right, total, inputLean };
 }
 
-// Hex colors for vertical bars (avoids Tailwind purge issues with dynamic classes)
-const BAR_COLORS: Record<string, string> = {
-  'left': '#2563eb',        // blue-600
-  'center-left': '#06b6d4', // cyan-500
-  'center': '#a855f7',      // purple-500
-  'center-right': '#f97316', // orange-500
-  'right': '#dc2626',       // red-600
+// ColorBrewer RdBu diverging palette - industry standard for political spectrum
+const BAR_COLORS: Record<string, { bg: string; text: string; border?: string }> = {
+  'left': { bg: '#2166AC', text: '#FFFFFF' },
+  'center-left': { bg: '#67A9CF', text: '#1E3A5F' },
+  'center': { bg: '#F7F7F7', text: '#374151', border: '#D1D5DB' },
+  'center-right': { bg: '#EF8A62', text: '#7C2D12' },
+  'right': { bg: '#B2182B', text: '#FFFFFF' },
 };
 
 // Interactive vertical bar for Coverage Distribution - click to filter sources
@@ -222,12 +222,18 @@ function VerticalBar({
             ${isSelected ? 'ring-2 ring-slate-800 ring-offset-2' : ''}
           `}
           style={{
-            backgroundColor: count > 0 ? (BAR_COLORS[colorKey] || BAR_COLORS['center']) : '#e2e8f0',
+            backgroundColor: count > 0 ? (BAR_COLORS[colorKey]?.bg || BAR_COLORS['center'].bg) : '#e2e8f0',
+            border: count > 0 && BAR_COLORS[colorKey]?.border ? `1px solid ${BAR_COLORS[colorKey].border}` : undefined,
             height: `${heightPercent}%`,
             minHeight: '1.5rem'
           }}
         >
-          <span className={`font-bold text-xs sm:text-sm ${count > 0 ? 'text-white' : 'text-slate-400'}`}>{count}</span>
+          <span
+            className="font-bold text-xs sm:text-sm"
+            style={{ color: count > 0 ? (BAR_COLORS[colorKey]?.text || '#FFFFFF') : '#94a3b8' }}
+          >
+            {count}
+          </span>
         </div>
       </div>
       <span className={`text-[10px] sm:text-xs font-medium whitespace-nowrap ${isHighlighted ? 'text-blue-600' : isSelected ? 'text-slate-900 font-semibold' : 'text-slate-600'}`}>{label}</span>
