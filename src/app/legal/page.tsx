@@ -214,6 +214,14 @@ export default function LegalPage() {
             </p>
           </section>
 
+          {/* 12. Affiliate Disclosure */}
+          <section className="space-y-3">
+            <h2 className="text-2xl font-semibold text-slate-900">12. Affiliate Disclosure</h2>
+            <p className="text-slate-700">
+              MirrorSource may display recommendations for third-party products and services. Some links are affiliate links, meaning MirrorSource may earn a commission if you make a purchase. This does not affect the price you pay. We only recommend tools that align with our values of transparency, privacy, and user agency.
+            </p>
+          </section>
+
           {/* OFFICIAL CONTACT FOOTER */}
           <div className="mt-12 pt-8 border-t border-slate-200 text-center">
             <p className="text-slate-900 font-medium">For all legal, privacy, and support inquiries:</p>
