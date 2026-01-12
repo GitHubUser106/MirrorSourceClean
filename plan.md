@@ -222,13 +222,58 @@
 
 **Ready for:** First experiment initialization
 
+### Sprint 15: Relevance Filter Regression Fix (Jan 12, 2026)
+
+#### SR&ED E11: Relevance Filter Regression Analysis
+
+**Hypothesis:** The multi-layered relevance validation system has regressed, allowing off-topic results to pass through the quality filter.
+
+**Observed Behavior:**
+When analyzing a National Post article about a Canada Post carrier reinstated after hoarding mail, MirrorSource returned irrelevant results:
+- "Iranian protests and crackdown" (Daily Wire)
+- "Ilhan Omar Thrown Out of Minneapolis ICE Facility" (Breitbart)
+- "Antisemitic lunatic stalks NYC family" (New York Post)
+- "Louisiana AG to headline Senate abortion pill hearing" (Washington Examiner)
+- "Professor fired over post mocking Charlie Kirk's death is reinstated" (Daily Mail)
+
+**Root Cause Analysis:**
+Two bypass paths were allowing irrelevant results through:
+
+1. **RSS Domain Bypass** (route.ts:959-967)
+   - Results from dailywire/breitbart/nypost/washingtonexaminer only needed 1 keyword match
+   - Normal threshold: 50% keyword match
+   - Bug: Domain-based bypass treated ALL results from these domains as "pre-validated RSS results"
+
+2. **Gemini Grounded Bypass** (route.ts:1873-1885, 1902-1915)
+   - Gap-fill results from Gemini were added directly without ANY quality filtering
+   - When <2 right/left sources found, Gemini searches for articles from political outlets
+   - These results were appended to qualityFiltered without filterQualityResults() check
+
+**Fixes Applied:**
+- [x] Removed RSS domain bypass - all results now use 50% keyword match threshold
+- [x] Added filterQualityResults() call to RIGHT gap-fill path
+- [x] Added filterQualityResults() call to LEFT gap-fill path
+
+**Results:**
+| Metric | Before | After |
+|--------|--------|-------|
+| Irrelevant results | 5 | 1 |
+| Relevant results | ~8 | 9 |
+
+**Remaining Edge Case:**
+Daily Mail "Charlie Kirk professor" article still passes because it contains keywords "fired", "post", "reinstated" (37% match). This is a legitimate keyword-matching limitation that would require semantic understanding to filter. Gemini now labels it "Tone: Unrelated".
+
+**Commit:** `4cabfb6 fix: remove relevance filter bypasses causing off-topic results`
+
+**Outcome:** succeed - Relevance validation restored. 80% reduction in off-topic results.
+
 ---
 
 ## Section 3: Current Architecture
 
 ### Key Files
 - `src/app/api/find/route.ts` - Main search API with Brave + Gemini
-- `src/lib/sourceData.ts` - 187+ news sources with political lean data
+- `src/lib/sourceData.ts` - 190+ news sources with political lean data
 - `src/lib/independentSourceData.ts` - 16 indie media sources
 - `src/lib/articleFetcher.ts` - Opportunistic article content extraction
 - `src/lib/authenticitySignals.ts` - Suspicion scoring for sources
