@@ -956,15 +956,9 @@ function filterQualityResults(results: CSEResult[], searchQuery: string): CSERes
       if (path === '/' || path === '') return { result, score: 0, passed: false };
     } catch { return { result, score: 0, passed: false }; }
 
-    // RSS results from gap feeds already passed keyword matching - be lenient
-    const rssGapDomains = ['dailywire.com', 'breitbart.com', 'nypost.com', 'washingtonexaminer.com'];
-    const isRSSResult = rssGapDomains.some(d => (result.domain || '').includes(d));
-    if (isRSSResult) {
-      // RSS results just need any keyword match to pass
-      const text = ((result.title || '') + ' ' + (result.snippet || '')).toLowerCase();
-      const hasAnyMatch = queryWords.some(w => text.includes(w));
-      return { result, score: hasAnyMatch ? 10 : 0, passed: hasAnyMatch };
-    }
+    // REMOVED: RSS gap domain bypass was causing irrelevant results to pass through
+    // All results now use the same 50% keyword match threshold regardless of source
+    // SR&ED E11: Regression fix - domain-based bypass allowed off-topic articles
 
     const text = ((result.title || '') + ' ' + (result.snippet || '')).toLowerCase();
 
@@ -1880,9 +1874,11 @@ export async function POST(req: NextRequest) {
         const existingDomains = new Set(qualityFiltered.map(r => r.domain));
         const newGroundedResults = groundedResults.filter(r => !existingDomains.has(r.domain));
 
-        console.log(`[GeminiGrounded] Adding ${newGroundedResults.length} new RIGHT sources (${groundedResults.length} total, ${groundedResults.length - newGroundedResults.length} duplicates)`);
+        // SR&ED E11: Apply quality filter to grounded results - prevents off-topic gap-fills
+        const filteredGroundedResults = filterQualityResults(newGroundedResults, searchQuery);
+        console.log(`[GeminiGrounded] RIGHT gap-fill: ${groundedResults.length} found -> ${newGroundedResults.length} new -> ${filteredGroundedResults.length} after quality filter`);
 
-        qualityFiltered = [...qualityFiltered, ...newGroundedResults];
+        qualityFiltered = [...qualityFiltered, ...filteredGroundedResults];
 
         const updatedCounts = countPoliticalLean5(qualityFiltered);
         const newRightSideCount = updatedCounts.right + updatedCounts.centerRight;
@@ -1907,9 +1903,11 @@ export async function POST(req: NextRequest) {
         const existingDomains = new Set(qualityFiltered.map(r => r.domain));
         const newGroundedResults = groundedResults.filter(r => !existingDomains.has(r.domain));
 
-        console.log(`[GeminiGrounded] Adding ${newGroundedResults.length} new LEFT sources (${groundedResults.length} total, ${groundedResults.length - newGroundedResults.length} duplicates)`);
+        // SR&ED E11: Apply quality filter to grounded results - prevents off-topic gap-fills
+        const filteredGroundedResults = filterQualityResults(newGroundedResults, searchQuery);
+        console.log(`[GeminiGrounded] LEFT gap-fill: ${groundedResults.length} found -> ${newGroundedResults.length} new -> ${filteredGroundedResults.length} after quality filter`);
 
-        qualityFiltered = [...qualityFiltered, ...newGroundedResults];
+        qualityFiltered = [...qualityFiltered, ...filteredGroundedResults];
 
         const updatedCounts = countPoliticalLean5(qualityFiltered);
         const newLeftSideCount = updatedCounts.left + updatedCounts.centerLeft;
