@@ -27,7 +27,7 @@ export default function LegalPage() {
 
           <header className="space-y-2 text-center sm:text-left">
             <h1 className="text-3xl font-bold text-slate-900">Legal Information</h1>
-            <p className="text-sm text-slate-500">Effective Date: 2025-11-20</p>
+            <p className="text-sm text-slate-500">Effective Date: 2025-01-12</p>
             <p className="text-slate-700">
               This page contains all legal notices, policies, and terms that govern the use of the MirrorSource website and services.
             </p>
@@ -59,7 +59,7 @@ export default function LegalPage() {
 
             <h3 className="text-lg font-semibold text-slate-900">Third-Party Websites</h3>
             <p className="text-slate-700">
-              MirrorSource may display links to external websites. MirrorSource does not control those sites, and is not responsible for their content, policies, or practices.
+              MirrorSource may display links to external websites, including partner and affiliate links. MirrorSource does not control those sites, and is not responsible for their content, policies, or practices.
             </p>
 
             <h3 className="text-lg font-semibold text-slate-900">Service Availability</h3>
@@ -83,13 +83,32 @@ export default function LegalPage() {
             <h2 className="text-2xl font-semibold text-slate-900">2. Privacy Policy</h2>
 
             <h3 className="text-lg font-semibold text-slate-900">Information We Collect</h3>
+            <p className="text-slate-700 mb-2">
+              MirrorSource collects minimal data. This includes:
+            </p>
+            <p className="text-slate-700 mb-1">
+              <strong>Technical Information:</strong> IP address, browser type, device information.
+            </p>
+            <p className="text-slate-700 mb-1">
+              <strong>Usage Data:</strong> Pages visited, queries submitted, Intel Briefs generated.
+            </p>
             <p className="text-slate-700">
-              MirrorSource collects minimal data. This includes technical information such as IP address, browser type, device information, and usage data such as pages visited or queries submitted. Personal information is collected only if you provide it by contacting us directly.
+              <strong>Personal Information:</strong> Personal information is collected when you create an account, subscribe to updates, request an Intel Brief, or contact us directly. This typically includes your email address and any preferences you set.
             </p>
 
             <h3 className="text-lg font-semibold text-slate-900">How We Use Information</h3>
-            <p className="text-slate-700">
-              We use information to operate and improve the service, diagnose issues, prevent misuse, and monitor performance. MirrorSource does not sell or rent your information.
+            <p className="text-slate-700 mb-2">
+              We use information to:
+            </p>
+            <ul className="list-disc pl-6 text-slate-700 space-y-1">
+              <li>Operate and improve the service</li>
+              <li>Diagnose issues and prevent misuse</li>
+              <li>Monitor performance</li>
+              <li>Send you service notifications (e.g., login links, security alerts)</li>
+              <li>Send product updates or newsletters (only if you have explicitly opted in)</li>
+            </ul>
+            <p className="text-slate-700 mt-2">
+              MirrorSource does not sell or rent your information.
             </p>
 
             <h3 className="text-lg font-semibold text-slate-900">Cookies</h3>
@@ -99,7 +118,7 @@ export default function LegalPage() {
 
             <h3 className="text-lg font-semibold text-slate-900">Third-Party Providers</h3>
             <p className="text-slate-700">
-              We may use hosting or analytics providers. They process technical data on our behalf.
+              We may use hosting, analytics, or email delivery providers. They process technical data on our behalf.
             </p>
 
             <h3 className="text-lg font-semibold text-slate-900">Data Security</h3>
@@ -156,8 +175,11 @@ export default function LegalPage() {
             </p>
 
             <h3 className="text-lg font-semibold text-slate-900">Legal Basis</h3>
-            <p className="text-slate-700">
+            <p className="text-slate-700 mb-2">
               Processing of limited technical data is based on legitimate interests in operating and securing the service.
+            </p>
+            <p className="text-slate-700">
+              For email communications, processing is based on your consent, which you may withdraw at any time by unsubscribing or contacting us.
             </p>
 
             <h3 className="text-lg font-semibold text-slate-900">Data Transfers</h3>
@@ -219,6 +241,41 @@ export default function LegalPage() {
             <h2 className="text-2xl font-semibold text-slate-900">12. Affiliate Disclosure</h2>
             <p className="text-slate-700">
               MirrorSource may display recommendations for third-party products and services. Some links are affiliate links, meaning MirrorSource may earn a commission if you make a purchase. This does not affect the price you pay. We only recommend tools that align with our values of transparency, privacy, and user agency.
+            </p>
+          </section>
+
+          {/* 13. Email Communications */}
+          <section className="space-y-3">
+            <h2 className="text-2xl font-semibold text-slate-900">13. Email Communications</h2>
+            <p className="text-slate-700">
+              If you provide your email address to access additional features or receive updates, we will use it solely to:
+            </p>
+            <ul className="list-disc pl-6 text-slate-700 space-y-1">
+              <li><strong>Service notifications:</strong> Account verification, login links, security alerts, and important service updates.</li>
+              <li><strong>Product updates and newsletters:</strong> Only if you explicitly opt in during signup.</li>
+            </ul>
+
+            <h3 className="text-lg font-semibold text-slate-900">Unsubscribe</h3>
+            <p className="text-slate-700">
+              You may unsubscribe from marketing emails at any time by clicking the &quot;unsubscribe&quot; link in the footer of any email, or by contacting us directly.
+            </p>
+
+            <h3 className="text-lg font-semibold text-slate-900">No Spam</h3>
+            <p className="text-slate-700">
+              We do not sell, rent, or trade email addresses with third parties for marketing purposes.
+            </p>
+
+            <h3 className="text-lg font-semibold text-slate-900">Service Providers</h3>
+            <p className="text-slate-700">
+              We use third-party providers (such as Resend or Supabase) to manage email storage and delivery. Your email address may be processed by these providers in accordance with their respective privacy policies.
+            </p>
+          </section>
+
+          {/* 14. Canadian Anti-Spam Law (CASL) Notice */}
+          <section className="space-y-3">
+            <h2 className="text-2xl font-semibold text-slate-900">14. Canadian Anti-Spam Law (CASL) Notice</h2>
+            <p className="text-slate-700">
+              If you are located in Canada, we comply with the Canadian Anti-Spam Legislation. We will only send commercial electronic messages with your express consent. You may withdraw consent at any time using the unsubscribe mechanism provided.
             </p>
           </section>
 
