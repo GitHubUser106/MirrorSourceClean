@@ -9,6 +9,7 @@ import SourceFlipCard from "@/components/SourceFlipCard";
 import { ProvenanceCard } from "@/components/ProvenanceCard";
 import { NarrativeCard } from "@/components/NarrativeCard";
 import { AuthorModal } from "@/components/AuthorModal";
+import { EmailGate, useEmailGate, shouldShowGate as checkShouldShowGate, getRemainingLookups as checkRemainingLookups } from "@/components/EmailGate";
 import type { GroundingSource } from "@/types";
 import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, BarChart3, ExternalLink } from "lucide-react";
 import { getPoliticalLean, getSourceInfo, LEAN_COLORS, LEAN_LABELS, type PoliticalLean } from "@/lib/sourceData";
@@ -507,6 +508,15 @@ function HomeContent() {
   const [loadingComparison, setLoadingComparison] = useState(false);
   const hasAutoSelected = useRef(false);
   const [selectedBias, setSelectedBias] = useState<PoliticalLean | null>(null);
+  const [showEmailGate, setShowEmailGate] = useState(false);
+
+  // Email gate hook for tracking free lookups
+  const {
+    remainingLookups,
+    isSubscribed,
+    recordLookup,
+    handleEmailSuccess
+  } = useEmailGate();
 
   // Political lean order for sorting (Left → Right)
   const BIAS_ORDER: PoliticalLean[] = ['left', 'center-left', 'center', 'center-right', 'right'];
@@ -770,6 +780,14 @@ function HomeContent() {
 
   async function handleSearchWithUrl(url: string) {
     if (!url.trim()) return;
+
+    // Check if non-subscribed user has exhausted free lookups
+    // Use direct localStorage check to avoid stale hook state
+    if (checkShouldShowGate()) {
+      setShowEmailGate(true);
+      return;
+    }
+
     setLastSubmittedUrl(url);
     setLoadingFactIndex(0);
     setShowKeywordFallback(false);
@@ -848,6 +866,11 @@ function HomeContent() {
         results: data.alternatives,
         isPaywalled: data.isPaywalled
       }));
+
+      // Record lookup for email gate tracking (only on successful results)
+      if (!isSubscribed) {
+        recordLookup();
+      }
     } catch (e: unknown) {
       // Network error - browser couldn't reach the server
       setError("Unable to connect. Please check your internet connection and try again.");
@@ -1134,6 +1157,24 @@ function HomeContent() {
                 <UrlInputForm onSubmit={handleSubmit} isLoading={loading} value={currentUrl} onChange={setCurrentUrl} buttonLabel={loading ? "Analyzing..." : "Analyze"} />
               </div>
             </div>
+
+            {/* Remaining lookups indicator */}
+            {!isSubscribed && (
+              <p className="text-sm text-slate-500 mb-4">
+                {remainingLookups > 0 ? (
+                  <>
+                    <span className="font-medium">{remainingLookups}</span> free {remainingLookups === 1 ? 'lookup' : 'lookups'} remaining today
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setShowEmailGate(true)}
+                    className="text-blue-600 hover:underline font-medium"
+                  >
+                    Enter your email for unlimited access
+                  </button>
+                )}
+              </p>
+            )}
 
             {/* Try an example link */}
             <p className="text-sm text-slate-500">
@@ -1594,6 +1635,16 @@ function HomeContent() {
           onClose={() => setAuthorModal(null)}
         />
       )}
+
+      {/* Email Gate Modal */}
+      <EmailGate
+        isOpen={showEmailGate}
+        onClose={() => setShowEmailGate(false)}
+        onSuccess={(email) => {
+          handleEmailSuccess(email);
+          setShowEmailGate(false);
+        }}
+      />
     </main>
   );
 }
