@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { Search, FileText, ExternalLink, Shield, Zap, Globe, BarChart3, Scale, Eye } from "lucide-react";
+import { SOURCE_COUNT } from "@/lib/sourceData";
 
 export const metadata: Metadata = {
   title: "About | MirrorSource",
-  description: "Learn how MirrorSource helps you see the whole story by comparing 190+ news sources across the political spectrum.",
+  description: "Learn how MirrorSource helps you see the whole story by comparing 195+ news sources across the political spectrum.",
 };
 
 export default function AboutPage() {
@@ -40,7 +41,7 @@ export default function AboutPage() {
             See the whole story.
           </h1>
           <p className="text-xl text-slate-600 leading-relaxed max-w-2xl mx-auto">
-            MirrorSource compares how <strong className="text-slate-800">190+ news sources</strong> cover the same story. See the full political spectrum, understand where sources agree and disagree, and discover who owns what you read.
+            MirrorSource compares how <strong className="text-slate-800">{SOURCE_COUNT}+ news sources</strong> cover the same story. See the full political spectrum, understand where sources agree and disagree, and discover who owns what you read.
           </p>
         </div>
       </section>
@@ -150,7 +151,7 @@ export default function AboutPage() {
                 Political lean ratings sourced from <a href="https://www.allsides.com/media-bias/ratings" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">AllSides</a> and <a href="https://adfontesmedia.com/interactive-media-bias-chart/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Ad Fontes Media</a>.
               </p>
               <p className="text-sm text-slate-500">
-                190+ sources rated and verified.
+                {SOURCE_COUNT}+ sources rated and verified.
               </p>
             </div>
           </div>

@@ -2620,3 +2620,9 @@ export const BALANCED_DOMAINS = [
 // =============================================================================
 export const getWikiLink = (sourceName: string): string =>
   `https://en.wikipedia.org/wiki/${sourceName.replace(/ /g, '_')}`;
+
+// =============================================================================
+// SOURCE COUNT - Single source of truth for source count across the app
+// Uses deduplicated count (unique domains) for consistency with Sources page
+// =============================================================================
+export const SOURCE_COUNT = new Set(SOURCES.map(s => s.domain)).size;

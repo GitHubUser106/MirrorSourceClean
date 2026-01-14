@@ -12,7 +12,7 @@ import { AuthorModal } from "@/components/AuthorModal";
 import { EmailGate, useEmailGate, shouldShowGate as checkShouldShowGate, getRemainingLookups as checkRemainingLookups } from "@/components/EmailGate";
 import type { GroundingSource } from "@/types";
 import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, BarChart3, ExternalLink } from "lucide-react";
-import { getPoliticalLean, getSourceInfo, LEAN_COLORS, LEAN_LABELS, type PoliticalLean } from "@/lib/sourceData";
+import { getPoliticalLean, getSourceInfo, LEAN_COLORS, LEAN_LABELS, SOURCE_COUNT, type PoliticalLean } from "@/lib/sourceData";
 
 // Political lean spectrum order for sorting (Left → Right)
 const LEAN_ORDER: Record<string, number> = {
@@ -1215,7 +1215,7 @@ function HomeContent() {
             <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-6 text-sm text-slate-500">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                <span>Analyzing <strong className="text-slate-700">190+ news sources</strong></span>
+                <span>Analyzing <strong className="text-slate-700">{SOURCE_COUNT}+ news sources</strong></span>
               </div>
               <div className="flex items-center gap-2">
                 <Scale className="w-4 h-4" />
