@@ -1170,22 +1170,31 @@ function HomeContent() {
 
     console.log('[Init] Params - url:', urlParam, 'text:', textParam, 'hasAutoSearched:', hasAutoSearchedRef.current);
 
-    // ANDROID SHARE: Extract headline from shared text (e.g., "Headline here https://share.google...")
+    // ANDROID SHARE: Handle shared text (may contain URL, headline, or both)
     if (textParam && !hasAutoSearchedRef.current) {
       console.log('[Init] Text from Android share:', textParam);
       sessionStorage.removeItem('mirrorSourceResults');
 
-      // Extract headline: everything before the URL, or the whole text if no URL
+      // Check if text contains a URL
       const urlMatch = textParam.match(/https?:\/\/\S+/);
-      const headline = urlMatch
-        ? textParam.substring(0, urlMatch.index).trim()
-        : textParam.trim();
 
-      if (headline) {
-        console.log('[Init] Extracted headline:', headline);
+      if (urlMatch) {
+        // Text contains a URL - use it for URL-based search
+        const extractedUrl = urlMatch[0];
+        console.log('[Init] Extracted URL from text:', extractedUrl);
+        setCurrentUrl(extractedUrl);
         hasAutoSearchedRef.current = true;
-        setTimeout(() => handleKeywordSearch(headline), 100);
+        setTimeout(() => handleSearchWithUrl(extractedUrl), 100);
         return;
+      } else {
+        // No URL found - treat entire text as a headline for keyword search
+        const headline = textParam.trim();
+        if (headline) {
+          console.log('[Init] No URL found, using as headline:', headline);
+          hasAutoSearchedRef.current = true;
+          setTimeout(() => handleKeywordSearch(headline), 100);
+          return;
+        }
       }
     }
 
