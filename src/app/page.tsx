@@ -11,7 +11,7 @@ import { NarrativeCard } from "@/components/NarrativeCard";
 import { AuthorModal } from "@/components/AuthorModal";
 import { EmailGate, useEmailGate, shouldShowGate as checkShouldShowGate, getRemainingLookups as checkRemainingLookups } from "@/components/EmailGate";
 import type { GroundingSource } from "@/types";
-import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, BarChart3, ExternalLink } from "lucide-react";
+import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, BarChart3, ExternalLink, ThumbsUp, ThumbsDown, Send, Flag } from "lucide-react";
 import { getPoliticalLean, getSourceInfo, LEAN_COLORS, LEAN_LABELS, SOURCE_COUNT, type PoliticalLean } from "@/lib/sourceData";
 
 // Political lean spectrum order for sorting (Left → Right)
@@ -218,6 +218,207 @@ const BAR_COLORS: Record<string, { bg: string; text: string; border?: string }> 
   'center-right': { bg: '#EF8A62', text: '#7C2D12' },
   'right': { bg: '#B2182B', text: '#FFFFFF' },
 };
+
+// Inline Feedback Widget for search results
+function ResultFeedbackWidget({ pageUrl }: { pageUrl: string }) {
+  const [helpful, setHelpful] = useState<boolean | null>(null);
+  const [showComment, setShowComment] = useState(false);
+  const [comment, setComment] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportComment, setReportComment] = useState("");
+  const [reportSubmitted, setReportSubmitted] = useState(false);
+
+  async function handleSubmit(helpfulValue: boolean | null, commentText?: string) {
+    setIsSubmitting(true);
+    try {
+      await fetch("/api/report-issue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pageUrl,
+          helpful: helpfulValue,
+          comment: commentText || null,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Failed to submit feedback:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleThumbClick(isHelpful: boolean) {
+    setHelpful(isHelpful);
+    if (isHelpful) {
+      await handleSubmit(true);
+    } else {
+      setShowComment(true);
+    }
+  }
+
+  async function handleReportSubmit() {
+    setIsSubmitting(true);
+    try {
+      await fetch("/api/report-issue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pageUrl,
+          helpful: null,
+          comment: reportComment,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+      setReportSubmitted(true);
+      setTimeout(() => {
+        setShowReportModal(false);
+        setReportSubmitted(false);
+        setReportComment("");
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to submit report:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="mt-6 pt-4 border-t border-slate-100">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        {/* Feedback */}
+        {submitted ? (
+          <div className="flex items-center gap-2 text-sm text-green-600">
+            <Check size={16} />
+            <span>Thanks for your feedback!</span>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-slate-500">Was this helpful?</span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handleThumbClick(true)}
+                  disabled={isSubmitting}
+                  className={`p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${
+                    helpful === true
+                      ? "bg-green-100 text-green-600"
+                      : "hover:bg-slate-100 text-slate-400 hover:text-green-600"
+                  }`}
+                  aria-label="Yes, helpful"
+                >
+                  <ThumbsUp size={18} />
+                </button>
+                <button
+                  onClick={() => handleThumbClick(false)}
+                  disabled={isSubmitting}
+                  className={`p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${
+                    helpful === false
+                      ? "bg-red-100 text-red-600"
+                      : "hover:bg-slate-100 text-slate-400 hover:text-red-600"
+                  }`}
+                  aria-label="No, not helpful"
+                >
+                  <ThumbsDown size={18} />
+                </button>
+              </div>
+            </div>
+
+            {showComment && !submitted && (
+              <div className="flex gap-2 mt-2">
+                <input
+                  type="text"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Tell us more (optional)"
+                  className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <button
+                  onClick={() => handleSubmit(helpful, comment)}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-lg transition-colors flex items-center gap-1 text-sm"
+                >
+                  <Send size={14} />
+                  Send
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Report Issue Link */}
+        <button
+          onClick={() => setShowReportModal(true)}
+          className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 transition-colors"
+        >
+          <Flag size={12} />
+          Report an issue
+        </button>
+      </div>
+
+      {/* Report Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-slate-900">Report an Issue</h3>
+              <button
+                onClick={() => setShowReportModal(false)}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <span className="text-slate-400 text-xl">&times;</span>
+              </button>
+            </div>
+
+            {reportSubmitted ? (
+              <div className="text-center py-4">
+                <p className="text-green-600 font-medium">Thanks for reporting!</p>
+                <p className="text-sm text-slate-500 mt-1">We&apos;ll look into this.</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-slate-600 mb-4">
+                  Help us improve MirrorSource. Describe the issue you encountered.
+                </p>
+
+                <textarea
+                  value={reportComment}
+                  onChange={(e) => setReportComment(e.target.value)}
+                  placeholder="What went wrong?"
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none mb-4"
+                />
+
+                <p className="text-xs text-slate-400 mb-4">
+                  We&apos;ll include: Page URL, Timestamp, Build version. No personal data.
+                </p>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowReportModal(false)}
+                    className="flex-1 py-2 px-4 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleReportSubmit}
+                    disabled={isSubmitting || !reportComment.trim()}
+                    className="flex-1 py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
+                  >
+                    {isSubmitting ? "Sending..." : "Send Report"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Interactive vertical bar for Coverage Distribution - click to filter sources
 function VerticalBar({
@@ -1158,6 +1359,17 @@ function HomeContent() {
               </div>
             </div>
 
+            {/* Trust Strip */}
+            <p className="text-sm text-gray-500 text-center mt-4 mb-4">
+              <span className="inline-flex items-center gap-4 flex-wrap justify-center">
+                <span>🍁 Built in BC</span>
+                <span>•</span>
+                <span>🔒 No tracking</span>
+                <span>•</span>
+                <span>⚡ Fast on slow connections</span>
+              </span>
+            </p>
+
             {/* Remaining lookups indicator */}
             {!isSubscribed && (
               <p className="text-sm text-slate-500 mb-4">
@@ -1221,9 +1433,66 @@ function HomeContent() {
                 <Scale className="w-4 h-4" />
                 <span>Bias ratings from <a href="https://www.allsides.com/media-bias/ratings" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">AllSides</a> & <a href="https://adfontesmedia.com/interactive-media-bias-chart/" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">Ad Fontes</a></span>
               </div>
-              <Link href="/sources" className="flex items-center gap-1 text-blue-600 hover:underline">
+              <Link href="/methodology" className="flex items-center gap-1 text-blue-600 hover:underline">
                 View our methodology
                 <ExternalLink className="w-3 h-3" />
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Below the Fold - Built for Understanding */}
+      {!hasContent && !loading && (
+        <section className="py-16 px-4 bg-white border-t border-slate-200">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-900 text-center mb-12">
+              Built for understanding, not outrage
+            </h2>
+
+            <div className="grid md:grid-cols-3 gap-8">
+              {/* Card 1 */}
+              <div className="text-center p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <Scale className="w-6 h-6 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">See the Whole Story</h3>
+                <p className="text-slate-600 text-sm">
+                  Compare coverage from {SOURCE_COUNT}+ sources across major outlets
+                </p>
+              </div>
+
+              {/* Card 2 */}
+              <div className="text-center p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <BarChart3 className="w-6 h-6 text-orange-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">Spot the Spin</h3>
+                <p className="text-slate-600 text-sm">
+                  Our Intel Brief shows what sources agree on — and where they diverge
+                </p>
+              </div>
+
+              {/* Card 3 */}
+              <div className="text-center p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <ExternalLink className="w-6 h-6 text-green-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">Transparency First</h3>
+                <p className="text-slate-600 text-sm">
+                  We link to original sources. No tracking. No filter bubbles.
+                </p>
+              </div>
+            </div>
+
+            {/* CTA to Pilot */}
+            <div className="mt-12 text-center">
+              <Link
+                href="/pilot"
+                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-full transition-colors"
+              >
+                Join the Pilot
+                <ExternalLink size={18} />
               </Link>
             </div>
           </div>
@@ -1585,6 +1854,9 @@ function HomeContent() {
                     Find different sources
                   </button>
                 </div>
+
+                {/* Feedback Widget */}
+                <ResultFeedbackWidget pageUrl={lastSubmittedUrl} />
               </div>
             )}
 
@@ -1616,14 +1888,21 @@ function HomeContent() {
       )}
 
       <footer className="py-6 px-4 border-t border-slate-200 bg-white mt-auto">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
-          <p>&copy; {new Date().getFullYear()} MirrorSource</p>
-          <div className="flex items-center gap-6">
-            <Link href="/about" className="hover:text-blue-600 transition-colors">About</Link>
-            <Link href="/sources" className="hover:text-blue-600 transition-colors">Sources</Link>
-            <Link href="/legal" className="hover:text-blue-600 transition-colors">Legal</Link>
-            <Link href="/contact" className="hover:text-blue-600 transition-colors">Contact</Link>
+        <div className="max-w-4xl mx-auto flex flex-col items-center gap-4 text-sm text-slate-500">
+          <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-4">
+            <p>&copy; {new Date().getFullYear()} MirrorSource</p>
+            <div className="flex items-center gap-6">
+              <Link href="/about" className="hover:text-blue-600 transition-colors">About</Link>
+              <Link href="/methodology" className="hover:text-blue-600 transition-colors">Methodology</Link>
+              <Link href="/sources" className="hover:text-blue-600 transition-colors">Sources</Link>
+              <Link href="/pilot" className="hover:text-blue-600 transition-colors">Pilot</Link>
+              <Link href="/legal" className="hover:text-blue-600 transition-colors">Legal</Link>
+              <Link href="/contact" className="hover:text-blue-600 transition-colors">Contact</Link>
+            </div>
           </div>
+          <p className="text-xs text-slate-400 text-center">
+            Built in British Columbia, Canada 🍁 | We link to original sources and respect publisher terms
+          </p>
         </div>
       </footer>
 

@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { Search, FileText, ExternalLink, Shield, Zap, Globe, BarChart3, Scale, Eye } from "lucide-react";
+import { Shield, Zap, Globe, ExternalLink, MapPin, Lock, Eye } from "lucide-react";
 import { SOURCE_COUNT } from "@/lib/sourceData";
 
 export const metadata: Metadata = {
   title: "About | MirrorSource",
-  description: "Learn how MirrorSource helps you see the whole story by comparing 195+ news sources across the political spectrum.",
+  description: "Our mission is to help users see beyond their filter bubble. Built in British Columbia, Canada.",
 };
 
 export default function AboutPage() {
@@ -27,139 +27,95 @@ export default function AboutPage() {
             </Link>
             <nav className="flex items-center gap-6 text-sm">
               <Link href="/about" className="text-blue-600 font-medium">About</Link>
+              <Link href="/methodology" className="text-slate-600 hover:text-blue-600 transition-colors">Methodology</Link>
               <Link href="/sources" className="text-slate-600 hover:text-blue-600 transition-colors">Sources</Link>
-              <a href="https://chromewebstore.google.com/detail/mirrorsource/pbkhmfaocbdakhlpbdebghpdmkpbfohk" target="_blank" rel="noopener noreferrer" className="text-slate-600 hover:text-blue-600 transition-colors">Extension</a>
             </nav>
           </div>
         </div>
       </header>
 
-      {/* Hero */}
+      {/* Hero - Mission */}
       <section className="bg-gradient-to-b from-white to-slate-50 py-16 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight mb-6">
-            See the whole story.
+            Our Mission
           </h1>
           <p className="text-xl text-slate-600 leading-relaxed max-w-2xl mx-auto">
-            MirrorSource compares how <strong className="text-slate-800">{SOURCE_COUNT}+ news sources</strong> cover the same story. See the full political spectrum, understand where sources agree and disagree, and discover who owns what you read.
+            MirrorSource helps users see beyond their filter bubble by showing how different outlets cover the same story. We believe understanding multiple perspectives is essential for informed citizenship.
           </p>
         </div>
       </section>
 
-      {/* How It Works */}
+      {/* How It Works - Plain Language */}
+      <section className="py-16 px-4 bg-white border-y border-slate-200">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-2xl font-bold text-slate-900 mb-6">How It Works</h2>
+          <div className="prose prose-slate max-w-none">
+            <p className="text-lg text-slate-600 leading-relaxed">
+              Paste any news article URL and we&apos;ll find how other sources are covering the same story. Our AI generates a neutral summary and identifies where sources agree (Common Ground) and where they differ (Key Differences). You can see the political lean of each source and flip any card to reveal ownership and funding information.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Privacy */}
       <section className="py-16 px-4">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-slate-900 text-center mb-12">
-            How It Works
-          </h2>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Search className="w-7 h-7 text-blue-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">1. Paste a Link</h3>
-              <p className="text-slate-600">
-                Drop in any news article URL. We find related coverage from across the political spectrum.
-              </p>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+              <Lock className="w-6 h-6 text-green-600" />
             </div>
+            <h2 className="text-2xl font-bold text-slate-900">Privacy</h2>
+          </div>
 
-            <div className="text-center">
-              <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <BarChart3 className="w-7 h-7 text-blue-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">2. See the Spectrum</h3>
-              <p className="text-slate-600">
-                View coverage distribution from Left to Right. Identify gaps and see where your source fits.
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Eye className="w-7 h-7 text-blue-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">3. Know the Source</h3>
-              <p className="text-slate-600">
-                Flip any card to see ownership, funding, and political lean. Understand who&apos;s behind what you read.
-              </p>
-            </div>
+          <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+            <h3 className="font-semibold text-green-800 mb-3">Stateless Design</h3>
+            <ul className="space-y-2 text-green-700">
+              <li className="flex items-start gap-2">
+                <span className="text-green-500 mt-1">✓</span>
+                <span>No tracking cookies or analytics profiles</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-green-500 mt-1">✓</span>
+                <span>No reading history stored</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-green-500 mt-1">✓</span>
+                <span>No user accounts required</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-green-500 mt-1">✓</span>
+                <span>Pilot feedback stored separately from usage</span>
+              </li>
+            </ul>
           </div>
         </div>
       </section>
 
-      {/* Key Features */}
-      <section className="py-16 px-4 bg-white">
+      {/* Canadian Identity */}
+      <section className="py-16 px-4 bg-white border-y border-slate-200">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-slate-900 text-center mb-12">
-            What You Get
-          </h2>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-blue-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-slate-900">Coverage Distribution</h3>
-              </div>
-              <p className="text-slate-600 mb-3">
-                See a 5-bar chart showing how many sources cover the story from each political perspective: Left, Center-Left, Center, Center-Right, and Right.
-              </p>
-              <p className="text-sm text-slate-500">
-                Click any bar to filter sources by perspective.
-              </p>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+              <span className="text-2xl">🍁</span>
             </div>
+            <h2 className="text-2xl font-bold text-slate-900">Canadian Identity</h2>
+          </div>
 
-            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-orange-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-slate-900">Intel Brief</h3>
-              </div>
-              <p className="text-slate-600 mb-3">
-                Understand where sources agree (Common Ground) and where they differ (Key Differences). See the Divergence Meter to gauge how contentious the story is.
-              </p>
-              <p className="text-sm text-slate-500">
-                Includes story provenance and narrative framing analysis.
-              </p>
-            </div>
-
-            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-                  <Eye className="w-5 h-5 text-purple-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-slate-900">Source Transparency</h3>
-              </div>
-              <p className="text-slate-600 mb-3">
-                Flip any source card to reveal ownership structure, funding model, country of origin, and political lean rating.
-              </p>
-              <p className="text-sm text-slate-500">
-                Know if it&apos;s billionaire-owned, nonprofit, public, or corporate.
-              </p>
-            </div>
-
-            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
-                  <Scale className="w-5 h-5 text-green-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-slate-900">Bias Ratings</h3>
-              </div>
-              <p className="text-slate-600 mb-3">
-                Political lean ratings sourced from <a href="https://www.allsides.com/media-bias/ratings" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">AllSides</a> and <a href="https://adfontesmedia.com/interactive-media-bias-chart/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Ad Fontes Media</a>.
-              </p>
-              <p className="text-sm text-slate-500">
-                {SOURCE_COUNT}+ sources rated and verified.
+          <div className="flex items-start gap-4">
+            <MapPin className="w-5 h-5 text-red-600 mt-1 flex-shrink-0" />
+            <div>
+              <p className="text-lg text-slate-700 font-medium">Built in British Columbia, Canada</p>
+              <p className="text-slate-600 mt-2">
+                MirrorSource is developed and operated from British Columbia. We respect publisher terms and link directly to original sources.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* What Makes Us Different */}
-      <section className="py-16 px-4 bg-slate-50">
+      {/* Our Principles */}
+      <section className="py-16 px-4">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-2xl font-bold text-slate-900 text-center mb-12">
             Our Principles
@@ -211,13 +167,13 @@ export default function AboutPage() {
             <div className="flex gap-4">
               <div className="flex-shrink-0">
                 <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <Search className="w-5 h-5 text-blue-600" />
+                  <Eye className="w-5 h-5 text-blue-600" />
                 </div>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">Free to Use</h3>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">Transparency First</h3>
                 <p className="text-slate-600">
-                  MirrorSource is free with 25 searches per day. We believe everyone deserves access to diverse news perspectives.
+                  Every source card shows ownership, funding, and political lean. Know who&apos;s behind what you read.
                 </p>
               </div>
             </div>
@@ -226,13 +182,13 @@ export default function AboutPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-16 px-4 bg-white">
+      <section className="py-16 px-4 bg-slate-100">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-2xl font-bold text-slate-900 mb-4">
             Ready to see the whole story?
           </h2>
           <p className="text-slate-600 mb-8">
-            Try MirrorSource now—paste any news link and discover alternative coverage in seconds.
+            Try MirrorSource now—paste any news link and discover alternative coverage.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
@@ -242,29 +198,34 @@ export default function AboutPage() {
               Try MirrorSource
               <ExternalLink size={18} />
             </Link>
-            <a
-              href="https://chromewebstore.google.com/detail/mirrorsource/pbkhmfaocbdakhlpbdebghpdmkpbfohk"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-3 px-8 rounded-full transition-colors border border-slate-200"
+            <Link
+              href="/methodology"
+              className="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-semibold py-3 px-8 rounded-full transition-colors border border-slate-200"
             >
-              Get Chrome Extension
+              View Methodology
               <ExternalLink size={18} />
-            </a>
+            </Link>
           </div>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="py-6 px-4 border-t border-slate-200 bg-white mt-auto">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
-          <p>&copy; {new Date().getFullYear()} MirrorSource</p>
-          <div className="flex items-center gap-6">
-            <Link href="/about" className="hover:text-blue-600 transition-colors">About</Link>
-            <Link href="/sources" className="hover:text-blue-600 transition-colors">Sources</Link>
-            <Link href="/legal" className="hover:text-blue-600 transition-colors">Legal</Link>
-            <Link href="/contact" className="hover:text-blue-600 transition-colors">Contact</Link>
+        <div className="max-w-4xl mx-auto flex flex-col items-center gap-4 text-sm text-slate-500">
+          <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-4">
+            <p>&copy; {new Date().getFullYear()} MirrorSource</p>
+            <div className="flex items-center gap-6">
+              <Link href="/about" className="hover:text-blue-600 transition-colors">About</Link>
+              <Link href="/methodology" className="hover:text-blue-600 transition-colors">Methodology</Link>
+              <Link href="/sources" className="hover:text-blue-600 transition-colors">Sources</Link>
+              <Link href="/pilot" className="hover:text-blue-600 transition-colors">Pilot</Link>
+              <Link href="/legal" className="hover:text-blue-600 transition-colors">Legal</Link>
+              <Link href="/contact" className="hover:text-blue-600 transition-colors">Contact</Link>
+            </div>
           </div>
+          <p className="text-xs text-slate-400 text-center">
+            Built in British Columbia, Canada 🍁 | We link to original sources and respect publisher terms
+          </p>
         </div>
       </footer>
     </main>
