@@ -1283,7 +1283,7 @@ function HomeContent() {
   const todaysStory = getDailyStory();
 
   return (
-    <main className="min-h-screen bg-slate-50 flex flex-col relative overflow-x-hidden">
+    <main id="main-content" className="min-h-screen bg-slate-50 flex flex-col relative overflow-x-hidden">
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes popIn {
           0% { transform: scale(0); opacity: 0; }
@@ -1316,6 +1316,7 @@ function HomeContent() {
             <div className="flex items-center gap-6">
               <nav className="hidden md:flex items-center gap-6 text-sm">
                 <Link href="/about" className="text-slate-600 hover:text-blue-600 transition-colors">About</Link>
+                <Link href="/methodology" className="text-slate-600 hover:text-blue-600 transition-colors">Methodology</Link>
                 <Link href="/sources" className="text-slate-600 hover:text-blue-600 transition-colors">Sources</Link>
                 <a href="https://chromewebstore.google.com/detail/mirrorsource/pbkhmfaocbdakhlpbdebghpdmkpbfohk" target="_blank" rel="noopener noreferrer" className="text-slate-600 hover:text-blue-600 transition-colors">Extension</a>
               </nav>
@@ -1889,17 +1890,15 @@ function HomeContent() {
 
       <footer className="py-6 px-4 border-t border-slate-200 bg-white mt-auto">
         <div className="max-w-4xl mx-auto flex flex-col items-center gap-4 text-sm text-slate-500">
-          <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-4">
-            <p>&copy; {new Date().getFullYear()} MirrorSource</p>
-            <div className="flex items-center gap-6">
-              <Link href="/about" className="hover:text-blue-600 transition-colors">About</Link>
-              <Link href="/methodology" className="hover:text-blue-600 transition-colors">Methodology</Link>
-              <Link href="/sources" className="hover:text-blue-600 transition-colors">Sources</Link>
-              <Link href="/pilot" className="hover:text-blue-600 transition-colors">Pilot</Link>
-              <Link href="/legal" className="hover:text-blue-600 transition-colors">Legal</Link>
-              <Link href="/contact" className="hover:text-blue-600 transition-colors">Contact</Link>
-            </div>
+          <div className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center">
+            <Link href="/about" className="hover:text-blue-600 transition-colors">About</Link>
+            <Link href="/methodology" className="hover:text-blue-600 transition-colors">Methodology</Link>
+            <Link href="/sources" className="hover:text-blue-600 transition-colors">Sources</Link>
+            <Link href="/pilot" className="hover:text-blue-600 transition-colors">Pilot</Link>
+            <Link href="/legal" className="hover:text-blue-600 transition-colors">Legal</Link>
+            <Link href="/contact" className="hover:text-blue-600 transition-colors">Contact</Link>
           </div>
+          <p>&copy; {new Date().getFullYear()} MirrorSource</p>
           <p className="text-xs text-slate-400 text-center">
             Built in British Columbia, Canada 🍁 | We link to original sources and respect publisher terms
           </p>

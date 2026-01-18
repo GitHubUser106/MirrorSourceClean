@@ -51,7 +51,7 @@ function ScoreCircle({ score, label }: { score: number; label: string }) {
 
 export default function BenchmarksPage() {
   return (
-    <main className="min-h-screen bg-slate-50 flex flex-col">
+    <main id="main-content" className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header */}
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-4xl mx-auto px-4 py-4">
@@ -199,17 +199,15 @@ export default function BenchmarksPage() {
       {/* Footer */}
       <footer className="py-6 px-4 border-t border-slate-200 bg-white mt-auto">
         <div className="max-w-4xl mx-auto flex flex-col items-center gap-4 text-sm text-slate-500">
-          <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-4">
-            <p>&copy; {new Date().getFullYear()} MirrorSource</p>
-            <div className="flex items-center gap-6">
-              <Link href="/about" className="hover:text-blue-600 transition-colors">About</Link>
-              <Link href="/methodology" className="hover:text-blue-600 transition-colors">Methodology</Link>
-              <Link href="/sources" className="hover:text-blue-600 transition-colors">Sources</Link>
-              <Link href="/pilot" className="hover:text-blue-600 transition-colors">Pilot</Link>
-              <Link href="/legal" className="hover:text-blue-600 transition-colors">Legal</Link>
-              <Link href="/contact" className="hover:text-blue-600 transition-colors">Contact</Link>
-            </div>
+          <div className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center">
+            <Link href="/about" className="hover:text-blue-600 transition-colors">About</Link>
+            <Link href="/methodology" className="hover:text-blue-600 transition-colors">Methodology</Link>
+            <Link href="/sources" className="hover:text-blue-600 transition-colors">Sources</Link>
+            <Link href="/pilot" className="hover:text-blue-600 transition-colors">Pilot</Link>
+            <Link href="/legal" className="hover:text-blue-600 transition-colors">Legal</Link>
+            <Link href="/contact" className="hover:text-blue-600 transition-colors">Contact</Link>
           </div>
+          <p>&copy; {new Date().getFullYear()} MirrorSource</p>
           <p className="text-xs text-slate-400 text-center">
             Built in British Columbia, Canada 🍁 | We link to original sources and respect publisher terms
           </p>
