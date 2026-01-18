@@ -219,6 +219,7 @@ export default function PilotPage() {
               <Link href="/about" className="hover:text-blue-600 transition-colors">About</Link>
               <Link href="/methodology" className="hover:text-blue-600 transition-colors">Methodology</Link>
               <Link href="/sources" className="hover:text-blue-600 transition-colors">Sources</Link>
+              <Link href="/pilot" className="hover:text-blue-600 transition-colors">Pilot</Link>
               <Link href="/legal" className="hover:text-blue-600 transition-colors">Legal</Link>
               <Link href="/contact" className="hover:text-blue-600 transition-colors">Contact</Link>
             </div>
