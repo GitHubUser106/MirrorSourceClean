@@ -10,8 +10,9 @@ import { ProvenanceCard } from "@/components/ProvenanceCard";
 import { NarrativeCard } from "@/components/NarrativeCard";
 import { AuthorModal } from "@/components/AuthorModal";
 import { EmailGate, useEmailGate, shouldShowGate as checkShouldShowGate, getRemainingLookups as checkRemainingLookups } from "@/components/EmailGate";
+import { ShareBriefButton } from "@/components/ShareBriefButton";
 import type { GroundingSource } from "@/types";
-import { Copy, Check, RefreshCw, Share2, CheckCircle2, Scale, AlertCircle, AlertTriangle, BarChart3, ExternalLink, ThumbsUp, ThumbsDown, Send, Flag } from "lucide-react";
+import { Copy, Check, RefreshCw, CheckCircle2, Scale, AlertCircle, AlertTriangle, BarChart3, ExternalLink, ThumbsUp, ThumbsDown, Send, Flag } from "lucide-react";
 import { getPoliticalLean, getSourceInfo, LEAN_COLORS, LEAN_LABELS, SOURCE_COUNT, type PoliticalLean } from "@/lib/sourceData";
 
 // Political lean spectrum order for sorting (Left → Right)
@@ -696,7 +697,6 @@ function HomeContent() {
   const [queryBiasWarning, setQueryBiasWarning] = useState<string | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [copied, setCopied] = useState(false);
-  const [shared, setShared] = useState(false);
   const hasAutoSearchedRef = useRef(false);
   const [loadingFactIndex, setLoadingFactIndex] = useState(0);
   const [currentUrl, setCurrentUrl] = useState("");
@@ -1247,24 +1247,6 @@ function HomeContent() {
     } catch {}
   }
 
-  async function handleShare() {
-    const shareData = {
-      title: 'MirrorSource - See the Whole Story',
-      text: summary ? summary.replace(/\*\*/g, '').slice(0, 100) + '...' : 'Find free, public coverage of any news story.',
-      url: window.location.origin,
-    };
-
-    try {
-      if (navigator.share && navigator.canShare(shareData)) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(window.location.origin);
-        setShared(true);
-        setTimeout(() => setShared(false), 2000);
-      }
-    } catch {}
-  }
-
   function handleLogoClick(e: React.MouseEvent) {
     e.preventDefault();
     setSummary(null);
@@ -1686,9 +1668,24 @@ function HomeContent() {
                     <button onClick={handleCopySummary} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 transition-colors px-2 py-1 rounded hover:bg-slate-100">
                       {copied ? <><Check size={16} className="text-green-600" /><span className="hidden sm:inline text-green-600">Copied!</span></> : <><Copy size={16} /><span className="hidden sm:inline">Copy</span></>}
                     </button>
-                    <button onClick={handleShare} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 transition-colors px-2 py-1 rounded hover:bg-slate-100">
-                      {shared ? <><Check size={16} className="text-green-600" /><span className="hidden sm:inline text-green-600">Link copied!</span></> : <><Share2 size={16} /><span className="hidden sm:inline">Share</span></>}
-                    </button>
+                    <ShareBriefButton
+                      briefData={{
+                        originalUrl: lastSubmittedUrl,
+                        topic: keywords || (summary ? summary.replace(/\*\*/g, '').split('.')[0].slice(0, 80) : 'News Analysis'),
+                        summary: summary,
+                        commonGround: commonGround,
+                        keyDifferences: keyDifferences,
+                        provenance: provenance,
+                        narrative: narrative,
+                        sources: results.map(r => ({
+                          displayName: r.displayName,
+                          uri: r.uri,
+                          politicalLean: r.politicalLean,
+                        })),
+                        emotionalIntensity: narrative?.emotionalIntensity,
+                        narrativeType: narrative?.narrativeType,
+                      }}
+                    />
                   </div>
                 )}
               </div>
