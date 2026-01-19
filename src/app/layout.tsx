@@ -71,9 +71,13 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="google-site-verification" content="Obu9ZJp1ML2sUHm2P5LfOGNNX4FjlX9p9wDI-s_N3Qo" />
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        {/* Favicon - multi-size ICO for broad browser support */}
+        <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+        {/* Explicit PNG favicons for modern browsers */}
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+        {/* Apple touch icon for iOS */}
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         {/* Skip to content link for accessibility */}
