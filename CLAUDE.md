@@ -187,3 +187,36 @@ Generates package for Boast.ai SR&ED filing.
 - Any SR&ED-related notifications
 
 SR&ED capture is invisible until user explicitly requests export.
+
+## 10. Change Review Protocol
+
+Before implementing significant changes, verify alignment with MirrorSource's core mission and architecture.
+
+### Mission Guardrails
+Any change must support these principles:
+1. **Media literacy** - Help users understand coverage, not tell them what to think
+2. **Transparency** - Show sources, methodology, and limitations honestly
+3. **Privacy** - No tracking, no profiles, stateless design
+4. **Neutrality** - Present perspectives without editorial bias
+5. **Accessibility** - Work for all users, including slow connections
+
+### Before Implementing, Check:
+- [ ] Does this align with the mission above?
+- [ ] Does it conflict with existing architecture (Eyes + Brain separation)?
+- [ ] Does it maintain privacy commitments (no new tracking)?
+- [ ] Could it be perceived as editorial bias?
+- [ ] Does it add complexity without clear user benefit?
+
+### Flag Concerns
+If any check fails, **stop and discuss** before proceeding. Output:
+```
+⚠️ CONCERN: [Brief description]
+Potential conflict with: [mission principle or existing decision]
+Recommend: [alternative approach or request for clarification]
+```
+
+### Exempt from Review
+- Bug fixes
+- Performance optimizations
+- Accessibility improvements
+- Documentation updates
