@@ -1684,6 +1684,7 @@ function HomeContent() {
                         })),
                         emotionalIntensity: narrative?.emotionalIntensity,
                         narrativeType: narrative?.narrativeType,
+                        divergenceLevel: getDivergenceLevel(keyDifferences).level.toLowerCase() as 'high' | 'low' | 'medium',
                       }}
                     />
                   </div>

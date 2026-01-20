@@ -22,6 +22,7 @@ interface BriefData {
   sources?: Array<{ displayName: string; uri: string; politicalLean?: string }>;
   emotionalIntensity?: number;
   narrativeType?: string;
+  divergenceLevel?: 'high' | 'low' | 'medium' | null;
 }
 
 interface ShareBriefButtonProps {
@@ -131,6 +132,7 @@ export function ShareBriefButton({ briefData }: ShareBriefButtonProps) {
       keyDifferences: briefData.keyDifferences as BriefDataForShare["keyDifferences"],
       sources: briefData.sources,
       emotionalIntensity: briefData.emotionalIntensity,
+      divergenceLevel: briefData.divergenceLevel,
     };
 
     const generatedTemplates = generateShareTemplates(briefDataForShare, url);

@@ -26,6 +26,7 @@ export interface BriefDataForShare {
   keyDifferences?: KeyDifference[] | string | null;
   sources?: ShareSource[];
   emotionalIntensity?: number;
+  divergenceLevel?: 'high' | 'low' | 'medium' | null; // From Intel Brief
 }
 
 export interface ShareTemplate {
@@ -37,67 +38,72 @@ export interface ShareTemplate {
   isValid: boolean; // Under 280 chars
 }
 
-export interface ExtractedHook {
-  type: 'contrast' | 'intensity' | 'agreement' | 'coverage';
-  headline: string;
-  detail: string;
-  sources?: [string, string]; // Two contrasting sources
-}
-
 // Twitter counts URLs as 23 chars
 const URL_CHAR_COUNT = 23;
 const MAX_CHARS = 280;
 const SAFE_BUFFER = 5;
 const EFFECTIVE_MAX = MAX_CHARS - SAFE_BUFFER;
 
+// Phrases that indicate MirrorSource analysis (NOT source quotes)
+const ANALYSIS_PHRASES = [
+  'sources present a consistent',
+  'sources largely agree',
+  'sources agree on',
+  'consistent narrative',
+  'no significant differences',
+  'similar framing',
+  'outlets report similarly',
+  'coverage is consistent',
+  'sources report the same',
+];
+
 /**
- * Extract the "spiciest" hook from the brief data
+ * Check if text is MirrorSource analysis (not a real source quote)
  */
-export function extractHook(data: BriefDataForShare): ExtractedHook {
+function isMirrorSourceAnalysis(text: string): boolean {
+  const lower = text.toLowerCase();
+  return ANALYSIS_PHRASES.some(phrase => lower.includes(phrase));
+}
+
+/**
+ * Detect if this is a HIGH or LOW divergence story
+ */
+function detectDivergenceLevel(data: BriefDataForShare): 'high' | 'low' {
+  // If explicitly provided, use it
+  if (data.divergenceLevel === 'high') return 'high';
+  if (data.divergenceLevel === 'low') return 'low';
+
   const keyDiffs = normalizeKeyDifferences(data.keyDifferences);
-  const commonGround = normalizeCommonGround(data.commonGround);
-  const sources = data.sources || [];
-  const intensity = data.emotionalIntensity || 5;
 
-  // Priority 1: Find contrasting framings from different sources
-  if (keyDiffs.length > 0) {
-    const bestDiff = keyDiffs[0];
-    // Try to extract source names from the difference
-    const sourceMatch = bestDiff.value.match(/\*\*([^*]+)\*\*/);
-    const sourceName = sourceMatch ? sourceMatch[1] : null;
+  // If keyDifferences is empty or contains only analysis text, it's low divergence
+  if (keyDiffs.length === 0) return 'low';
 
-    return {
-      type: 'contrast',
-      headline: bestDiff.label,
-      detail: cleanMarkdown(bestDiff.value),
-      sources: sourceName ? [sourceName, getContrastingSource(sources, sourceName)] : undefined,
-    };
-  }
+  // Check if the "differences" are actually just MirrorSource saying "sources agree"
+  const firstDiff = keyDiffs[0]?.value || '';
+  if (isMirrorSourceAnalysis(firstDiff)) return 'low';
 
-  // Priority 2: High emotional intensity
-  if (intensity >= 7) {
-    return {
-      type: 'intensity',
-      headline: `Emotional intensity: ${intensity}/10`,
-      detail: intensity >= 9 ? 'Inflammatory coverage detected' : 'Heated framing across sources',
-    };
-  }
+  // Check if differences contain actual source-specific info (source names, quotes)
+  const hasRealDifferences = keyDiffs.some(diff => {
+    const text = diff.value.toLowerCase();
+    // Real differences usually mention specific sources or contain contrasting info
+    return (
+      text.includes('while') ||
+      text.includes('whereas') ||
+      text.includes('however') ||
+      text.includes('but ') ||
+      /\*\*[^*]+\*\*/.test(diff.value) // Has bold source names
+    );
+  });
 
-  // Priority 3: Surprising common ground
-  if (commonGround.length > 0) {
-    return {
-      type: 'agreement',
-      headline: 'Surprising agreement',
-      detail: commonGround[0].value,
-    };
-  }
+  return hasRealDifferences ? 'high' : 'low';
+}
 
-  // Priority 4: Coverage breadth
-  return {
-    type: 'coverage',
-    headline: `${sources.length} sources analyzed`,
-    detail: getSourceSpread(sources),
-  };
+/**
+ * Get real key differences (filter out MirrorSource analysis)
+ */
+function getRealKeyDifferences(data: BriefDataForShare): KeyDifference[] {
+  const keyDiffs = normalizeKeyDifferences(data.keyDifferences);
+  return keyDiffs.filter(diff => !isMirrorSourceAnalysis(diff.value));
 }
 
 /**
@@ -107,153 +113,176 @@ export function generateShareTemplates(
   data: BriefDataForShare,
   shareUrl: string
 ): ShareTemplate[] {
-  const hook = extractHook(data);
+  const divergence = detectDivergenceLevel(data);
   const sourceCount = data.sources?.length || 0;
   const topicShort = truncateTopic(data.topic, 60);
 
-  // URL placeholder for char counting (will be replaced with actual URL)
-  const urlPlaceholder = '[URL]';
-
   const templates: ShareTemplate[] = [];
 
-  // Format A: "The Receipts" (Contrast Hook)
-  const receiptsText = generateReceiptsFormat(data, hook, topicShort, sourceCount, shareUrl);
-  templates.push({
-    id: 'receipts',
-    name: 'The Receipts',
-    description: 'Contrast two sources directly',
-    text: receiptsText,
-    charCount: calculateCharCount(receiptsText),
-    isValid: calculateCharCount(receiptsText) <= EFFECTIVE_MAX,
-  });
+  if (divergence === 'high') {
+    // HIGH DIVERGENCE: Use contrast-based templates
+    const realDiffs = getRealKeyDifferences(data);
 
-  // Format B: "The Question" (Engagement Bait)
-  const questionText = generateQuestionFormat(data, hook, topicShort, sourceCount, shareUrl);
-  templates.push({
-    id: 'question',
-    name: 'The Question',
-    description: 'Ask a provocative question',
-    text: questionText,
-    charCount: calculateCharCount(questionText),
-    isValid: calculateCharCount(questionText) <= EFFECTIVE_MAX,
-  });
+    // Format A: "The Receipts" (Contrast Hook)
+    const receiptsText = generateReceiptsFormat(data, realDiffs, topicShort, sourceCount, shareUrl);
+    templates.push({
+      id: 'receipts',
+      name: 'The Receipts',
+      description: 'Contrast two sources directly',
+      text: receiptsText,
+      charCount: calculateCharCount(receiptsText),
+      isValid: calculateCharCount(receiptsText) <= EFFECTIVE_MAX,
+    });
 
-  // Format C: "The Discovery" (Personal Observation)
-  const discoveryText = generateDiscoveryFormat(data, hook, topicShort, sourceCount, shareUrl);
-  templates.push({
-    id: 'discovery',
-    name: 'The Discovery',
-    description: 'Share your finding',
-    text: discoveryText,
-    charCount: calculateCharCount(discoveryText),
-    isValid: calculateCharCount(discoveryText) <= EFFECTIVE_MAX,
-  });
+    // Format B: "The Question" (Engagement Bait)
+    const questionText = generateQuestionFormat(data, topicShort, sourceCount, shareUrl);
+    templates.push({
+      id: 'question',
+      name: 'The Question',
+      description: 'Ask a provocative question',
+      text: questionText,
+      charCount: calculateCharCount(questionText),
+      isValid: calculateCharCount(questionText) <= EFFECTIVE_MAX,
+    });
+
+    // Format C: "The Discovery" (Personal Observation)
+    const discoveryText = generateDiscoveryFormat(data, realDiffs, topicShort, sourceCount, shareUrl);
+    templates.push({
+      id: 'discovery',
+      name: 'The Discovery',
+      description: 'Share your finding',
+      text: discoveryText,
+      charCount: calculateCharCount(discoveryText),
+      isValid: calculateCharCount(discoveryText) <= EFFECTIVE_MAX,
+    });
+  } else {
+    // LOW DIVERGENCE / CONSENSUS: Use agreement-based templates
+    const commonGround = normalizeCommonGround(data.commonGround);
+
+    // Format A: "The Consensus" (Rare Agreement)
+    const consensusText = generateConsensusFormat(data, commonGround, topicShort, sourceCount, shareUrl);
+    templates.push({
+      id: 'consensus',
+      name: 'The Consensus',
+      description: 'Highlight rare agreement',
+      text: consensusText,
+      charCount: calculateCharCount(consensusText),
+      isValid: calculateCharCount(consensusText) <= EFFECTIVE_MAX,
+    });
+
+    // Format B: "The Fact Check" (Nobody's Disputing)
+    const factCheckText = generateFactCheckFormat(data, topicShort, sourceCount, shareUrl);
+    templates.push({
+      id: 'factcheck',
+      name: 'The Fact Check',
+      description: 'Facts nobody disputes',
+      text: factCheckText,
+      charCount: calculateCharCount(factCheckText),
+      isValid: calculateCharCount(factCheckText) <= EFFECTIVE_MAX,
+    });
+
+    // Format C: "The Spectrum" (Full Coverage)
+    const spectrumText = generateSpectrumFormat(data, topicShort, sourceCount, shareUrl);
+    templates.push({
+      id: 'spectrum',
+      name: 'The Spectrum',
+      description: 'Show political spread',
+      text: spectrumText,
+      charCount: calculateCharCount(spectrumText),
+      isValid: calculateCharCount(spectrumText) <= EFFECTIVE_MAX,
+    });
+  }
 
   return templates;
 }
 
+// =============================================================================
+// HIGH DIVERGENCE Templates
+// =============================================================================
+
 /**
- * Format A: "The Receipts" - Direct source contrast
+ * Format: "The Receipts" - Direct source contrast (HIGH DIVERGENCE ONLY)
  */
 function generateReceiptsFormat(
   data: BriefDataForShare,
-  hook: ExtractedHook,
+  realDiffs: KeyDifference[],
   topicShort: string,
   sourceCount: number,
   shareUrl: string
 ): string {
   const sources = data.sources || [];
-  const keyDiffs = normalizeKeyDifferences(data.keyDifferences);
 
-  // Try to find two contrasting sources
-  let source1 = 'One outlet';
-  let source2 = 'Another outlet';
-  let framing1 = 'one framing';
-  let framing2 = 'different framing';
+  // Get sources from different political leans
+  const leftSource = sources.find(s =>
+    s.politicalLean === 'left' || s.politicalLean === 'center-left'
+  );
+  const rightSource = sources.find(s =>
+    s.politicalLean === 'right' || s.politicalLean === 'center-right'
+  );
 
-  if (sources.length >= 2) {
-    // Get sources from different political leans if possible
-    const leftSource = sources.find(s => s.politicalLean === 'left' || s.politicalLean === 'center-left');
-    const rightSource = sources.find(s => s.politicalLean === 'right' || s.politicalLean === 'center-right');
+  const source1 = leftSource?.displayName || sources[0]?.displayName || 'Left-leaning outlet';
+  const source2 = rightSource?.displayName || sources[1]?.displayName || 'Right-leaning outlet';
 
-    if (leftSource && rightSource) {
-      source1 = leftSource.displayName;
-      source2 = rightSource.displayName;
-    } else {
-      source1 = sources[0].displayName;
-      source2 = sources[1].displayName;
+  // Extract actual framing difference if available
+  let framingDesc = 'frames it differently';
+  if (realDiffs.length > 0) {
+    // Use the label (like "Scope:", "Framing:") rather than the full text
+    const diffLabel = realDiffs[0].label;
+    if (diffLabel && diffLabel !== 'Difference') {
+      framingDesc = `different ${diffLabel.replace(':', '').toLowerCase()}`;
     }
   }
 
-  // Extract framings from key differences if available
-  if (keyDiffs.length > 0 && hook.detail) {
-    framing1 = truncateText(hook.detail, 40);
-    framing2 = keyDiffs.length > 1 ? truncateText(keyDiffs[1].value, 40) : 'different angle';
-  }
+  return `${source1} vs ${source2}
 
-  return `${source1}: "${framing1}"
+Same story. ${framingDesc}.
 
-${source2}: different take
-
-Same story. ${sourceCount} sources. Different framings.
-
-🔍 ${shareUrl}
+${sourceCount} sources compared:
+${shareUrl}
 
 What did YOUR feed show you?`;
 }
 
 /**
- * Format B: "The Question" - Engagement bait
+ * Format: "The Question" - Engagement bait (HIGH DIVERGENCE)
  */
 function generateQuestionFormat(
   data: BriefDataForShare,
-  hook: ExtractedHook,
   topicShort: string,
   sourceCount: number,
   shareUrl: string
 ): string {
   const sources = data.sources || [];
   const sourceNames = sources.slice(0, 3).map(s => s.displayName);
-
-  // Create a provocative question based on the hook
-  let question = `Is this story being framed fairly?`;
-
-  if (hook.type === 'contrast') {
-    question = `Is "${topicShort}" really what it seems?`;
-  } else if (hook.type === 'intensity') {
-    question = `Why is coverage of "${topicShort}" so heated?`;
-  }
-
   const bulletPoints = sourceNames.map(name => `• ${name}`).join('\n');
 
-  return `${question}
+  return `How is "${topicShort}" being framed?
 
 Depends who you ask:
 ${bulletPoints}
 
-${sourceCount} sources compared → ${shareUrl}
+${sourceCount} sources compared:
+${shareUrl}
 
-Which framing did YOUR feed show?`;
+Which version did YOUR feed show?`;
 }
 
 /**
- * Format C: "The Discovery" - Personal observation
+ * Format: "The Discovery" - Personal observation (HIGH DIVERGENCE)
  */
 function generateDiscoveryFormat(
   data: BriefDataForShare,
-  hook: ExtractedHook,
+  realDiffs: KeyDifference[],
   topicShort: string,
   sourceCount: number,
   shareUrl: string
 ): string {
-  const keyDiffs = normalizeKeyDifferences(data.keyDifferences);
+  let finding = 'The framing varies significantly across outlets.';
 
-  let finding = 'The framing differences are significant.';
-
-  if (keyDiffs.length > 0) {
-    finding = `Biggest gap: ${truncateText(cleanMarkdown(keyDiffs[0].value), 80)}`;
-  } else if (hook.type === 'intensity') {
-    finding = `Emotional intensity varies wildly across outlets.`;
+  if (realDiffs.length > 0) {
+    const diff = realDiffs[0];
+    const label = diff.label !== 'Difference' ? diff.label.replace(':', '') : 'framing';
+    finding = `Biggest gap: ${label.toLowerCase()}`;
   }
 
   return `${sourceCount} sources on "${topicShort}"
@@ -264,7 +293,102 @@ Same facts. Different stories.
 
 ${shareUrl}
 
-@UseMirrorSource – feedback welcome 👇`;
+@UseMirrorSource`;
+}
+
+// =============================================================================
+// LOW DIVERGENCE / CONSENSUS Templates
+// =============================================================================
+
+/**
+ * Format: "The Consensus" - Highlight rare agreement (LOW DIVERGENCE)
+ */
+function generateConsensusFormat(
+  data: BriefDataForShare,
+  commonGround: CommonGroundItem[],
+  topicShort: string,
+  sourceCount: number,
+  shareUrl: string
+): string {
+  const sources = data.sources || [];
+  const spread = getSourceSpread(sources);
+
+  // Get the key finding they agree on
+  let keyFinding = topicShort;
+  if (commonGround.length > 0) {
+    keyFinding = truncateText(commonGround[0].value, 80);
+  } else if (data.summary) {
+    // Use first sentence of summary
+    const firstSentence = data.summary.split(/[.!?]/)[0];
+    keyFinding = truncateText(firstSentence, 80);
+  }
+
+  return `${sourceCount} sources. ${spread}.
+
+All reporting the same thing:
+"${keyFinding}"
+
+${shareUrl}
+
+Rare consensus or coordinated narrative? You decide.`;
+}
+
+/**
+ * Format: "The Fact Check" - Facts nobody disputes (LOW DIVERGENCE)
+ */
+function generateFactCheckFormat(
+  data: BriefDataForShare,
+  topicShort: string,
+  sourceCount: number,
+  shareUrl: string
+): string {
+  return `${topicShort}
+
+${sourceCount} sources checked. Nobody's disputing the facts.
+
+Full breakdown:
+${shareUrl}
+
+@UseMirrorSource`;
+}
+
+/**
+ * Format: "The Spectrum" - Show political coverage spread (LOW DIVERGENCE)
+ */
+function generateSpectrumFormat(
+  data: BriefDataForShare,
+  topicShort: string,
+  sourceCount: number,
+  shareUrl: string
+): string {
+  const sources = data.sources || [];
+
+  // Count by political lean
+  const leftCount = sources.filter(s =>
+    s.politicalLean === 'left' || s.politicalLean === 'center-left'
+  ).length;
+  const centerCount = sources.filter(s =>
+    s.politicalLean === 'center'
+  ).length;
+  const rightCount = sources.filter(s =>
+    s.politicalLean === 'right' || s.politicalLean === 'center-right'
+  ).length;
+
+  const spread = [];
+  if (leftCount > 0) spread.push(`${leftCount} left`);
+  if (centerCount > 0) spread.push(`${centerCount} center`);
+  if (rightCount > 0) spread.push(`${rightCount} right`);
+
+  const spreadText = spread.join(', ') || 'across the spectrum';
+
+  return `"${topicShort}"
+
+${sourceCount} sources (${spreadText}) — all agree on the core facts.
+
+See the full breakdown:
+${shareUrl}
+
+@UseMirrorSource`;
 }
 
 /**
@@ -276,41 +400,63 @@ export function generateThreadFormat(
 ): string[] {
   const sourceCount = data.sources?.length || 0;
   const topicShort = truncateTopic(data.topic, 50);
-  const keyDiffs = normalizeKeyDifferences(data.keyDifferences);
+  const divergence = detectDivergenceLevel(data);
   const commonGround = normalizeCommonGround(data.commonGround);
 
   const tweets: string[] = [];
 
-  // Tweet 1: Hook
-  tweets.push(`🧵 I compared how ${sourceCount} outlets covered "${topicShort}"
+  if (divergence === 'high') {
+    const realDiffs = getRealKeyDifferences(data);
+
+    // Tweet 1: Hook
+    tweets.push(`I compared how ${sourceCount} outlets covered "${topicShort}"
 
 The differences are revealing. Here's what I found:`);
 
-  // Tweet 2: Key differences
-  if (keyDiffs.length > 0) {
-    const diffText = keyDiffs.slice(0, 2).map(d =>
-      `• ${d.label}: ${truncateText(cleanMarkdown(d.value), 60)}`
-    ).join('\n');
-    tweets.push(`Where they diverge:
+    // Tweet 2: Key differences
+    if (realDiffs.length > 0) {
+      const diffText = realDiffs.slice(0, 2).map(d =>
+        `• ${d.label}: ${truncateText(cleanMarkdown(d.value), 60)}`
+      ).join('\n');
+      tweets.push(`Where they diverge:
 
 ${diffText}`);
-  }
+    }
 
-  // Tweet 3: Common ground (if any)
-  if (commonGround.length > 0) {
-    const agreeText = commonGround.slice(0, 2).map(c =>
-      `• ${truncateText(c.value, 70)}`
-    ).join('\n');
-    tweets.push(`What they all agree on:
+    // Tweet 3: Common ground (if any)
+    if (commonGround.length > 0) {
+      const agreeText = commonGround.slice(0, 2).map(c =>
+        `• ${truncateText(c.value, 70)}`
+      ).join('\n');
+      tweets.push(`What they all agree on:
 
 ${agreeText}`);
+    }
+  } else {
+    // Consensus thread
+    tweets.push(`I compared how ${sourceCount} outlets covered "${topicShort}"
+
+Surprising finding: They all agree.`);
+
+    if (commonGround.length > 0) {
+      const agreeText = commonGround.slice(0, 3).map(c =>
+        `• ${truncateText(c.value, 70)}`
+      ).join('\n');
+      tweets.push(`The consensus:
+
+${agreeText}`);
+    }
+
+    tweets.push(`Left, right, center — all reporting the same core facts.
+
+Rare agreement or coordinated narrative?`);
   }
 
-  // Tweet 4: CTA
+  // Final tweet: CTA
   tweets.push(`Full breakdown with all ${sourceCount} sources:
 ${shareUrl}
 
-@UseMirrorSource – testing this tool, feedback welcome 👇`);
+@UseMirrorSource – feedback welcome`);
 
   return tweets;
 }
@@ -362,16 +508,20 @@ function truncateText(text: string, maxLen: number): string {
   return cleaned.substring(0, maxLen - 3) + '...';
 }
 
-function getContrastingSource(sources: ShareSource[], excludeName: string): string {
-  const other = sources.find(s => s.displayName !== excludeName);
-  return other?.displayName || 'other outlets';
-}
-
 function getSourceSpread(sources: ShareSource[]): string {
-  const leans = new Set(sources.map(s => s.politicalLean).filter(Boolean));
-  if (leans.size >= 4) return 'Full spectrum coverage';
-  if (leans.size >= 2) return 'Multiple perspectives';
-  return `${sources.length} sources analyzed`;
+  const hasLeft = sources.some(s =>
+    s.politicalLean === 'left' || s.politicalLean === 'center-left'
+  );
+  const hasCenter = sources.some(s => s.politicalLean === 'center');
+  const hasRight = sources.some(s =>
+    s.politicalLean === 'right' || s.politicalLean === 'center-right'
+  );
+
+  if (hasLeft && hasCenter && hasRight) return 'Left, right, center';
+  if (hasLeft && hasRight) return 'Left and right';
+  if (hasLeft && hasCenter) return 'Left and center';
+  if (hasRight && hasCenter) return 'Right and center';
+  return 'Multiple perspectives';
 }
 
 function calculateCharCount(text: string): number {
@@ -388,4 +538,4 @@ function calculateCharCount(text: string): number {
   return count;
 }
 
-export { calculateCharCount, EFFECTIVE_MAX, MAX_CHARS };
+export { calculateCharCount, EFFECTIVE_MAX, MAX_CHARS, detectDivergenceLevel };
