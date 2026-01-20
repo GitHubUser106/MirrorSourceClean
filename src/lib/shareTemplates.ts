@@ -128,23 +128,67 @@ function stripMarkdown(text: string): string {
 }
 
 /**
- * Truncate text at word boundary (never mid-word)
+ * Taglines for share templates - randomly selected
  */
-function truncateAtWord(text: string, maxLen: number): string {
+const TAGLINES = [
+  'Built for understanding, not outrage.',
+  'Same facts. Different frames.',
+  'Compare coverage. Think for yourself.',
+];
+
+/**
+ * Get a random tagline
+ */
+function getRandomTagline(): string {
+  return TAGLINES[Math.floor(Math.random() * TAGLINES.length)];
+}
+
+/**
+ * Smart truncate that preserves quoted "punchlines"
+ * If text has quotes ('term' or "term"), prioritize keeping them
+ * Cuts from BEGINNING if needed to preserve the hook
+ */
+function smartTruncate(text: string, maxLen: number): string {
   const cleaned = stripMarkdown(text);
   if (cleaned.length <= maxLen) return cleaned;
 
-  // Find last space before maxLen
+  // Check for quoted phrases (the "punchline")
+  const quoteMatch = cleaned.match(/['"][^'"]+['"]/g);
+
+  if (quoteMatch && quoteMatch.length > 0) {
+    // Find the last quoted phrase (usually the punchline)
+    const lastQuote = quoteMatch[quoteMatch.length - 1];
+    const quotePos = cleaned.lastIndexOf(lastQuote);
+
+    // If quote is near the end and would be cut, truncate from beginning instead
+    if (quotePos > maxLen - lastQuote.length - 5) {
+      // Cut from beginning to preserve the quote
+      const endPortion = cleaned.substring(cleaned.length - maxLen + 3);
+      // Find word boundary at start
+      const firstSpace = endPortion.indexOf(' ');
+      if (firstSpace > 0 && firstSpace < 15) {
+        return '...' + endPortion.substring(firstSpace + 1);
+      }
+      return '...' + endPortion;
+    }
+  }
+
+  // Default: truncate from end at word boundary
   const truncated = cleaned.substring(0, maxLen);
   const lastSpace = truncated.lastIndexOf(' ');
 
   if (lastSpace > maxLen * 0.5) {
-    // Cut at word boundary if we're not losing too much
     return truncated.substring(0, lastSpace) + '...';
   }
 
-  // Otherwise just cut (rare case)
   return truncated + '...';
+}
+
+/**
+ * Truncate text at word boundary (never mid-word) - legacy wrapper
+ */
+function truncateAtWord(text: string, maxLen: number): string {
+  return smartTruncate(text, maxLen);
 }
 
 /**
@@ -399,6 +443,7 @@ Same event. ${sourceCount} sources.
 
 ${shareUrl}
 
+${getRandomTagline()}
 @UseMirrorSource`;
   }
 
@@ -504,6 +549,7 @@ Same facts. Different stories.
 
 ${shareUrl}
 
+${getRandomTagline()}
 @UseMirrorSource`;
   }
 
@@ -516,6 +562,7 @@ Same facts. Different stories.
 
 ${shareUrl}
 
+${getRandomTagline()}
 @UseMirrorSource`;
 }
 
@@ -572,6 +619,7 @@ ${sourceCount} sources checked. Nobody's disputing the facts.
 Full breakdown:
 ${shareUrl}
 
+${getRandomTagline()}
 @UseMirrorSource`;
 }
 
@@ -611,6 +659,7 @@ ${sourceCount} sources (${spreadText}) — all agree on the core facts.
 See the full breakdown:
 ${shareUrl}
 
+${getRandomTagline()}
 @UseMirrorSource`;
 }
 
@@ -688,7 +737,8 @@ Rare agreement or coordinated narrative?`);
   tweets.push(`Full breakdown with all ${sourceCount} sources:
 ${shareUrl}
 
-@UseMirrorSource – feedback welcome`);
+${getRandomTagline()}
+@UseMirrorSource`);
 
   return tweets;
 }
@@ -744,17 +794,8 @@ function truncateTopic(topic: string, maxLen: number): string {
 }
 
 function truncateText(text: string, maxLen: number): string {
-  const cleaned = stripMarkdown(text);
-  if (cleaned.length <= maxLen) return cleaned;
-
-  // Find last space before maxLen for word boundary (never cut mid-word)
-  const truncated = cleaned.substring(0, maxLen);
-  const lastSpace = truncated.lastIndexOf(' ');
-
-  if (lastSpace > maxLen * 0.5) {
-    return truncated.substring(0, lastSpace) + '...';
-  }
-  return truncated.substring(0, maxLen - 3) + '...';
+  // Use smart truncation that preserves quoted punchlines
+  return smartTruncate(text, maxLen);
 }
 
 function getSourceSpread(sources: ShareSource[]): string {
