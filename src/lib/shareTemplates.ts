@@ -116,102 +116,142 @@ interface ExtractedFraming {
 }
 
 /**
- * Extract source-specific framings from key_differences text
- * Parses text like: "**Common Dreams** likens Trump's Greenland designs to Putin's invasion"
+ * Strip ALL markdown from text (bold, italic, links)
+ */
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove **bold**
+    .replace(/\*([^*]+)\*/g, '$1')     // Remove *italic*
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove [links](url)
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .trim();
+}
+
+/**
+ * Truncate text at word boundary (never mid-word)
+ */
+function truncateAtWord(text: string, maxLen: number): string {
+  const cleaned = stripMarkdown(text);
+  if (cleaned.length <= maxLen) return cleaned;
+
+  // Find last space before maxLen
+  const truncated = cleaned.substring(0, maxLen);
+  const lastSpace = truncated.lastIndexOf(' ');
+
+  if (lastSpace > maxLen * 0.5) {
+    // Cut at word boundary if we're not losing too much
+    return truncated.substring(0, lastSpace) + '...';
+  }
+
+  // Otherwise just cut (rare case)
+  return truncated + '...';
+}
+
+/**
+ * Extract source names from **bold** text in a string
+ */
+function extractSourceNames(text: string): string[] {
+  const matches = text.match(/\*\*([^*]+)\*\*/g) || [];
+  return matches.map(m => m.replace(/\*\*/g, '').trim());
+}
+
+/**
+ * Extract the actual claim/framing from key_differences text
+ * Input: "**Bloomberg** and **ainvest.com** emphasize trade tensions as a key driver"
+ * Output: { sources: ["Bloomberg", "ainvest.com"], claim: "trade tensions as key driver" }
+ */
+function parseKeyDifference(text: string): { sources: string[]; claim: string } | null {
+  // Extract all source names first
+  const sources = extractSourceNames(text);
+
+  // Strip markdown and normalize
+  const cleaned = stripMarkdown(text);
+
+  if (sources.length === 0) {
+    // No bold sources - try "Label: content" format
+    const colonMatch = cleaned.match(/^([A-Za-z\s]+):\s*(.+)/);
+    if (colonMatch) {
+      return {
+        sources: [colonMatch[1].trim()],
+        claim: colonMatch[2].trim(),
+      };
+    }
+    return null;
+  }
+
+  // Find where the actual claim starts (after all source mentions)
+  // Look for common claim verbs
+  const claimVerbs = /\b(emphasize|emphasizes|mention|mentions|highlight|highlights|focus|focuses|report|reports|say|says|claim|claims|argue|argues|note|notes|suggest|suggests|frame|frames|describe|describes|call|calls|liken|likens|compare|compares|portray|portrays|present|presents|characterize|characterizes|state|states)\b/i;
+
+  const verbMatch = cleaned.match(claimVerbs);
+  if (verbMatch && verbMatch.index !== undefined) {
+    // Get everything from the verb onwards
+    let claim = cleaned.substring(verbMatch.index);
+
+    // Clean up: remove "that" after verbs, normalize
+    claim = claim
+      .replace(/^(emphasize|mention|highlight|focus on|report|say|claim|argue|note|suggest|frame|describe|call|liken|compare|portray|present|characterize|state)s?\s+(that\s+)?/i, '')
+      .trim();
+
+    // Remove trailing meta-commentary
+    claim = claim
+      .replace(/,\s*(a comparison|unlike|which|this|while).*/i, '')
+      .replace(/\s*\(.*?\)\s*/g, ' ') // Remove parentheticals
+      .trim();
+
+    if (claim.length > 5) {
+      return { sources, claim };
+    }
+  }
+
+  // Fallback: take everything after the last source name mention
+  // Find position after all source names in cleaned text
+  let lastSourceEnd = 0;
+  for (const source of sources) {
+    const pos = cleaned.toLowerCase().indexOf(source.toLowerCase());
+    if (pos !== -1) {
+      lastSourceEnd = Math.max(lastSourceEnd, pos + source.length);
+    }
+  }
+
+  if (lastSourceEnd > 0 && lastSourceEnd < cleaned.length - 10) {
+    let claim = cleaned.substring(lastSourceEnd).trim();
+    // Remove leading "and", "or", connectors
+    claim = claim.replace(/^(and|or|,|\s)+/i, '').trim();
+    if (claim.length > 5) {
+      return { sources, claim };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Extract source-specific framings from key_differences array
  */
 function extractFramings(realDiffs: KeyDifference[]): ExtractedFraming[] {
   const framings: ExtractedFraming[] = [];
 
   for (const diff of realDiffs) {
     const text = diff.value;
+    const parsed = parseKeyDifference(text);
 
-    // Pattern 1: "**Source Name** [verb] [description]"
-    const boldSourceMatch = text.match(/\*\*([^*]+)\*\*\s+([^.]+)/);
-    if (boldSourceMatch) {
-      const sourceName = boldSourceMatch[1].trim();
-      const framingText = boldSourceMatch[2].trim();
+    if (parsed && parsed.claim) {
+      // Check if this is a unique take
+      const isUnique = /only|not made by other|unlike other|a comparison not|the only|uniquely|alone/i.test(text);
 
-      // Check if this framing is unique (mentions "only", "not made by other", "unlike other")
-      const isUnique = /only|not made by other|unlike other|a comparison not|the only|uniquely/i.test(text);
+      // Use first source as the attribution
+      const sourceName = parsed.sources[0] || diff.label.replace(':', '').trim();
 
       framings.push({
         sourceName,
-        framing: cleanFramingText(framingText),
+        framing: parsed.claim,
         isUnique,
       });
-    }
-
-    // Pattern 2: "Source Name: [description]" (without bold)
-    const colonMatch = text.match(/^([A-Z][a-zA-Z\s]+):\s+(.+)/);
-    if (!boldSourceMatch && colonMatch) {
-      framings.push({
-        sourceName: colonMatch[1].trim(),
-        framing: cleanFramingText(colonMatch[2]),
-        isUnique: /only|unique|unlike/i.test(text),
-      });
-    }
-
-    // Pattern 3: Look for contrasts like "while X says..., Y says..."
-    const whileMatch = text.match(/\*\*([^*]+)\*\*[^*]*while\s+\*\*([^*]+)\*\*/i);
-    if (whileMatch && !boldSourceMatch) {
-      // Extract the first source's take
-      const firstPart = text.split(/while/i)[0];
-      const secondPart = text.split(/while/i)[1];
-
-      const source1Framing = extractVerbPhrase(firstPart);
-      const source2Framing = extractVerbPhrase(secondPart);
-
-      if (source1Framing) {
-        framings.push({
-          sourceName: whileMatch[1].trim(),
-          framing: source1Framing,
-          isUnique: false,
-        });
-      }
-      if (source2Framing) {
-        framings.push({
-          sourceName: whileMatch[2].trim(),
-          framing: source2Framing,
-          isUnique: false,
-        });
-      }
     }
   }
 
   return framings;
-}
-
-/**
- * Clean up extracted framing text for display
- */
-function cleanFramingText(text: string): string {
-  return text
-    .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove remaining bold
-    .replace(/,\s*(a comparison|unlike|which|this).*/i, '') // Remove trailing comparisons
-    .replace(/\s+/g, ' ') // Normalize whitespace
-    .trim();
-}
-
-/**
- * Extract the main verb phrase from a sentence fragment
- */
-function extractVerbPhrase(text: string): string | null {
-  // Clean markdown
-  const cleaned = text.replace(/\*\*([^*]+)\*\*/g, '$1').trim();
-
-  // Look for common verb patterns
-  const verbMatch = cleaned.match(/(likens?|compares?|calls?|frames?|describes?|labels?|characterizes?|portrays?|presents?)\s+([^,]+)/i);
-  if (verbMatch) {
-    return verbMatch[0].trim();
-  }
-
-  // If no clear verb, take the predicate after the source name
-  const predicateMatch = cleaned.match(/(?:says?|states?|reports?|claims?)\s+(?:that\s+)?(.+)/i);
-  if (predicateMatch) {
-    return predicateMatch[1].substring(0, 60).trim();
-  }
-
-  return null;
 }
 
 /**
@@ -222,8 +262,8 @@ function getBestFramingForShare(framings: ExtractedFraming[]): ExtractedFraming 
   const unique = framings.find(f => f.isUnique);
   if (unique) return unique;
 
-  // Otherwise return the first one
-  return framings[0] || null;
+  // Otherwise return the first one with a reasonable claim
+  return framings.find(f => f.framing.length > 10) || framings[0] || null;
 }
 
 /**
@@ -606,9 +646,9 @@ The differences are revealing. Here's what I found:`);
 
 ${diffText}`);
     } else if (realDiffs.length > 0) {
-      // Fallback to raw differences
+      // Fallback to raw differences (truncateText strips markdown)
       const diffText = realDiffs.slice(0, 2).map(d =>
-        `• ${d.label}: ${truncateText(cleanMarkdown(d.value), 60)}`
+        `• ${d.label}: ${truncateText(d.value, 60)}`
       ).join('\n');
       tweets.push(`Where they diverge:
 
@@ -690,14 +730,31 @@ function cleanMarkdown(text: string): string {
 }
 
 function truncateTopic(topic: string, maxLen: number): string {
-  if (topic.length <= maxLen) return topic;
-  return topic.substring(0, maxLen - 3) + '...';
+  const cleaned = stripMarkdown(topic);
+  if (cleaned.length <= maxLen) return cleaned;
+
+  // Find last space before maxLen for word boundary
+  const truncated = cleaned.substring(0, maxLen);
+  const lastSpace = truncated.lastIndexOf(' ');
+
+  if (lastSpace > maxLen * 0.6) {
+    return truncated.substring(0, lastSpace) + '...';
+  }
+  return truncated.substring(0, maxLen - 3) + '...';
 }
 
 function truncateText(text: string, maxLen: number): string {
-  const cleaned = cleanMarkdown(text);
+  const cleaned = stripMarkdown(text);
   if (cleaned.length <= maxLen) return cleaned;
-  return cleaned.substring(0, maxLen - 3) + '...';
+
+  // Find last space before maxLen for word boundary (never cut mid-word)
+  const truncated = cleaned.substring(0, maxLen);
+  const lastSpace = truncated.lastIndexOf(' ');
+
+  if (lastSpace > maxLen * 0.5) {
+    return truncated.substring(0, lastSpace) + '...';
+  }
+  return truncated.substring(0, maxLen - 3) + '...';
 }
 
 function getSourceSpread(sources: ShareSource[]): string {
