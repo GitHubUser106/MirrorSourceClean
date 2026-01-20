@@ -107,6 +107,126 @@ function getRealKeyDifferences(data: BriefDataForShare): KeyDifference[] {
 }
 
 /**
+ * Extracted framing from a key difference
+ */
+interface ExtractedFraming {
+  sourceName: string;
+  framing: string;
+  isUnique: boolean; // True if this outlet is the only one with this take
+}
+
+/**
+ * Extract source-specific framings from key_differences text
+ * Parses text like: "**Common Dreams** likens Trump's Greenland designs to Putin's invasion"
+ */
+function extractFramings(realDiffs: KeyDifference[]): ExtractedFraming[] {
+  const framings: ExtractedFraming[] = [];
+
+  for (const diff of realDiffs) {
+    const text = diff.value;
+
+    // Pattern 1: "**Source Name** [verb] [description]"
+    const boldSourceMatch = text.match(/\*\*([^*]+)\*\*\s+([^.]+)/);
+    if (boldSourceMatch) {
+      const sourceName = boldSourceMatch[1].trim();
+      const framingText = boldSourceMatch[2].trim();
+
+      // Check if this framing is unique (mentions "only", "not made by other", "unlike other")
+      const isUnique = /only|not made by other|unlike other|a comparison not|the only|uniquely/i.test(text);
+
+      framings.push({
+        sourceName,
+        framing: cleanFramingText(framingText),
+        isUnique,
+      });
+    }
+
+    // Pattern 2: "Source Name: [description]" (without bold)
+    const colonMatch = text.match(/^([A-Z][a-zA-Z\s]+):\s+(.+)/);
+    if (!boldSourceMatch && colonMatch) {
+      framings.push({
+        sourceName: colonMatch[1].trim(),
+        framing: cleanFramingText(colonMatch[2]),
+        isUnique: /only|unique|unlike/i.test(text),
+      });
+    }
+
+    // Pattern 3: Look for contrasts like "while X says..., Y says..."
+    const whileMatch = text.match(/\*\*([^*]+)\*\*[^*]*while\s+\*\*([^*]+)\*\*/i);
+    if (whileMatch && !boldSourceMatch) {
+      // Extract the first source's take
+      const firstPart = text.split(/while/i)[0];
+      const secondPart = text.split(/while/i)[1];
+
+      const source1Framing = extractVerbPhrase(firstPart);
+      const source2Framing = extractVerbPhrase(secondPart);
+
+      if (source1Framing) {
+        framings.push({
+          sourceName: whileMatch[1].trim(),
+          framing: source1Framing,
+          isUnique: false,
+        });
+      }
+      if (source2Framing) {
+        framings.push({
+          sourceName: whileMatch[2].trim(),
+          framing: source2Framing,
+          isUnique: false,
+        });
+      }
+    }
+  }
+
+  return framings;
+}
+
+/**
+ * Clean up extracted framing text for display
+ */
+function cleanFramingText(text: string): string {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove remaining bold
+    .replace(/,\s*(a comparison|unlike|which|this).*/i, '') // Remove trailing comparisons
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .trim();
+}
+
+/**
+ * Extract the main verb phrase from a sentence fragment
+ */
+function extractVerbPhrase(text: string): string | null {
+  // Clean markdown
+  const cleaned = text.replace(/\*\*([^*]+)\*\*/g, '$1').trim();
+
+  // Look for common verb patterns
+  const verbMatch = cleaned.match(/(likens?|compares?|calls?|frames?|describes?|labels?|characterizes?|portrays?|presents?)\s+([^,]+)/i);
+  if (verbMatch) {
+    return verbMatch[0].trim();
+  }
+
+  // If no clear verb, take the predicate after the source name
+  const predicateMatch = cleaned.match(/(?:says?|states?|reports?|claims?)\s+(?:that\s+)?(.+)/i);
+  if (predicateMatch) {
+    return predicateMatch[1].substring(0, 60).trim();
+  }
+
+  return null;
+}
+
+/**
+ * Get the most shareable framing (unique takes are more viral)
+ */
+function getBestFramingForShare(framings: ExtractedFraming[]): ExtractedFraming | null {
+  // Prioritize unique takes (more viral)
+  const unique = framings.find(f => f.isUnique);
+  if (unique) return unique;
+
+  // Otherwise return the first one
+  return framings[0] || null;
+}
+
+/**
  * Generate all share template variants
  */
 export function generateShareTemplates(
@@ -135,7 +255,7 @@ export function generateShareTemplates(
     });
 
     // Format B: "The Question" (Engagement Bait)
-    const questionText = generateQuestionFormat(data, topicShort, sourceCount, shareUrl);
+    const questionText = generateQuestionFormat(data, realDiffs, topicShort, sourceCount, shareUrl);
     templates.push({
       id: 'question',
       name: 'The Question',
@@ -201,7 +321,7 @@ export function generateShareTemplates(
 // =============================================================================
 
 /**
- * Format: "The Receipts" - Direct source contrast (HIGH DIVERGENCE ONLY)
+ * Format: "The Receipts" - Direct source contrast with ACTUAL quotes (HIGH DIVERGENCE ONLY)
  */
 function generateReceiptsFormat(
   data: BriefDataForShare,
@@ -210,32 +330,64 @@ function generateReceiptsFormat(
   sourceCount: number,
   shareUrl: string
 ): string {
-  const sources = data.sources || [];
+  const framings = extractFramings(realDiffs);
+  const bestFraming = getBestFramingForShare(framings);
 
-  // Get sources from different political leans
+  if (bestFraming && bestFraming.isUnique) {
+    // Unique take format: "Source: '[framing]' / Other sources: No such comparison"
+    const framingQuote = truncateText(bestFraming.framing, 50);
+    return `${bestFraming.sourceName}: "${framingQuote}"
+
+Other sources: No such comparison
+
+${sourceCount} sources. One outlet went there.
+
+${shareUrl}
+
+Overreach or accurate parallel?`;
+  }
+
+  if (framings.length >= 2) {
+    // Contrast format: Show two different framings
+    const f1 = framings[0];
+    const f2 = framings[1];
+    return `${f1.sourceName}: "${truncateText(f1.framing, 35)}"
+
+${f2.sourceName}: "${truncateText(f2.framing, 35)}"
+
+Same event. ${sourceCount} sources.
+
+${shareUrl}
+
+@UseMirrorSource`;
+  }
+
+  if (framings.length === 1) {
+    // Single notable framing
+    const f = framings[0];
+    return `${f.sourceName} frames it as: "${truncateText(f.framing, 50)}"
+
+${sourceCount} sources compared — not all see it that way.
+
+${shareUrl}
+
+What did YOUR feed show?`;
+  }
+
+  // Fallback: Generic but with actual label
+  const sources = data.sources || [];
   const leftSource = sources.find(s =>
     s.politicalLean === 'left' || s.politicalLean === 'center-left'
   );
   const rightSource = sources.find(s =>
     s.politicalLean === 'right' || s.politicalLean === 'center-right'
   );
-
-  const source1 = leftSource?.displayName || sources[0]?.displayName || 'Left-leaning outlet';
-  const source2 = rightSource?.displayName || sources[1]?.displayName || 'Right-leaning outlet';
-
-  // Extract actual framing difference if available
-  let framingDesc = 'frames it differently';
-  if (realDiffs.length > 0) {
-    // Use the label (like "Scope:", "Framing:") rather than the full text
-    const diffLabel = realDiffs[0].label;
-    if (diffLabel && diffLabel !== 'Difference') {
-      framingDesc = `different ${diffLabel.replace(':', '').toLowerCase()}`;
-    }
-  }
+  const source1 = leftSource?.displayName || sources[0]?.displayName || 'Left outlet';
+  const source2 = rightSource?.displayName || sources[1]?.displayName || 'Right outlet';
 
   return `${source1} vs ${source2}
 
-Same story. ${framingDesc}.
+Same story. Different framing.
 
 ${sourceCount} sources compared:
 ${shareUrl}
@@ -244,21 +396,40 @@ What did YOUR feed show you?`;
 }
 
 /**
- * Format: "The Question" - Engagement bait (HIGH DIVERGENCE)
+ * Format: "The Question" - Engagement bait with specific framings (HIGH DIVERGENCE)
  */
 function generateQuestionFormat(
   data: BriefDataForShare,
+  realDiffs: KeyDifference[],
   topicShort: string,
   sourceCount: number,
   shareUrl: string
 ): string {
+  const framings = extractFramings(realDiffs);
+
+  if (framings.length >= 2) {
+    // Show actual contrasting takes
+    const bullets = framings.slice(0, 3).map(f =>
+      `• ${f.sourceName}: "${truncateText(f.framing, 30)}"`
+    ).join('\n');
+
+    return `"${truncateText(topicShort, 40)}"
+
+${bullets}
+
+${sourceCount} sources. Which version did you see?
+
+${shareUrl}`;
+  }
+
+  // Fallback: List source names
   const sources = data.sources || [];
   const sourceNames = sources.slice(0, 3).map(s => s.displayName);
   const bulletPoints = sourceNames.map(name => `• ${name}`).join('\n');
 
-  return `How is "${topicShort}" being framed?
+  return `"${topicShort}"
 
-Depends who you ask:
+Different outlets, different takes:
 ${bulletPoints}
 
 ${sourceCount} sources compared:
@@ -268,7 +439,7 @@ Which version did YOUR feed show?`;
 }
 
 /**
- * Format: "The Discovery" - Personal observation (HIGH DIVERGENCE)
+ * Format: "The Discovery" - Personal observation with actual finding (HIGH DIVERGENCE)
  */
 function generateDiscoveryFormat(
   data: BriefDataForShare,
@@ -277,17 +448,29 @@ function generateDiscoveryFormat(
   sourceCount: number,
   shareUrl: string
 ): string {
-  let finding = 'The framing varies significantly across outlets.';
+  const framings = extractFramings(realDiffs);
+  const bestFraming = getBestFramingForShare(framings);
 
-  if (realDiffs.length > 0) {
-    const diff = realDiffs[0];
-    const label = diff.label !== 'Difference' ? diff.label.replace(':', '') : 'framing';
-    finding = `Biggest gap: ${label.toLowerCase()}`;
-  }
+  if (bestFraming) {
+    const finding = bestFraming.isUnique
+      ? `${bestFraming.sourceName} went there alone: "${truncateText(bestFraming.framing, 40)}"`
+      : `${bestFraming.sourceName}: "${truncateText(bestFraming.framing, 45)}"`;
 
-  return `${sourceCount} sources on "${topicShort}"
+    return `Compared ${sourceCount} sources on "${truncateText(topicShort, 35)}"
 
 ${finding}
+
+Same facts. Different stories.
+
+${shareUrl}
+
+@UseMirrorSource`;
+  }
+
+  // Fallback
+  return `${sourceCount} sources on "${topicShort}"
+
+The framing varies significantly.
 
 Same facts. Different stories.
 
@@ -407,14 +590,23 @@ export function generateThreadFormat(
 
   if (divergence === 'high') {
     const realDiffs = getRealKeyDifferences(data);
+    const framings = extractFramings(realDiffs);
 
     // Tweet 1: Hook
     tweets.push(`I compared how ${sourceCount} outlets covered "${topicShort}"
 
 The differences are revealing. Here's what I found:`);
 
-    // Tweet 2: Key differences
-    if (realDiffs.length > 0) {
+    // Tweet 2: Key differences with ACTUAL framings
+    if (framings.length > 0) {
+      const diffText = framings.slice(0, 3).map(f =>
+        `• ${f.sourceName}: "${truncateText(f.framing, 50)}"`
+      ).join('\n');
+      tweets.push(`Where they diverge:
+
+${diffText}`);
+    } else if (realDiffs.length > 0) {
+      // Fallback to raw differences
       const diffText = realDiffs.slice(0, 2).map(d =>
         `• ${d.label}: ${truncateText(cleanMarkdown(d.value), 60)}`
       ).join('\n');
