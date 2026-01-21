@@ -128,56 +128,50 @@ function stripMarkdown(text: string): string {
 }
 
 /**
- * Taglines for share templates - randomly selected
- */
-const TAGLINES = [
-  'Built for understanding, not outrage.',
-  'Same facts. Different frames.',
-  'Compare coverage. Think for yourself.',
-];
-
-/**
- * Get a random tagline
- */
-function getRandomTagline(): string {
-  return TAGLINES[Math.floor(Math.random() * TAGLINES.length)];
-}
-
-/**
  * Smart truncate that preserves quoted "punchlines"
  * If text has quotes ('term' or "term"), prioritize keeping them
- * Cuts from BEGINNING if needed to preserve the hook
+ * Only cuts from BEGINNING if the quote is meaningful (5+ chars, contains real words)
  */
 function smartTruncate(text: string, maxLen: number): string {
   const cleaned = stripMarkdown(text);
   if (cleaned.length <= maxLen) return cleaned;
 
   // Check for quoted phrases (the "punchline")
-  const quoteMatch = cleaned.match(/['"][^'"]+['"]/g);
+  // Must be at least 5 chars and contain a word (not just punctuation/articles)
+  const quoteMatch = cleaned.match(/['"][^'"]{5,}['"]/g);
 
   if (quoteMatch && quoteMatch.length > 0) {
-    // Find the last quoted phrase (usually the punchline)
+    // Find the last meaningful quoted phrase
     const lastQuote = quoteMatch[quoteMatch.length - 1];
-    const quotePos = cleaned.lastIndexOf(lastQuote);
+    const quoteContent = lastQuote.slice(1, -1); // Remove surrounding quotes
 
-    // If quote is near the end and would be cut, truncate from beginning instead
-    if (quotePos > maxLen - lastQuote.length - 5) {
-      // Cut from beginning to preserve the quote
-      const endPortion = cleaned.substring(cleaned.length - maxLen + 3);
-      // Find word boundary at start
-      const firstSpace = endPortion.indexOf(' ');
-      if (firstSpace > 0 && firstSpace < 15) {
-        return '...' + endPortion.substring(firstSpace + 1);
+    // Only preserve if it's a meaningful phrase (has nouns/verbs, not just "the sources" etc)
+    const isMeaningful = quoteContent.length >= 5 &&
+      !/^(the|a|an|this|that|these|those|some|all|no|any)\s/i.test(quoteContent) &&
+      !/\s(than|and|or|but|with|from|to|of|in|on|at|by)\s*$/i.test(quoteContent);
+
+    if (isMeaningful) {
+      const quotePos = cleaned.lastIndexOf(lastQuote);
+
+      // If quote is near the end and would be cut, truncate from beginning instead
+      if (quotePos > maxLen - lastQuote.length - 5) {
+        // Cut from beginning to preserve the quote
+        const endPortion = cleaned.substring(cleaned.length - maxLen + 3);
+        // Find word boundary at start
+        const firstSpace = endPortion.indexOf(' ');
+        if (firstSpace > 0 && firstSpace < 15) {
+          return '...' + endPortion.substring(firstSpace + 1);
+        }
+        return '...' + endPortion;
       }
-      return '...' + endPortion;
     }
   }
 
-  // Default: truncate from end at word boundary
-  const truncated = cleaned.substring(0, maxLen);
+  // Default: truncate from end at word boundary (never mid-word)
+  const truncated = cleaned.substring(0, maxLen - 3); // Leave room for "..."
   const lastSpace = truncated.lastIndexOf(' ');
 
-  if (lastSpace > maxLen * 0.5) {
+  if (lastSpace > maxLen * 0.4) {
     return truncated.substring(0, lastSpace) + '...';
   }
 
@@ -237,9 +231,11 @@ function parseKeyDifference(text: string): { sources: string[]; claim: string } 
       .replace(/^(emphasize|mention|highlight|focus on|report|say|claim|argue|note|suggest|frame|describe|call|liken|compare|portray|present|characterize|state)s?\s+(that\s+)?/i, '')
       .trim();
 
-    // Remove trailing meta-commentary
+    // Remove trailing meta-commentary and comparative phrases
     claim = claim
       .replace(/,\s*(a comparison|unlike|which|this|while).*/i, '')
+      .replace(/\s+(than|more than|less than)\s+(other|the other|most|some|any)\s*(sources?|outlets?|media|coverage)?\.?$/i, '')
+      .replace(/\s+(compared to|relative to|versus|vs\.?)\s+(other|the other)\s*(sources?|outlets?)?\.?$/i, '')
       .replace(/\s*\(.*?\)\s*/g, ' ') // Remove parentheticals
       .trim();
 
@@ -406,6 +402,7 @@ export function generateShareTemplates(
 
 /**
  * Format: "The Receipts" - Direct source contrast with ACTUAL quotes (HIGH DIVERGENCE ONLY)
+ * Now with emojis and more engaging structure
  */
 function generateReceiptsFormat(
   data: BriefDataForShare,
@@ -418,48 +415,45 @@ function generateReceiptsFormat(
   const bestFraming = getBestFramingForShare(framings);
 
   if (bestFraming && bestFraming.isUnique) {
-    // Unique take format: "Source: '[framing]' / Other sources: No such comparison"
-    const framingQuote = truncateText(bestFraming.framing, 50);
-    return `${bestFraming.sourceName}: "${framingQuote}"
+    // Unique take format with emoji hook
+    const framingQuote = truncateText(bestFraming.framing, 45);
+    return `🚨 One outlet went there:
 
-Other sources: No such comparison
+${bestFraming.sourceName}: "${framingQuote}"
 
-${sourceCount} sources. One outlet went there.
+Other sources? Silent.
 
-${shareUrl}
-
-Overreach or accurate parallel?`;
+${sourceCount} sources compared ↓
+${shareUrl}`;
   }
 
   if (framings.length >= 2) {
-    // Contrast format: Show two different framings
+    // Contrast format: Side-by-side with emoji bullets
     const f1 = framings[0];
     const f2 = framings[1];
-    return `${f1.sourceName}: "${truncateText(f1.framing, 35)}"
+    return `🔴 ${f1.sourceName}: "${truncateText(f1.framing, 40)}"
 
-${f2.sourceName}: "${truncateText(f2.framing, 35)}"
+🔵 ${f2.sourceName}: "${truncateText(f2.framing, 40)}"
 
 Same event. ${sourceCount} sources.
 
 ${shareUrl}
-
-${getRandomTagline()}
 @UseMirrorSource`;
   }
 
   if (framings.length === 1) {
     // Single notable framing
     const f = framings[0];
-    return `${f.sourceName} frames it as: "${truncateText(f.framing, 50)}"
+    return `📰 ${f.sourceName}: "${truncateText(f.framing, 50)}"
 
-${sourceCount} sources compared — not all see it that way.
+Not all ${sourceCount} sources see it that way.
 
 ${shareUrl}
 
-What did YOUR feed show?`;
+Which version did YOUR feed show?`;
   }
 
-  // Fallback: Generic but with actual label
+  // Fallback with visual hooks
   const sources = data.sources || [];
   const leftSource = sources.find(s =>
     s.politicalLean === 'left' || s.politicalLean === 'center-left'
@@ -470,14 +464,12 @@ What did YOUR feed show?`;
   const source1 = leftSource?.displayName || sources[0]?.displayName || 'Left outlet';
   const source2 = rightSource?.displayName || sources[1]?.displayName || 'Right outlet';
 
-  return `${source1} vs ${source2}
+  return `⚡ ${source1} vs ${source2}
 
-Same story. Different framing.
+Same story. Different frames.
 
-${sourceCount} sources compared:
-${shareUrl}
-
-What did YOUR feed show you?`;
+${sourceCount} sources ↓
+${shareUrl}`;
 }
 
 /**
@@ -493,34 +485,30 @@ function generateQuestionFormat(
   const framings = extractFramings(realDiffs);
 
   if (framings.length >= 2) {
-    // Show actual contrasting takes
+    // Show actual contrasting takes with emoji bullets
     const bullets = framings.slice(0, 3).map(f =>
-      `• ${f.sourceName}: "${truncateText(f.framing, 30)}"`
-    ).join('\n');
+      `📰 ${f.sourceName}: "${truncateText(f.framing, 35)}"`
+    ).join('\n\n');
 
-    return `"${truncateText(topicShort, 40)}"
+    return `🤔 Wait, which is it?
 
 ${bullets}
 
-${sourceCount} sources. Which version did you see?
-
+${sourceCount} sources compared ↓
 ${shareUrl}`;
   }
 
   // Fallback: List source names
   const sources = data.sources || [];
   const sourceNames = sources.slice(0, 3).map(s => s.displayName);
-  const bulletPoints = sourceNames.map(name => `• ${name}`).join('\n');
+  const bulletPoints = sourceNames.map(name => `📰 ${name}`).join('\n');
 
-  return `"${topicShort}"
+  return `🤔 Same story, different takes:
 
-Different outlets, different takes:
 ${bulletPoints}
 
-${sourceCount} sources compared:
-${shareUrl}
-
-Which version did YOUR feed show?`;
+${sourceCount} sources compared ↓
+${shareUrl}`;
 }
 
 /**
@@ -538,31 +526,25 @@ function generateDiscoveryFormat(
 
   if (bestFraming) {
     const finding = bestFraming.isUnique
-      ? `${bestFraming.sourceName} went there alone: "${truncateText(bestFraming.framing, 40)}"`
-      : `${bestFraming.sourceName}: "${truncateText(bestFraming.framing, 45)}"`;
+      ? `${bestFraming.sourceName} went there alone:\n"${truncateText(bestFraming.framing, 45)}"`
+      : `${bestFraming.sourceName}:\n"${truncateText(bestFraming.framing, 50)}"`;
 
-    return `Compared ${sourceCount} sources on "${truncateText(topicShort, 35)}"
+    return `🔍 I compared ${sourceCount} sources on this story.
 
 ${finding}
 
-Same facts. Different stories.
+Same facts. Different frames.
 
 ${shareUrl}
-
-${getRandomTagline()}
 @UseMirrorSource`;
   }
 
   // Fallback
-  return `${sourceCount} sources on "${topicShort}"
+  return `🔍 ${sourceCount} sources on "${truncateText(topicShort, 40)}"
 
-The framing varies significantly.
-
-Same facts. Different stories.
+Same facts. Different frames.
 
 ${shareUrl}
-
-${getRandomTagline()}
 @UseMirrorSource`;
 }
 
@@ -586,21 +568,21 @@ function generateConsensusFormat(
   // Get the key finding they agree on
   let keyFinding = topicShort;
   if (commonGround.length > 0) {
-    keyFinding = truncateText(commonGround[0].value, 80);
+    keyFinding = truncateText(commonGround[0].value, 70);
   } else if (data.summary) {
     // Use first sentence of summary
     const firstSentence = data.summary.split(/[.!?]/)[0];
-    keyFinding = truncateText(firstSentence, 80);
+    keyFinding = truncateText(firstSentence, 70);
   }
 
-  return `${sourceCount} sources. ${spread}.
+  return `✅ ${sourceCount} sources. ${spread}.
 
 All reporting the same thing:
 "${keyFinding}"
 
 ${shareUrl}
 
-Rare consensus or coordinated narrative? You decide.`;
+Rare consensus? You decide.`;
 }
 
 /**
@@ -612,15 +594,12 @@ function generateFactCheckFormat(
   sourceCount: number,
   shareUrl: string
 ): string {
-  return `${topicShort}
+  return `📋 ${truncateText(topicShort, 50)}
 
-${sourceCount} sources checked. Nobody's disputing the facts.
+${sourceCount} sources. Nobody's disputing it.
 
-Full breakdown:
-${shareUrl}
-
-${getRandomTagline()}
-@UseMirrorSource`;
+Full breakdown ↓
+${shareUrl}`;
 }
 
 /**
@@ -645,21 +624,20 @@ function generateSpectrumFormat(
     s.politicalLean === 'right' || s.politicalLean === 'center-right'
   ).length;
 
-  const spread = [];
-  if (leftCount > 0) spread.push(`${leftCount} left`);
-  if (centerCount > 0) spread.push(`${centerCount} center`);
-  if (rightCount > 0) spread.push(`${rightCount} right`);
+  // Build emoji spread visual
+  const spreadEmojis = [];
+  if (leftCount > 0) spreadEmojis.push(`🔵 ${leftCount}`);
+  if (centerCount > 0) spreadEmojis.push(`🟣 ${centerCount}`);
+  if (rightCount > 0) spreadEmojis.push(`🔴 ${rightCount}`);
 
-  const spreadText = spread.join(', ') || 'across the spectrum';
+  const spreadLine = spreadEmojis.join(' · ') || 'across the spectrum';
 
-  return `"${topicShort}"
+  return `📊 ${sourceCount} sources on this story:
+${spreadLine}
 
-${sourceCount} sources (${spreadText}) — all agree on the core facts.
+All agree on the core facts.
 
-See the full breakdown:
 ${shareUrl}
-
-${getRandomTagline()}
 @UseMirrorSource`;
 }
 
@@ -682,23 +660,22 @@ export function generateThreadFormat(
     const framings = extractFramings(realDiffs);
 
     // Tweet 1: Hook
-    tweets.push(`I compared how ${sourceCount} outlets covered "${topicShort}"
+    tweets.push(`🧵 I compared how ${sourceCount} outlets covered "${topicShort}"
 
-The differences are revealing. Here's what I found:`);
+The differences are revealing:`);
 
     // Tweet 2: Key differences with ACTUAL framings
     if (framings.length > 0) {
       const diffText = framings.slice(0, 3).map(f =>
-        `• ${f.sourceName}: "${truncateText(f.framing, 50)}"`
-      ).join('\n');
+        `📰 ${f.sourceName}: "${truncateText(f.framing, 45)}"`
+      ).join('\n\n');
       tweets.push(`Where they diverge:
 
 ${diffText}`);
     } else if (realDiffs.length > 0) {
-      // Fallback to raw differences (truncateText strips markdown)
       const diffText = realDiffs.slice(0, 2).map(d =>
-        `• ${d.label}: ${truncateText(d.value, 60)}`
-      ).join('\n');
+        `📰 ${d.label}: ${truncateText(d.value, 55)}`
+      ).join('\n\n');
       tweets.push(`Where they diverge:
 
 ${diffText}`);
@@ -707,37 +684,36 @@ ${diffText}`);
     // Tweet 3: Common ground (if any)
     if (commonGround.length > 0) {
       const agreeText = commonGround.slice(0, 2).map(c =>
-        `• ${truncateText(c.value, 70)}`
+        `✅ ${truncateText(c.value, 65)}`
       ).join('\n');
-      tweets.push(`What they all agree on:
+      tweets.push(`What they agree on:
 
 ${agreeText}`);
     }
   } else {
     // Consensus thread
-    tweets.push(`I compared how ${sourceCount} outlets covered "${topicShort}"
+    tweets.push(`🧵 I compared how ${sourceCount} outlets covered "${topicShort}"
 
-Surprising finding: They all agree.`);
+Surprising: They all agree.`);
 
     if (commonGround.length > 0) {
       const agreeText = commonGround.slice(0, 3).map(c =>
-        `• ${truncateText(c.value, 70)}`
+        `✅ ${truncateText(c.value, 65)}`
       ).join('\n');
       tweets.push(`The consensus:
 
 ${agreeText}`);
     }
 
-    tweets.push(`Left, right, center — all reporting the same core facts.
+    tweets.push(`🔵🟣🔴 Left, right, center — same facts.
 
-Rare agreement or coordinated narrative?`);
+Rare agreement?`);
   }
 
   // Final tweet: CTA
-  tweets.push(`Full breakdown with all ${sourceCount} sources:
+  tweets.push(`Full breakdown ↓
 ${shareUrl}
 
-${getRandomTagline()}
 @UseMirrorSource`);
 
   return tweets;
