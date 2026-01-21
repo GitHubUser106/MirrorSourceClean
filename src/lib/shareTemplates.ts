@@ -401,8 +401,33 @@ export function generateShareTemplates(
 // =============================================================================
 
 /**
- * Format: "The Receipts" - Direct source contrast with ACTUAL quotes (HIGH DIVERGENCE ONLY)
- * Now with emojis and more engaging structure
+ * Extract a short "keyword" from framing text (2-4 key words)
+ */
+function extractKeyword(text: string, maxLen: number = 25): string {
+  // Look for quoted phrases first
+  const quoteMatch = text.match(/['"]([^'"]{3,30})['"]/);
+  if (quoteMatch) {
+    return quoteMatch[1].length <= maxLen ? quoteMatch[1] : quoteMatch[1].substring(0, maxLen);
+  }
+
+  // Otherwise take first few meaningful words
+  const words = text.split(/\s+/).filter(w =>
+    w.length > 2 && !['the', 'and', 'for', 'that', 'with', 'from'].includes(w.toLowerCase())
+  );
+
+  let result = '';
+  for (const word of words.slice(0, 4)) {
+    if ((result + ' ' + word).trim().length <= maxLen) {
+      result = (result + ' ' + word).trim();
+    } else break;
+  }
+
+  return result || text.substring(0, maxLen);
+}
+
+/**
+ * Format: "The Receipts" - Direct source contrast (HIGH DIVERGENCE ONLY)
+ * Uses short keywords for clean display without truncation
  */
 function generateReceiptsFormat(
   data: BriefDataForShare,
@@ -415,36 +440,38 @@ function generateReceiptsFormat(
   const bestFraming = getBestFramingForShare(framings);
 
   if (bestFraming && bestFraming.isUnique) {
-    // Unique take format with emoji hook
-    const framingQuote = truncateText(bestFraming.framing, 45);
-    return `🚨 One outlet went there:
-
-${bestFraming.sourceName}: "${framingQuote}"
+    // Unique take format
+    const keyword = extractKeyword(bestFraming.framing, 30);
+    return `🚨 ${bestFraming.sourceName} went there:
+"${keyword}"
 
 Other sources? Silent.
 
-${sourceCount} sources compared ↓
+${sourceCount} sources ↓
 ${shareUrl}`;
   }
 
   if (framings.length >= 2) {
-    // Contrast format: Side-by-side with emoji bullets
+    // Contrast format: short keywords, no truncation
     const f1 = framings[0];
     const f2 = framings[1];
-    return `🔴 ${f1.sourceName}: "${truncateText(f1.framing, 40)}"
+    const k1 = extractKeyword(f1.framing, 25);
+    const k2 = extractKeyword(f2.framing, 25);
 
-🔵 ${f2.sourceName}: "${truncateText(f2.framing, 40)}"
+    return `🔴 ${f1.sourceName}: "${k1}"
+🔵 ${f2.sourceName}: "${k2}"
 
-Same event. ${sourceCount} sources.
+Same event. Different spin.
 
-${shareUrl}
-@UseMirrorSource`;
+${sourceCount} sources ↓
+${shareUrl}`;
   }
 
   if (framings.length === 1) {
     // Single notable framing
     const f = framings[0];
-    return `📰 ${f.sourceName}: "${truncateText(f.framing, 50)}"
+    const keyword = extractKeyword(f.framing, 30);
+    return `📰 ${f.sourceName}: "${keyword}"
 
 Not all ${sourceCount} sources see it that way.
 
@@ -485,29 +512,28 @@ function generateQuestionFormat(
   const framings = extractFramings(realDiffs);
 
   if (framings.length >= 2) {
-    // Show actual contrasting takes with emoji bullets
+    // Short keyword quotes - no truncation
     const bullets = framings.slice(0, 3).map(f =>
-      `📰 ${f.sourceName}: "${truncateText(f.framing, 35)}"`
-    ).join('\n\n');
+      `📰 ${f.sourceName}: "${extractKeyword(f.framing, 22)}"`
+    ).join('\n');
 
-    return `🤔 Wait, which is it?
+    return `🤔 Same story. Which framing?
 
 ${bullets}
 
-${sourceCount} sources compared ↓
+${sourceCount} sources ↓
 ${shareUrl}`;
   }
 
-  // Fallback: List source names
+  // Fallback: Just source names
   const sources = data.sources || [];
-  const sourceNames = sources.slice(0, 3).map(s => s.displayName);
-  const bulletPoints = sourceNames.map(name => `📰 ${name}`).join('\n');
+  const sourceNames = sources.slice(0, 4).map(s => s.displayName);
 
-  return `🤔 Same story, different takes:
+  return `🤔 ${sourceNames.join(' vs ')}
 
-${bulletPoints}
+Same story. Different angles.
 
-${sourceCount} sources compared ↓
+${sourceCount} sources ↓
 ${shareUrl}`;
 }
 
@@ -525,11 +551,12 @@ function generateDiscoveryFormat(
   const bestFraming = getBestFramingForShare(framings);
 
   if (bestFraming) {
+    const keyword = extractKeyword(bestFraming.framing, 28);
     const finding = bestFraming.isUnique
-      ? `${bestFraming.sourceName} went there alone:\n"${truncateText(bestFraming.framing, 45)}"`
-      : `${bestFraming.sourceName}:\n"${truncateText(bestFraming.framing, 50)}"`;
+      ? `${bestFraming.sourceName} alone: "${keyword}"`
+      : `${bestFraming.sourceName}: "${keyword}"`;
 
-    return `🔍 I compared ${sourceCount} sources on this story.
+    return `🔍 Compared ${sourceCount} sources.
 
 ${finding}
 
